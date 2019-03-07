@@ -73,8 +73,16 @@ optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "1.12.0"
 
+[[package]]
+category = "main"
+description = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
+name = "torch"
+optional = false
+python-versions = "*"
+version = "1.0.1.post2"
+
 [metadata]
-content-hash = "0137efd2206d091462b349055ac0144703720f463e71aaa7fa3c0a139251d2d4"
+content-hash = "e897b3b5c9d9a0974b37a27242ab41c8a9559c6ad7b60a957f8f3693e2b2970e"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -86,3 +94,4 @@ pluggy = ["19ecf9ce9db2fce065a7a0586e07cfb4ac8614fe96edf628a264b1c70116cf8f", "8
 py = ["64f65755aee5b381cea27766a3a147c3f15b9b6b9ac88676de66ba2ae36793fa", "dc639b046a6e2cff5bbe40194ad65936d6ba360b52b3c3fe1d08a82dd50b5e53"]
 pytest = ["3f193df1cfe1d1609d4c583838bea3d532b18d6160fd3f55c9447fdca30848ec", "e246cf173c01169b9617fc07264b7b1316e78d7a650055235d6d897bc80d9660"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
+torch = ["2e04bcc8b6536ba01a924cbcfb9eff2428be6c9cc73956df38dfcf63c948fbf5", "40ad926ebdef6db70811102ae1448584a0c338a2fce2ff718533b9016664398e", "43e40d9cf70d038fe9a9c06eaadf3f39756fe76a530a0bd1dec9f21654ee5851", "639e9414cd3a787c807206199bf3285815a41fac9b2e20aca0db9a971db5399e", "652b70751bbe974370feff27f51b6cd7856c14a57eb06fdd1c9f2dfcc2731401", "7822918f3d32a99db2bb5616a5c28d989d6e4b6a54d720cb25e60551dacafa1e", "96fd5e8ffc117f79d1baaa65da601d35411f341d90d8ca1204236925f164b043", "a002d509e98a3ea17f45affc5c440808d7ac119d7510bb27da7b184aafb59943", "c8dd2478d3e8c0da293c618be60432bb166fe36c50663e26b1fe9e7123365fe5"]
