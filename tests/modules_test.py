@@ -24,14 +24,14 @@ def test_dropout_layer():
     assert not torch.allclose(input + input, output)
 
 
-def test_ensemble_layer():
+def test_mean_ensemble_layer():
     """Ensemble layer test
 
     Tests if the mean ensemble layer correctly calculates an ensemble mean.
 
     """
     inner = modules.PredDropout()
-    ensemble = modules.EnsembleMean(inner, 20)
+    ensemble = modules.MeanEnsemble(inner, 20)
     ensemble.eval()
 
     input = torch.ones(10)
@@ -39,3 +39,15 @@ def test_ensemble_layer():
 
     assert torch.allclose(input, output, atol=0.3)
     assert not torch.allclose(input, output)
+
+
+def test_ensemble_layer():
+    inner = modules.PredDropout()
+    ensemble = modules.PredictionEnsemble(inner, 20)
+    ensemble.eval()
+
+    input = torch.ones(10)
+    output = ensemble.forward(input)
+
+    assert list(output.size()) == [10, 20]
+    assert torch.all((output == 0.0) + (output == 2.0))

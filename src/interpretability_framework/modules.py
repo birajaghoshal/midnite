@@ -1,5 +1,6 @@
 import logging
 
+import torch
 from torch.nn import Dropout
 from torch.nn import functional as F
 from torch.nn import Module
@@ -21,7 +22,7 @@ class PredDropout(Dropout):
         return F.dropout(input, self.p, True, self.inplace)
 
 
-class EnsembleMean(Module):
+class _Ensemble(Module):
     def __init__(self, inner: Module, sample_size):
         """Create a network with probabilistic predictions from a variable inner model.
 
@@ -29,17 +30,19 @@ class EnsembleMean(Module):
             inner: the inner network block
             sample_size: the number of samples of the inner prediction to use in the forward pass
         """
-        super(EnsembleMean, self).__init__()
+        super(_Ensemble, self).__init__()
 
         if sample_size < 2:
             raise ValueError("At least two samples are necessary")
 
         if sample_size < 20:
-            log.warning("Using low number of samples my give greatly skewed results")
+            log.warning("Using low number of samples may give greatly skewed results")
 
         self.sample_size = sample_size
         self.inner = inner
 
+
+class MeanEnsemble(_Ensemble):
     def forward(self, input):
         """Forward pass for ensemble, calculating mean.
 
@@ -49,10 +52,37 @@ class EnsembleMean(Module):
         Returns:
             the mean of the inner network's foward pass for sample_size samples
         """
+        pred = self.inner.forward(input)
+
         if self.training:
-            return self.inner.forward(input)
+            return pred
         else:
-            pred = self.inner.forward(input)
             for i in range(self.sample_size - 1):
                 pred += self.inner.forward(input)
             return pred.div(self.sample_size)
+
+
+class PredictionEnsemble(_Ensemble):
+    def forward(self, input):
+        """Forward pass for ensemble, returning all samples.
+
+        Args:
+            input: the input data
+
+        Returns:
+            all prediction samples stacked
+        """
+        # Calculate first prediction
+        pred = self.inner.forward(input)
+
+        # In eval mode, stack ensemble predictions
+        if not self.training:
+            # Retain dim of one prediction
+            pred_dim = pred.dim()
+
+            pred = torch.unsqueeze(pred, dim=pred_dim)
+            for i in range(self.sample_size - 1):
+                new_pred = torch.unsqueeze(self.inner.forward(input), dim=pred_dim)
+                pred = torch.cat((pred, new_pred), dim=pred_dim)
+
+        return pred
