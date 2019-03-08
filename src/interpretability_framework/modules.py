@@ -89,9 +89,20 @@ class PredictionEnsemble(_Ensemble):
 
 
 class PredictiveEntropy(Module):
-    def forward(self, input):
-        # TODO
-        return input
+    def forward(self, ensemble_mean):
+        """
+
+        Args:
+            ensemble_mean: mean of the MC ensemble of previous dropout layer
+
+        Returns:
+            pred_entropy: the entropy of the predicted distribution, the uncertainty of the entire distribution
+        """
+
+        log_pred = ensemble_mean * torch.log(ensemble_mean)
+        pred_entropy = - log_pred
+
+        return pred_entropy
 
 
 class MutualInformation(PredictiveEntropy):
@@ -107,3 +118,4 @@ class MutualInformation(PredictiveEntropy):
         pred_entropy = super(MutualInformation, self).forward(input)
         # TODO
         return pred_entropy
+
