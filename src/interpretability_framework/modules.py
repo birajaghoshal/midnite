@@ -86,3 +86,24 @@ class PredictionEnsemble(_Ensemble):
                 pred = torch.cat((pred, new_pred), dim=pred_dim)
 
         return pred
+
+
+class PredictiveEntropy(Module):
+    def forward(self, input):
+        # TODO
+        return input
+
+
+class MutualInformation(PredictiveEntropy):
+    def forward(self, input):
+        """Forward pass for mutual information (also called BALD), to measure epistemic uncertainty.
+
+        Args:
+            input: predictions for n classes for T samples, of dimension (n, T).
+
+        Returns:
+            the mutual information for each class
+        """
+        pred_entropy = super(MutualInformation, self).forward(input)
+        # TODO
+        return pred_entropy
