@@ -1,5 +1,6 @@
 import torch
 
+from interpretability_framework import functional as F
 from interpretability_framework import modules
 
 # For consistent tests, seed has to be fixed
@@ -9,7 +10,7 @@ torch.manual_seed(123456)
 def test_dropout_layer():
     """Prediction dropout layer test
 
-    Tests if the layer does dropout in prediction mode.
+    Checks if the layer does dropout in prediction mode.
 
     """
     # Set dropout layer to evaluation mode
@@ -17,53 +18,80 @@ def test_dropout_layer():
     dropout_layer.eval()
 
     # Check that dropout still is applied
-    input = torch.ones(10)
-    output = dropout_layer(input)
+    input_ = torch.ones(10)
+    output = dropout_layer(input_)
 
-    assert not torch.allclose(input, output)
-    assert not torch.allclose(input + input, output)
+    assert torch.all((output == 2.0) + (output == 0.0))
+    assert not torch.all(output == 0.0)
+    assert not torch.all(output == 2.0)
 
 
 def test_mean_ensemble_layer():
-    """Ensemble layer test
+    """Mean ensemble layer test
 
-    Tests if the mean ensemble layer correctly calculates an ensemble mean.
+    Checks if the layer correctly calculates an ensemble mean.
 
     """
     inner = modules.PredDropout()
     ensemble = modules.MeanEnsemble(inner, 20)
     ensemble.eval()
 
-    input = torch.ones(10)
-    output = ensemble.forward(input)
+    input_ = torch.ones(10)
+    output = ensemble(input_)
 
-    assert torch.allclose(input, output, atol=0.3)
-    assert not torch.allclose(input, output)
+    assert torch.allclose(input_, output, atol=0.3)
+    assert not torch.allclose(input_, output)
 
 
 def test_ensemble_layer():
+    """Ensemble layer test
+
+    Tests if the ensemble layer does the sampling correctly.
+
+    """
     inner = modules.PredDropout()
     ensemble = modules.PredictionEnsemble(inner, 20)
     ensemble.eval()
 
-    input = torch.ones(10)
-    output = ensemble.forward(input)
+    input_ = torch.ones(10)
+    output = ensemble(input_)
 
-    assert list(output.size()) == [10, 20]
+    assert list(output.size()) == [20, 10]
     assert torch.all((output == 0.0) + (output == 2.0))
 
 
-def test_pred_entropy():
-    inner = modules.PredDropout()
-    ensemble = modules.PredictionEnsemble(inner, 20)
-    ensemble.eval()
+def test_pred_entropy(mocker):
+    """Predictive entropy layer test
 
-    input = torch.ones(10)
-    pred = ensemble.forward(input)
+    """
+    # Patch out functional
+    mocker.patch("interpretability_framework.functional.predictive_entropy")
 
-    entropy = modules.PredictiveEntropy()
-    pred_entropy = entropy.forward(pred)
+    input_ = torch.ones((20, 2))
+    modules.PredictiveEntropy()(input_)
 
-    assert list(pred_entropy.size()) == [10]
-    # As the mean prediction is a probability, x * log(x) maps to a space between -0.5 and 1
-    assert float(pred_entropy.max()) <= 1.0 and float(pred_entropy.min()) >= -0.5
+    F.predictive_entropy.assert_called_once_with(input_)
+
+
+def test_mutual_information(mocker):
+    """Mutual information layer test.
+
+    """
+    mocker.patch("interpretability_framework.functional.mutual_information")
+
+    input_ = torch.ones(20, 2)
+    modules.MutualInformation()(input_)
+
+    F.mutual_information.assert_called_once_with(input_)
+
+
+def test_variation_ratio(mocker):
+    """Variation ratio layer test.
+
+    """
+    mocker.patch("interpretability_framework.functional.variation_ratio")
+
+    input_ = torch.ones(20, 2)
+    modules.VariationRatio()(input_)
+
+    F.variation_ratio.assert_called_once_with(input_)

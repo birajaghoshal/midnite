@@ -1,6 +1,7 @@
 import logging
 
 import torch
+from torch import Tensor
 from torch.nn import Dropout
 from torch.nn import functional as F
 from torch.nn import Module
@@ -11,26 +12,35 @@ log = logging.getLogger(__name__)
 
 
 class PredDropout(Dropout):
-    def forward(self, input):
+    """Layer for dropout at prediction time.
+
+    """
+
+    def forward(self, input_: Tensor) -> Tensor:
         """Performs dropout at training and at test time.
 
         Args:
-            input: the input layer
+            input_: the input layer
 
         Returns:
             the dropout forward pass
 
         """
-        return F.dropout(input, self.p, True, self.inplace)
+        return F.dropout(input_, p=self.p, inplace=self.inplace)
 
 
 class _Ensemble(Module):
+    """Module for ensemble models.
+
+    """
+
     def __init__(self, inner: Module, sample_size):
         """Create a network with probabilistic predictions from a variable inner model.
 
         Args:
             inner: the inner network block
             sample_size: the number of samples of the inner prediction to use in the forward pass
+
         """
         super(_Ensemble, self).__init__()
 
@@ -45,73 +55,110 @@ class _Ensemble(Module):
 
 
 class MeanEnsemble(_Ensemble):
-    def forward(self, input):
+    """Module for models that want the mean of their ensemble predictions.
+
+    """
+
+    def forward(self, input_: Tensor) -> Tensor:
         """Forward pass for ensemble, calculating mean.
 
         Args:
-            input: the input data
+            input_: the input data
 
         Returns:
             the mean of the inner network's foward pass for sample_size samples
+
         """
-        pred = self.inner.forward(input)
+        pred = self.inner.forward(input_)
 
         if self.training:
             return pred
         else:
             for i in range(self.sample_size - 1):
-                pred += self.inner.forward(input)
+                pred += self.inner.forward(input_)
             return pred.div(self.sample_size)
 
 
 class PredictionEnsemble(_Ensemble):
-    def forward(self, input):
+    """Generic module for ensemble models.
+
+    """
+
+    def forward(self, input_: Tensor) -> Tensor:
         """Forward pass for ensemble, returning all samples.
 
         Args:
-            input: the input data
+            input_: the input data
 
         Returns:
-            all prediction samples stacked
+            all prediction samples stacked in dim 0
+
         """
         # Calculate first prediction
-        pred = self.inner.forward(input)
+        pred = self.inner.forward(input_)
 
         # In eval mode, stack ensemble predictions
         if not self.training:
-            # Retain dim of one prediction
-            pred_dim = pred.dim()
-
-            pred = torch.unsqueeze(pred, dim=pred_dim)
+            pred = torch.unsqueeze(pred, dim=0)
             for i in range(self.sample_size - 1):
-                new_pred = torch.unsqueeze(self.inner.forward(input), dim=pred_dim)
-                pred = torch.cat((pred, new_pred), dim=pred_dim)
+                new_pred = torch.unsqueeze(self.inner.forward(input_), dim=0)
+                pred = torch.cat((pred, new_pred))
 
         return pred
 
 
 class PredictiveEntropy(Module):
-    def forward(self, input):
+    """Module to calculate the predictive entropy from an generic ensemble model.
+
+    """
+
+    def forward(self, input_: Tensor) -> Tensor:
         """Forward pass for predictive entropy (also called max entropy), to measure total uncertainty.
 
         Args:
-            input: concatenated predictions for N classes and T samples, of shape (N, T)
+            input_: concatenated predictions for N classes and T samples, of shape (T, N)
 
         Returns:
-            pred_entropy: the predictive entropy for each class
+            pred_entropy: the total predictive entropy
+
         """
 
-        return Self_F.predictive_entropy(input)
+        return Self_F.predictive_entropy(input_)
 
 
 class MutualInformation(Module):
-    def forward(self, input):
-        """Forward pass for mutual information (also called BALD), to measure epistemic uncertainty.
+    """Module to calculate the mutual information from an generic ensemble model.
+
+    """
+
+    def forward(self, input_: Tensor) -> Tensor:
+        """Forward pass for mutual information, to measure epistemic uncertainty.
+
+        Also called Bayesian Active Learning by Disagreement (BALD)
 
         Args:
-            input: concatenated predictions for N classes and T samples, of shape (N, T)
+            input_: concatenated predictions for N classes and T samples, of shape (T, N)
 
         Returns:
-            the mutual information for each class
+            the total mutual information
+
         """
-        return Self_F.mutual_information(input)
+        return Self_F.mutual_information(input_)
+
+
+class VariationRatio(Module):
+    """Module to calculate the variation ratio from an generic ensemble model.
+
+    """
+
+    def forward(self, input_: Tensor) -> Tensor:
+        """Forward pass for the variation ratio, to measure the lack of confidence in the prediction (total uncertainty).
+
+        Args:
+            input_: concatenated predictions for N classes and T samples, of shape (T, N)
+
+        Returns:
+            the total variation ratio
+
+        """
+        return Self_F.variation_ratio(input_)

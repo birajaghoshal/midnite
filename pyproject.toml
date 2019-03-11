@@ -8,6 +8,7 @@ authors = ["Christina Aigner <christina@luminovo.ai >, Fabian Huch <fabian@lumin
 python = "^3.7"
 torch = "^1.0"
 numpy = "^1.16"
+pytest-mock = "^1.10"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.8"
