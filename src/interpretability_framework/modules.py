@@ -119,7 +119,7 @@ class PredictiveEntropy(Module):
             input_: concatenated predictions for N classes and T samples, of shape (T, N)
 
         Returns:
-            pred_entropy: the total predictive entropy
+            pred_entropy: the predictive entropy per class
 
         """
 
@@ -140,7 +140,7 @@ class MutualInformation(Module):
             input_: concatenated predictions for N classes and T samples, of shape (T, N)
 
         Returns:
-            the total mutual information
+            the mutual information per class
 
         """
         return Self_F.mutual_information(input_)
