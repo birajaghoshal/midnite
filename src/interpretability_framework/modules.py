@@ -5,6 +5,8 @@ from torch.nn import Dropout
 from torch.nn import functional as F
 from torch.nn import Module
 
+import interpretability_framework.functional as Self_F
+
 log = logging.getLogger(__name__)
 
 
@@ -89,33 +91,27 @@ class PredictionEnsemble(_Ensemble):
 
 
 class PredictiveEntropy(Module):
-    def forward(self, ensemble_mean):
-        """
+    def forward(self, input):
+        """Forward pass for predictive entropy (also called max entropy), to measure total uncertainty.
 
         Args:
-            ensemble_mean: mean of the MC ensemble of previous dropout layer
+            input: concatenated predictions for N classes and T samples, of shape (N, T)
 
         Returns:
-            pred_entropy: the entropy of the predicted distribution, the uncertainty of the entire distribution
+            pred_entropy: the predictive entropy for each class
         """
 
-        log_pred = ensemble_mean * torch.log(ensemble_mean)
-        pred_entropy = - log_pred
-
-        return pred_entropy
+        return Self_F.predictive_entropy(input)
 
 
-class MutualInformation(PredictiveEntropy):
+class MutualInformation(Module):
     def forward(self, input):
         """Forward pass for mutual information (also called BALD), to measure epistemic uncertainty.
 
         Args:
-            input: predictions for n classes for T samples, of dimension (n, T).
+            input: concatenated predictions for N classes and T samples, of shape (N, T)
 
         Returns:
             the mutual information for each class
         """
-        pred_entropy = super(MutualInformation, self).forward(input)
-        # TODO
-        return pred_entropy
-
+        return Self_F.mutual_information(input)

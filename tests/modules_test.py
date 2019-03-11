@@ -55,7 +55,7 @@ def test_ensemble_layer():
 
 def test_pred_entropy():
     inner = modules.PredDropout()
-    ensemble = modules.MeanEnsemble(inner, 20)
+    ensemble = modules.PredictionEnsemble(inner, 20)
     ensemble.eval()
 
     input = torch.ones(10)
@@ -63,8 +63,7 @@ def test_pred_entropy():
 
     entropy = modules.PredictiveEntropy()
     pred_entropy = entropy.forward(pred)
-    
+
     assert list(pred_entropy.size()) == [10]
     # As the mean prediction is a probability, x * log(x) maps to a space between -0.5 and 1
     assert float(pred_entropy.max()) <= 1.0 and float(pred_entropy.min()) >= -0.5
-
