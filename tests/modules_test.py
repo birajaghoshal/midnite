@@ -95,3 +95,18 @@ def test_variation_ratio(mocker):
     modules.VariationRatio()(input_)
 
     F.variation_ratio.assert_called_once_with(input_)
+
+
+def test_confidence_mean_prediciton(mocker):
+    mocker.patch("interpretability_framework.functional.predictive_entropy")
+    mocker.patch("interpretability_framework.functional.mutual_information")
+    mocker.patch("interpretability_framework.functional.variation_ratio")
+
+    input_ = torch.tensor([1.0, 0.5, 0.3])
+    output, _, _, _ = modules.ConfidenceMeanPrediction()(input_)
+
+    assert torch.allclose(output, torch.tensor([0.6]))
+
+    F.predictive_entropy.assert_called_once_with(input_)
+    F.mutual_information.assert_called_once_with(input_)
+    F.variation_ratio.assert_called_once_with(input_)
