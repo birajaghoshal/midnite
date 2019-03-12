@@ -1,55 +1,50 @@
 """Main script. Run your experiments from here"""
-import torch
 import torchvision.models as models
+from torch.nn import Dropout
+from torch.nn import Sequential
+from torch.nn import Softmax
 
 from interpretability_framework import data_utils
-from interpretability_framework import functional as func
 from interpretability_framework import modules
 
 
 def main():
-    """Tutorial for using uncertainty measures.
+    """Example on how to use uncertainty measures for existing model.
 
     """
-    # Parameters
-    dropout_prob = 0.8
-    sample_size = 20
-
-    # Get input image from dataloader, torch tensor of dim: (1 x 3 x 227 x 227)
-    input_img = data_utils.get_imagenet_example()
-
-    # Get pretrained model from torchvision
+    # Get pre-trained model from torchvision
     alexnet = models.alexnet(pretrained=True)
+    alexnet.classifier.add_module("softmax", Softmax(dim=1))
 
-    layers = list(alexnet.classifier)
+    # MC Ensemble that calculates the mean, predictive entropy, mutual information, and variation ratio.
+    ensemble = Sequential(
+        modules.PredictionEnsemble(inner=alexnet), modules.ConfidenceMeanPrediction()
+    )
 
-    # Exchange dropout layers
-    for idx, layer in enumerate(layers):
-        if isinstance(layer, torch.nn.Dropout):
-            layers.remove(layer)
-            layers.insert(idx, modules.PredDropout(dropout_prob))
+    # Prepare ensemble
+    ensemble.eval()
 
-    # Get MC Dropout predictions
-    # resnet18.forward(cifar10_data)
-    new_classifier = torch.nn.Sequential(*layers)
-    new_model = torch.nn.Sequential(alexnet.features, new_classifier)
+    # Re-activate dropout layers
+    for layer in list(alexnet.modules()):
+        if isinstance(layer, Dropout):
+            layer.train()
 
-    ensemble_layer = modules.PredictionEnsemble(new_model, sample_size)
-    ensemble_layer.eval()
+    # Get input images from dataloader, torch tensor of dim: (1 x 3 x 227 x 227)
+    # TODO [data_utils.get_imagenet_example(), data_utils.get_ood_example(), data_utils.get_random_example()]:
+    for img in [data_utils.get_random_example()]:
+        # Do prediction
+        prediction, predictive_entropy, mutual_information, variation_ratio = ensemble(
+            img
+        )
 
-    # Compute predictions
-    pred_ensemble = ensemble_layer(input_img)
+        print(
+            f"prediction: {prediction.argmax()}, point estimate class probability: {prediction.max()}"
+        )
+        print(f"predictive entropy: {predictive_entropy.sum()}")
+        print(f"mutual information: {mutual_information.sum()}")
+        print(f"variational ratio: {variation_ratio}")
 
-    # Measure uncertainties for MC ensemble
-    pred_entropy = func.predictive_entropy(pred_ensemble)
-    mutual_info = func.mutual_information(pred_ensemble)
-    var_ratio = func.variation_ratio(pred_ensemble)
-    print("pred_entropy: ", pred_entropy)
-    print("mutual_information: ", mutual_info)
-    print("variational_ratio: ", var_ratio)
-
-    # TODO Plot uncertainties?
-    pass
+        # TODO Plot uncertainties?
 
 
 if __name__ == "__main__":

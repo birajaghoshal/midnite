@@ -6,7 +6,7 @@ from torch.nn import Dropout
 from torch.nn import functional as F
 from torch.nn import Module
 
-import interpretability_framework.functional as Self_F
+import interpretability_framework.functional as func
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class _Ensemble(Module):
 
     """
 
-    def __init__(self, inner: Module, sample_size):
+    def __init__(self, inner: Module, sample_size: int = 20):
         """Create a network with probabilistic predictions from a variable inner model.
 
         Args:
@@ -123,7 +123,7 @@ class PredictiveEntropy(Module):
 
         """
 
-        return Self_F.predictive_entropy(input_)
+        return func.predictive_entropy(input_)
 
 
 class MutualInformation(Module):
@@ -143,7 +143,7 @@ class MutualInformation(Module):
             the mutual information per class
 
         """
-        return Self_F.mutual_information(input_)
+        return func.mutual_information(input_)
 
 
 class VariationRatio(Module):
@@ -152,13 +152,36 @@ class VariationRatio(Module):
     """
 
     def forward(self, input_: Tensor) -> Tensor:
-        """Forward pass for the variation ratio, to measure the lack of confidence in the prediction (total uncertainty).
+        """Forward pass for the variation ratio, to give a percentage of total predictive uncertainty.
 
         Args:
-            input_: concatenated predictions for N classes and T samples, of shape (T, N)
+            input_: concatenated probabilistic predictions for N classes and T samples, of shape (T, N)
 
         Returns:
             the total variation ratio
 
         """
-        return Self_F.variation_ratio(input_)
+        return func.variation_ratio(input_)
+
+
+class ConfidenceMeanPrediction(Module):
+    """Module to conveniently calculate sampled mean and uncertainties from sampled data.
+
+    """
+
+    def forward(self, input_: Tensor) -> (Tensor, Tensor, Tensor, Tensor):
+        """Forward pass to calculate sampled mean and different uncertainties.
+
+        Args:
+            input_: concatenated probabilistic predictions for N classes and T samples, of shape (T, N)
+
+        Returns:
+            mean prediction, predictive entropy, mutual information, variation ratio
+
+        """
+        return (
+            input_.mean(dim=(0,)),
+            func.predictive_entropy(input_),
+            func.mutual_information(input_),
+            func.variation_ratio(input_),
+        )
