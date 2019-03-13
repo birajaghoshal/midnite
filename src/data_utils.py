@@ -1,3 +1,4 @@
+"""Some utils for loading and normalizing data."""
 from pathlib import Path
 
 import torch
@@ -14,10 +15,10 @@ def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> 
     Args:
         path_to_imagenet: path of the imagenet TEST dataset
         batch_size: number of examples that should be retrieved
-        transform: torch transform object specifying the image transformation for used architecture
+        transform: torch transform object specifying the image transformation for
+         architecture used
 
-    Returns:
-        input_batch : batch with processed images, which can be used for prediction by AlexNet
+    Returns: batch with processed images, which can be used for prediction by AlexNet
 
     """
 
@@ -36,10 +37,11 @@ def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> 
 
 
 def alexnet_transform():
-    """Sets the image transformations for AlexNet. Necessary dimensions: ( 1 x 3 x 227 x 227 )
+    """Sets the image transformations for AlexNet.
+     Necessary dimensions: ( 1 x 3 x 227 x 227 )
 
-    Returns:
-         transform: Transform object for the data
+    Returns: Transform object for the data
+
     """
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -63,8 +65,8 @@ def get_example_from_path(path_to_img: str) -> Tensor:
     Args:
         path_to_img: specify the path of the image to be retrieved
 
-    Returns:
-        input_img:  an example image for AlexNet
+    Returns: an example image for AlexNet
+
     """
     abs_path_to_img = Path(path_to_img).resolve()
     transform = alexnet_transform()
