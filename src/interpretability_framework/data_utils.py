@@ -1,27 +1,85 @@
 import torch
+import torchvision
+import torchvision.transforms as transforms
+from PIL import Image
+from torch import Tensor
 from torchvision.transforms import Normalize
 
 
-def load_dataset():
-    # TODO
-    return None
+def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> list:
+    """ Use dataloader to handle image data from image folder "datasets"
 
+    Args:
+        path_to_imagenet: path of the imagenet TEST dataset
+        batch_size: number of examples that should be retrieved
+        transform: torch transform object specifying the image transformation for used architecture
 
-def get_imagenet_example():
-    """ Retreives an example image from imagenet dataset.
+    Returns:
+        input_batch : batch with processed images, which can be used for prediction by AlexNet
 
-    Return: torch tensor with dimensions: (1 x 3 x 227 x 227 )
     """
-    # TODO
-    return None
+
+    imagenet_data = torchvision.datasets.ImageFolder(
+        path_to_imagenet, transform=transform
+    )
+    data_loader = torch.utils.data.DataLoader(
+        imagenet_data, batch_size=batch_size, shuffle=True
+    )
+
+    input_batch = []
+    for img, label in data_loader:
+        input_batch.append(img)
+
+    return input_batch
 
 
-def get_random_example():
+def alexnet_transform():
+    """Sets the image transformations for AlexNet. Necessary dimensions: ( 1 x 3 x 227 x 227 )
+
+    Returns:
+         transform: Transform object for the data
+    """
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    )
+
+    transform = transforms.Compose(
+        [
+            transforms.RandomResizedCrop(227),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]
+    )
+
+    return transform
+
+
+def get_example_from_path(abspath_to_img: str) -> Tensor:
+    """Retrieves and converts an image to a processable torch tensor for AlexNet
+
+    Args:
+        abspath_to_img: specify the absolute path of the image to be retrieved
+
+    Returns:
+        input_img:  an example image for AlexNet
+    """
+    transform = alexnet_transform()
+
+    with open(abspath_to_img, "rb") as f:
+        img = Image.open(f)
+        img.convert("RGB")
+        img = transform(img)
+
+    return torch.unsqueeze(img, dim=0)
+
+
+def get_random_example() -> Tensor:
+    """Generates a random image example.
+
+    Returns: an example image as torch tensor
+
+    """
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     noise_image = normalize(torch.randn(3, 227, 227))
     return torch.unsqueeze(noise_image, dim=0)
-
-
-def get_ood_example():
-    # TODO
-    return None
