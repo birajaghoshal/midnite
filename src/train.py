@@ -31,18 +31,24 @@ def main():
             layer.train()
 
     # Get input images from dataloader, torch tensor of dim: (1 x 3 x 227 x 227)
-    for img in [
-        # data_utils.get_imagenet_example(),
-        # data_utils.get_ood_example(),
-        data_utils.get_random_example()
+    for img_name, img in [
+        (
+            "Imagenet example",
+            data_utils.get_example_from_path("../data/imagenet_example.jpg"),
+        ),
+        (
+            "Other dataset example",
+            data_utils.get_example_from_path("../data/ood_example.jpg"),
+        ),
+        ("Random pixels", data_utils.get_random_example()),
     ]:
         # Do prediction
-        pred, pred_entropy, mutual_info, var_ratio = ensemble.forward(img)
-
-        print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
-        print(f"total predictive entropy: {pred_entropy.sum()}")
-        print(f"total mutual information: {mutual_info.sum()}")
-        print(f"variational ratio: {var_ratio.item()}")
+        pred, pred_entropy, mutual_info, var_ratio = ensemble(img)
+        print(f"{img_name}:")
+        print(f"    mean prediction: {pred.argmax()}, class probability: {pred.max()}")
+        print(f"    total predictive entropy: {pred_entropy.sum()}")
+        print(f"    total mutual information: {mutual_info.sum()}")
+        print(f"    variational ratio: {var_ratio.item()}")
 
 
 if __name__ == "__main__":

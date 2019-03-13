@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -7,7 +9,7 @@ from torchvision.transforms import Normalize
 
 
 def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> list:
-    """ Use dataloader to handle image data from image folder "datasets"
+    """ Use dataloader to handle image data from image folder "data"
 
     Args:
         path_to_imagenet: path of the imagenet TEST dataset
@@ -55,18 +57,19 @@ def alexnet_transform():
     return transform
 
 
-def get_example_from_path(abspath_to_img: str) -> Tensor:
+def get_example_from_path(path_to_img: str) -> Tensor:
     """Retrieves and converts an image to a processable torch tensor for AlexNet
 
     Args:
-        abspath_to_img: specify the absolute path of the image to be retrieved
+        path_to_img: specify the path of the image to be retrieved
 
     Returns:
         input_img:  an example image for AlexNet
     """
+    abs_path_to_img = Path(path_to_img).resolve()
     transform = alexnet_transform()
 
-    with open(abspath_to_img, "rb") as f:
+    with open(abs_path_to_img, "rb") as f:
         img = Image.open(f)
         img.convert("RGB")
         img = transform(img)
