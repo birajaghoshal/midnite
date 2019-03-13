@@ -17,12 +17,12 @@ def main():
 
     # Get pre-trained model from torchvision
     alexnet = models.alexnet(pretrained=True)
-    alexnet.classifier.add_module("softmax", Softmax(dim=1))
 
     # MC Ensemble that calculates the mean, predictive entropy, mutual information,
     # and variation ratio.
     ensemble = Sequential(
-        modules.PredictionEnsemble(alexnet, sample_size=50),
+        modules.PredictionEnsemble(alexnet),
+        Softmax(dim=2),
         modules.ConfidenceMeanPrediction(),
     )
 
@@ -37,14 +37,14 @@ def main():
     # Get input images from dataloader, torch tensor of dim: (1 x 3 x 227 x 227)
     for img_name, img in [
         (
-            "Imagenet example",
-            data_utils.get_example_from_path("../data/imagenet_example.jpg"),
+            "Imagenet example (correct class: 283):",
+            data_utils.get_example_from_path("../data/imagenet_example_283.jpg"),
         ),
         (
-            "Other dataset example",
+            "Other dataset example:",
             data_utils.get_example_from_path("../data/ood_example.jpg"),
         ),
-        ("Random pixels", data_utils.get_random_example()),
+        ("Random pixels:", data_utils.get_random_example()),
     ]:
         # Do prediction
         pred, pred_entropy, mutual_info, var_ratio = ensemble(img)
