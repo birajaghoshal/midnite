@@ -1,6 +1,7 @@
+"""Tests for the custom nn modules"""
 import torch
 
-from interpretability_framework import functional as F
+from interpretability_framework import functional
 from interpretability_framework import modules
 
 # For consistent tests, seed has to be fixed
@@ -14,7 +15,7 @@ def test_dropout_layer():
 
     """
     # Set dropout layer to evaluation mode
-    dropout_layer = modules.PredDropout(p=0.5)
+    dropout_layer = modules.PredDropout()
     dropout_layer.eval()
 
     # Check that dropout still is applied
@@ -33,7 +34,7 @@ def test_mean_ensemble_layer():
 
     """
     inner = modules.PredDropout()
-    ensemble = modules.MeanEnsemble(inner, 20)
+    ensemble = modules.MeanEnsemble(inner)
     ensemble.eval()
 
     input_ = torch.ones(10)
@@ -46,11 +47,11 @@ def test_mean_ensemble_layer():
 def test_ensemble_layer():
     """Ensemble layer test
 
-    Tests if the ensemble layer does the sampling correctly.
+    Checks if the ensemble layer does the sampling correctly.
 
     """
     inner = modules.PredDropout()
-    ensemble = modules.PredictionEnsemble(inner, 20)
+    ensemble = modules.PredictionEnsemble(inner)
     ensemble.eval()
 
     input_ = torch.ones(10)
@@ -61,43 +62,38 @@ def test_ensemble_layer():
 
 
 def test_pred_entropy(mocker):
-    """Predictive entropy layer test
-
-    """
+    """Predictive entropy layer test"""
     # Patch out functional
     mocker.patch("interpretability_framework.functional.predictive_entropy")
 
     input_ = torch.ones((20, 2))
     modules.PredictiveEntropy()(input_)
 
-    F.predictive_entropy.assert_called_once_with(input_)
+    functional.predictive_entropy.assert_called_once_with(input_)
 
 
 def test_mutual_information(mocker):
-    """Mutual information layer test.
-
-    """
+    """Mutual information layer test."""
     mocker.patch("interpretability_framework.functional.mutual_information")
 
     input_ = torch.ones(20, 2)
     modules.MutualInformation()(input_)
 
-    F.mutual_information.assert_called_once_with(input_)
+    functional.mutual_information.assert_called_once_with(input_)
 
 
 def test_variation_ratio(mocker):
-    """Variation ratio layer test.
-
-    """
+    """Variation ratio layer test."""
     mocker.patch("interpretability_framework.functional.variation_ratio")
 
     input_ = torch.ones(20, 2)
     modules.VariationRatio()(input_)
 
-    F.variation_ratio.assert_called_once_with(input_)
+    functional.variation_ratio.assert_called_once_with(input_)
 
 
 def test_confidence_mean_prediciton(mocker):
+    """Combined output layer test."""
     mocker.patch("interpretability_framework.functional.predictive_entropy")
     mocker.patch("interpretability_framework.functional.mutual_information")
     mocker.patch("interpretability_framework.functional.variation_ratio")
@@ -107,6 +103,6 @@ def test_confidence_mean_prediciton(mocker):
 
     assert torch.allclose(output, torch.tensor([0.6]))
 
-    F.predictive_entropy.assert_called_once_with(input_)
-    F.mutual_information.assert_called_once_with(input_)
-    F.variation_ratio.assert_called_once_with(input_)
+    functional.predictive_entropy.assert_called_once_with(input_)
+    functional.mutual_information.assert_called_once_with(input_)
+    functional.variation_ratio.assert_called_once_with(input_)

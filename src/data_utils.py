@@ -75,11 +75,13 @@ def get_example_from_path(abspath_to_img: str) -> Tensor:
 
 
 def get_random_example() -> Tensor:
-    """Generates a random image example.
+    """Creates a random image.
 
-    Returns: an example image as torch tensor
+    Returns: a tensor of size (1, 3, 227, 227) that represents a random image
 
     """
+    random_img = torch.div(
+        torch.randint(low=0, high=255, size=(3, 227, 227)).float(), 255.0
+    )
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    noise_image = normalize(torch.randn(3, 227, 227))
-    return torch.unsqueeze(noise_image, dim=0)
+    return torch.unsqueeze(normalize(random_img), dim=0)

@@ -4,7 +4,7 @@ from torch.nn import Dropout
 from torch.nn import Sequential
 from torch.nn import Softmax
 
-from interpretability_framework import data_utils
+import data_utils
 from interpretability_framework import modules
 
 
@@ -42,7 +42,7 @@ def main():
         print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
         print(f"total predictive entropy: {pred_entropy.sum()}")
         print(f"total mutual information: {mutual_info.sum()}")
-        print(f"variational ratio: {var_ratio.detach().numpy()}")
+        print(f"variational ratio: {var_ratio.item()}")
 
 
 if __name__ == "__main__":
