@@ -1,5 +1,6 @@
 """Custom modules for MC dropout ensembles and uncertainty."""
 import logging
+from typing import Tuple
 
 import torch
 from torch import Tensor
@@ -160,7 +161,7 @@ class VariationRatio(Module):
 class ConfidenceMeanPrediction(Module):
     """Module to conveniently calculate sampled mean and uncertainties."""
 
-    def forward(self, input_: Tensor) -> (Tensor, Tensor, Tensor, Tensor):
+    def forward(self, input_: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """Forward pass to calculate sampled mean and different uncertainties.
 
         Args:
@@ -168,12 +169,11 @@ class ConfidenceMeanPrediction(Module):
              of shape (T, N)
 
         Returns:
-            mean prediction, predictive entropy, mutual information, variation ratio
+            mean prediction, predictive entropy and mutual information
 
         """
         return (
             input_.mean(dim=(0,)),
             func.predictive_entropy(input_),
             func.mutual_information(input_),
-            func.variation_ratio(input_),
         )

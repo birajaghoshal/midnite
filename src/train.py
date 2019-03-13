@@ -1,4 +1,5 @@
-"""Main script. Run your experiments from here"""
+"""Main script. Runs some examples on how to use the framework."""
+import torch
 import torchvision.models as models
 from torch.nn import Dropout
 from torch.nn import Sequential
@@ -9,9 +10,11 @@ from interpretability_framework import modules
 
 
 def main():
-    """Example on how to use uncertainty measures for existing model.
+    """Example on how to use uncertainty measures for existing model."""
+    # Activate cuda if available
+    if torch.cuda.is_available and torch.cuda.device_count() > 0:
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
-    """
     # Get pre-trained model from torchvision
     alexnet = models.alexnet(pretrained=True)
     alexnet.classifier.add_module("softmax", Softmax(dim=1))
@@ -19,7 +22,7 @@ def main():
     # MC Ensemble that calculates the mean, predictive entropy, mutual information,
     # and variation ratio.
     ensemble = Sequential(
-        modules.PredictionEnsemble(inner=alexnet), modules.ConfidenceMeanPrediction()
+        modules.PredictionEnsemble(alexnet), modules.ConfidenceMeanPrediction()
     )
 
     # Prepare ensemble
@@ -33,8 +36,8 @@ def main():
     # Get input images from dataloader, torch tensor of dim: (1 x 3 x 227 x 227)
     for img_name, img in [
         (
-            "Imagenet example",
-            data_utils.get_example_from_path("../data/imagenet_example.jpg"),
+            "Imagenet example (correct class: 283)",
+            data_utils.get_example_from_path("../data/imagenet_example_283.jpg"),
         ),
         (
             "Other dataset example",
@@ -43,12 +46,11 @@ def main():
         ("Random pixels", data_utils.get_random_example()),
     ]:
         # Do prediction
-        pred, pred_entropy, mutual_info, var_ratio = ensemble(img)
+        pred, pred_entropy, mutual_info = ensemble(img)
         print(f"{img_name}:")
         print(f"    mean prediction: {pred.argmax()}, class probability: {pred.max()}")
-        print(f"    total predictive entropy: {pred_entropy.sum()}")
-        print(f"    total mutual information: {mutual_info.sum()}")
-        print(f"    variational ratio: {var_ratio.item()}")
+        print(f"    total predictive entropy (total uncertainty): {pred_entropy.sum()}")
+        print(f"    total mutual information (model uncertainty): {mutual_info.sum()}")
 
 
 if __name__ == "__main__":

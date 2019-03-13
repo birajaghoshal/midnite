@@ -6,9 +6,7 @@ from interpretability_framework import functional
 
 
 def test_sample_mean():
-    """Test the mean calculation.
-
-    """
+    """Test the mean calculation."""
     input_ = torch.tensor([[0.0, 1.0], [1.0, 0.0], [0.2, 0.8]])
     output = functional.sample_mean(input_).numpy()
 
@@ -16,9 +14,7 @@ def test_sample_mean():
 
 
 def test_sample_mean_batch():
-    """Test the mean calculation on a mini batch.
-
-    """
+    """Test the mean calculation on a mini batch."""
     input_ = torch.tensor(
         [
             [[0.3, 0.7], [0.1, 0.9]],
@@ -33,9 +29,7 @@ def test_sample_mean_batch():
 
 
 def test_pred_entropy():
-    """Test the predictive entropy function.
-
-    """
+    """Test the predictive entropy function."""
     input_ = torch.tensor([[1.0, 0.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
     output = functional.predictive_entropy(input_).numpy()
 
@@ -43,9 +37,7 @@ def test_pred_entropy():
 
 
 def test_pred_entropy_batch():
-    """Test the entropy calculation on a mini batch.
-
-    """
+    """Test the entropy calculation on a mini batch."""
     input_ = torch.tensor(
         [
             [[1.0, 0.0], [0.2, 0.8]],
@@ -60,9 +52,7 @@ def test_pred_entropy_batch():
 
 
 def test_mutual_information():
-    """Test the mutual information function.
-
-    """
+    """Test the mutual information function."""
     input_ = torch.tensor([[1.0, 0.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
     output = functional.mutual_information(input_)
 
@@ -76,10 +66,7 @@ def test_mutual_information():
 
 
 def test_mutual_information_batch():
-    """Test the mutual information on a mini batch.
-
-    """
-
+    """Test the mutual information on a mini batch."""
     input_ = torch.tensor(
         [
             [[1.0, 0.0], [0.2, 0.8]],
@@ -94,9 +81,7 @@ def test_mutual_information_batch():
 
 
 def test_variation_ratio():
-    """Test the variation ratio function.
-
-    """
+    """Test the variation ratio function."""
     input_ = torch.tensor([[0.0, 1.0], [1.0, 0.0], [0.2, 0.8]])
     output = functional.variation_ratio(input_).numpy()
 
@@ -104,9 +89,7 @@ def test_variation_ratio():
 
 
 def test_variation_ratio_batch():
-    """Test the variation ratio on a mini batch.
-
-    """
+    """Test the variation ratio on a mini batch."""
     input_ = torch.tensor(
         [
             [[1.0, 0.0], [0.2, 0.8]],
