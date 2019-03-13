@@ -47,8 +47,8 @@ def alexnet_transform():
 
     transform = transforms.Compose(
         [
-            transforms.RandomResizedCrop(227),
-            transforms.RandomHorizontalFlip(),
+            transforms.Resize(227),
+            transforms.CenterCrop(227),
             transforms.ToTensor(),
             normalize,
         ]
