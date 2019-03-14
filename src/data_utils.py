@@ -1,12 +1,25 @@
 """Some utils for loading and normalizing data."""
+from enum import auto
+from enum import Enum
 from pathlib import Path
 
+import numpy as np
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from PIL import Image
 from torch import Tensor
 from torchvision.transforms import Normalize
+
+
+class DataConfig(Enum):
+    """Available data configs for networks."""
+
+    ALEX_NET = (auto(),)
+    FCN32 = (auto(),)
+
+
+fcn_mean_bgr = np.array([104.00698793, 116.66876762, 122.67891434])
 
 
 def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> list:
@@ -36,57 +49,63 @@ def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> 
     return input_batch
 
 
-def alexnet_transform():
-    """Sets the image transformations for AlexNet.
-     Necessary dimensions: ( 1 x 3 x 227 x 227 )
-
-    Returns: Transform object for the data
-
-    """
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-    )
-
-    transform = transforms.Compose(
-        [
-            transforms.Resize(227),
-            transforms.CenterCrop(227),
-            transforms.ToTensor(),
-            normalize,
-        ]
-    )
-
-    return transform
-
-
-def get_example_from_path(path_to_img: str) -> Tensor:
+def get_example_from_path(path_to_img: str, config: DataConfig) -> Tensor:
     """Retrieves and converts an image to a processable torch tensor for AlexNet
 
     Args:
         path_to_img: specify the path of the image to be retrieved
+        config: The network to retrieve the image for
 
     Returns: an example image for AlexNet
 
     """
     abs_path_to_img = Path(path_to_img).resolve()
-    transform = alexnet_transform()
 
-    with open(abs_path_to_img, "rb") as f:
-        img = Image.open(f)
+    img = Image.open(abs_path_to_img)
+
+    if config is DataConfig.ALEX_NET:
         img.convert("RGB")
-        img = transform(img)
+        img = transforms.Compose(
+            [
+                transforms.Resize(227),
+                transforms.CenterCrop(227),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        )(img)
+    elif config is DataConfig.FCN32:
+        img = np.array(img, dtype=np.uint8)
+        img = img[:, :, ::-1]  # RGB -> BGR
+        img = img.astype(np.float64)
+        img -= fcn_mean_bgr
+        img = img.transpose(2, 0, 1)
+        img = torch.from_numpy(img).float()
+    else:
+        raise ValueError("Invalid config.")
 
     return torch.unsqueeze(img, dim=0)
 
 
-def get_random_example() -> Tensor:
+def get_random_example(config: DataConfig) -> Tensor:
     """Creates a random image.
 
     Returns: a tensor of size (1, 3, 227, 227) that represents a random image
 
     """
-    random_img = torch.div(
-        torch.randint(low=0, high=255, size=(3, 227, 227)).float(), 255.0
-    )
-    normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    return torch.unsqueeze(normalize(random_img), dim=0)
+    if config is DataConfig.ALEX_NET:
+        random_img = torch.div(
+            torch.randint(low=0, high=255, size=(3, 227, 227)).float(), 255.0
+        )
+        random_img = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(
+            random_img
+        )
+    elif config is DataConfig.FCN32:
+        random_img = np.random.randint(low=0, high=255, size=(3, 640, 488), dtype=float)
+        random_img -= fcn_mean_bgr
+        random_img = torch.from_numpy(random_img).float()
+    else:
+        raise ValueError("Invalid config.")
+
+    return torch.unsqueeze(random_img, dim=0)
