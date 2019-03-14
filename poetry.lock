@@ -1,5 +1,13 @@
 [[package]]
 category = "main"
+description = "Assertion library for python unit testing with a fluent API"
+name = "assertpy"
+optional = false
+python-versions = "*"
+version = "0.14"
+
+[[package]]
+category = "main"
 description = "Atomic file writes."
 name = "atomicwrites"
 optional = false
@@ -15,6 +23,22 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "19.1.0"
 
 [[package]]
+category = "dev"
+description = "Python package for providing Mozilla's CA Bundle."
+name = "certifi"
+optional = false
+python-versions = "*"
+version = "2019.3.9"
+
+[[package]]
+category = "dev"
+description = "Universal encoding detector for Python 2 and 3"
+name = "chardet"
+optional = false
+python-versions = "*"
+version = "3.0.4"
+
+[[package]]
 category = "main"
 description = "Cross-platform colored terminal text."
 marker = "sys_platform == \"win32\""
@@ -22,6 +46,36 @@ name = "colorama"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "0.4.1"
+
+[[package]]
+category = "dev"
+description = "A platform independent file lock."
+name = "filelock"
+optional = false
+python-versions = "*"
+version = "3.0.10"
+
+[[package]]
+category = "dev"
+description = "Google Drive direct download of big files."
+name = "gdown"
+optional = false
+python-versions = "*"
+version = "3.7.4"
+
+[package.dependencies]
+filelock = "*"
+requests = "*"
+six = "*"
+tqdm = "*"
+
+[[package]]
+category = "dev"
+description = "Internationalized Domain Names in Applications (IDNA)"
+name = "idna"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.8"
 
 [[package]]
 category = "main"
@@ -93,6 +147,20 @@ version = "1.10.1"
 pytest = ">=2.7"
 
 [[package]]
+category = "dev"
+description = "Python HTTP for Humans."
+name = "requests"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.21.0"
+
+[package.dependencies]
+certifi = ">=2017.4.17"
+chardet = ">=3.0.2,<3.1.0"
+idna = ">=2.5,<2.9"
+urllib3 = ">=1.21.1,<1.25"
+
+[[package]]
 category = "main"
 description = "Python 2 and 3 compatibility utilities"
 name = "six"
@@ -122,14 +190,36 @@ pillow = ">=4.1.1"
 six = "*"
 torch = "*"
 
+[[package]]
+category = "dev"
+description = "Fast, Extensible Progress Meter"
+name = "tqdm"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*"
+version = "4.31.1"
+
+[[package]]
+category = "dev"
+description = "HTTP library with thread-safe connection pooling, file post, and more."
+name = "urllib3"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4"
+version = "1.24.1"
+
 [metadata]
-content-hash = "aa24ca13262f560cc7118fbcefe0c660256ed070bb3ade98fd1a8661b91eac28"
+content-hash = "2ecb7963eb124ccece784d4d188c88160299f3af29c3a9f85e76eaa315e966a9"
 python-versions = "^3.7"
 
 [metadata.hashes]
+assertpy = ["1b7e591f490616e3f2707b6e511b91b188a8c6facb3a4ff0db2339b0a41d73c4"]
 atomicwrites = ["03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4", "75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"]
 attrs = ["69c0dbf2ed392de1cb5ec704444b08a5ef81680a61cb899dc08127123af36a79", "f0b870f674851ecbfbbbd364d6b5cbdff9dcedbc7f3f5e18a6891057f21fe399"]
+certifi = ["59b7658e26ca9c7339e00f8f4636cdfe59d34fa37b9b04f6f9e9926b3cece1a5", "b26104d6835d1f5e49452a26eb2ff87fe7090b89dfcaee5ea2212697e1e1d7ae"]
+chardet = ["84ab92ed1c4d4f16916e05906b6b75a6c0fb5db821cc65e70cbd64a3e2a5eaae", "fc323ffcaeaed0e0a02bf4d117757b98aed530d9ed4531e3e15460124c106691"]
 colorama = ["05eed71e2e327246ad6b38c540c4a3117230b19679b875190486ddd2d721422d", "f8ac84de7840f5b9c4e3347b3c1eaa50f7e49c2b07596221daec5edaabbd7c48"]
+filelock = ["b8d5ca5ca1c815e1574aee746650ea7301de63d87935b3463d26368b76e31633", "d610c1bb404daf85976d7a82eb2ada120f04671007266b708606565dd03b5be6"]
+gdown = ["374e4a1cd563c1933022b95bd2a3f9f43793fcd8711ab534249ef73915ad28a3"]
+idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 more-itertools = ["0125e8f60e9e031347105eb1682cef932f5e97d7b9a1a28d9bf00c22a5daef40", "590044e3942351a1bdb1de960b739ff4ce277960f2425ad4509446dbace8d9d1"]
 numpy = ["1980f8d84548d74921685f68096911585fee393975f53797614b34d4f409b6da", "22752cd809272671b273bb86df0f505f505a12368a3a5fc0aa811c7ece4dfd5c", "23cc40313036cffd5d1873ef3ce2e949bdee0646c5d6f375bf7ee4f368db2511", "2b0b118ff547fecabc247a2668f48f48b3b1f7d63676ebc5be7352a5fd9e85a5", "3a0bd1edf64f6a911427b608a894111f9fcdb25284f724016f34a84c9a3a6ea9", "3f25f6c7b0d000017e5ac55977a3999b0b1a74491eacb3c1aa716f0e01f6dcd1", "4061c79ac2230594a7419151028e808239450e676c39e58302ad296232e3c2e8", "560ceaa24f971ab37dede7ba030fc5d8fa173305d94365f814d9523ffd5d5916", "62be044cd58da2a947b7e7b2252a10b42920df9520fc3d39f5c4c70d5460b8ba", "6c692e3879dde0b67a9dc78f9bfb6f61c666b4562fd8619632d7043fb5b691b0", "6f65e37b5a331df950ef6ff03bd4136b3c0bbcf44d4b8e99135d68a537711b5a", "7a78cc4ddb253a55971115f8320a7ce28fd23a065fc33166d601f51760eecfa9", "80a41edf64a3626e729a62df7dd278474fc1726836552b67a8c6396fd7e86760", "893f4d75255f25a7b8516feb5766c6b63c54780323b9bd4bc51cdd7efc943c73", "972ea92f9c1b54cc1c1a3d8508e326c0114aaf0f34996772a30f3f52b73b942f", "9f1d4865436f794accdabadc57a8395bd3faa755449b4f65b88b7df65ae05f89", "9f4cd7832b35e736b739be03b55875706c8c3e5fe334a06210f1a61e5c2c8ca5", "adab43bf657488300d3aeeb8030d7f024fcc86e3a9b8848741ea2ea903e56610", "bd2834d496ba9b1bdda3a6cf3de4dc0d4a0e7be306335940402ec95132ad063d", "d20c0360940f30003a23c0adae2fe50a0a04f3e48dc05c298493b51fd6280197", "d3b3ed87061d2314ff3659bb73896e622252da52558f2380f12c421fbdee3d89", "dc235bf29a406dfda5790d01b998a1c01d7d37f449128c0b1b7d1c89a84fae8b", "fb3c83554f39f48f3fa3123b9c24aecf681b1c289f9334f8215c1d3c8e2f6e5b"]
 pillow = ["01a501be4ae05fd714d269cb9c9f145518e58e73faa3f140ddb67fae0c2607b1", "051de330a06c99d6f84bcf582960487835bcae3fc99365185dc2d4f65a390c0e", "07c35919f983c2c593498edcc126ad3a94154184899297cc9d27a6587672cbaa", "0ae5289948c5e0a16574750021bd8be921c27d4e3527800dc9c2c1d2abc81bf7", "0b1efce03619cdbf8bcc61cfae81fcda59249a469f31c6735ea59badd4a6f58a", "0cf0208500df8d0c3cad6383cd98a2d038b0678fd4f777a8f7e442c5faeee81d", "163136e09bd1d6c6c6026b0a662976e86c58b932b964f255ff384ecc8c3cefa3", "18e912a6ccddf28defa196bd2021fe33600cbe5da1aa2f2e2c6df15f720b73d1", "24ec3dea52339a610d34401d2d53d0fb3c7fd08e34b20c95d2ad3973193591f1", "267f8e4c0a1d7e36e97c6a604f5b03ef58e2b81c1becb4fccecddcb37e063cc7", "3273a28734175feebbe4d0a4cde04d4ed20f620b9b506d26f44379d3c72304e1", "39fbd5d62167197318a0371b2a9c699ce261b6800bb493eadde2ba30d868fe8c", "4132c78200372045bb348fcad8d52518c8f5cfc077b1089949381ee4a61f1c6d", "4baab2d2da57b0d9d544a2ce0f461374dd90ccbcf723fe46689aff906d43a964", "4c678e23006798fc8b6f4cef2eaad267d53ff4c1779bd1af8725cc11b72a63f3", "4d4bc2e6bb6861103ea4655d6b6f67af8e5336e7216e20fff3e18ffa95d7a055", "505738076350a337c1740a31646e1de09a164c62c07db3b996abdc0f9d2e50cf", "5233664eadfa342c639b9b9977190d64ad7aca4edc51a966394d7e08e7f38a9f", "52e2e56fc3706d8791761a157115dc8391319720ad60cc32992350fda74b6be2", "5337ac3280312aa065ed0a8ec1e4b6142e9f15c31baed36b5cd964745853243f", "5ccd97e0f01f42b7e35907272f0f8ad2c3660a482d799a0c564c7d50e83604d4", "5d95cb9f6cced2628f3e4de7e795e98b2659dfcc7176ab4a01a8b48c2c2f488f", "634209852cc06c0c1243cc74f8fdc8f7444d866221de51125f7b696d775ec5ca", "75d1f20bd8072eff92c5f457c266a61619a02d03ece56544195c56d41a1a0522", "7eda4c737637af74bac4b23aa82ea6fbb19002552be85f0b89bc27e3a762d239", "801ddaa69659b36abf4694fed5aa9f61d1ecf2daaa6c92541bbbbb775d97b9fe", "825aa6d222ce2c2b90d34a0ea31914e141a85edefc07e17342f1d2fdf121c07c", "87fe838f9dac0597f05f2605c0700b1926f9390c95df6af45d83141e0c514bd9", "9c215442ff8249d41ff58700e91ef61d74f47dfd431a50253e1a1ca9436b0697", "a3d90022f2202bbb14da991f26ca7a30b7e4c62bf0f8bf9825603b22d7e87494", "a631fd36a9823638fe700d9225f9698fb59d049c942d322d4c09544dc2115356", "a6523a23a205be0fe664b6b8747a5c86d55da960d9586db039eec9f5c269c0e6", "a756ecf9f4b9b3ed49a680a649af45a8767ad038de39e6c030919c2f443eb000", "ac036b6a6bac7010c58e643d78c234c2f7dc8bb7e591bd8bc3555cf4b1527c28", "b117287a5bdc81f1bac891187275ec7e829e961b8032c9e5ff38b70fd036c78f", "ba04f57d1715ca5ff74bb7f8a818bf929a204b3b3c2c2826d1e1cc3b1c13398c", "ba6ef2bd62671c7fb9cdb3277414e87a5cd38b86721039ada1464f7452ad30b2", "c8939dba1a37960a502b1a030a4465c46dd2c2bca7adf05fa3af6bea594e720e", "cd878195166723f30865e05d87cbaf9421614501a4bd48792c5ed28f90fd36ca", "cee815cc62d136e96cf76771b9d3eb58e0777ec18ea50de5cfcede8a7c429aa8", "d1722b7aa4b40cf93ac3c80d3edd48bf93b9208241d166a14ad8e7a20ee1d4f3", "d7c1c06246b05529f9984435fc4fa5a545ea26606e7f450bdbe00c153f5aeaad", "db418635ea20528f247203bf131b40636f77c8209a045b89fa3badb89e1fcea0", "e1555d4fda1db8005de72acf2ded1af660febad09b4708430091159e8ae1963e", "e9c8066249c040efdda84793a2a669076f92a301ceabe69202446abb4c5c5ef9", "e9f13711780c981d6eadd6042af40e172548c54b06266a1aabda7de192db0838", "f0e3288b92ca5dbb1649bd00e80ef652a72b657dc94989fa9c348253d179054b", "f227d7e574d050ff3996049e086e1f18c7bd2d067ef24131e50a1d3fe5831fbc", "f62b1aeb5c2ced8babd4fbba9c74cbef9de309f5ed106184b12d9778a3971f15", "f71ff657e63a9b24cac254bb8c9bd3c89c7a1b5e00ee4b3997ca1c18100dac28", "fc9a12aad714af36cf3ad0275a96a733526571e52710319855628f476dcb144e"]
@@ -137,6 +227,9 @@ pluggy = ["19ecf9ce9db2fce065a7a0586e07cfb4ac8614fe96edf628a264b1c70116cf8f", "8
 py = ["64f65755aee5b381cea27766a3a147c3f15b9b6b9ac88676de66ba2ae36793fa", "dc639b046a6e2cff5bbe40194ad65936d6ba360b52b3c3fe1d08a82dd50b5e53"]
 pytest = ["3f193df1cfe1d1609d4c583838bea3d532b18d6160fd3f55c9447fdca30848ec", "e246cf173c01169b9617fc07264b7b1316e78d7a650055235d6d897bc80d9660"]
 pytest-mock = ["4d0d06d173eecf172703219a71dbd4ade0e13904e6bbce1ce660e2e0dc78b5c4", "bfdf02789e3d197bd682a758cae0a4a18706566395fbe2803badcd1335e0173e"]
+requests = ["502a824f31acdacb3a35b6690b5fbf0bc41d63a24a45c4004352b0242707598e", "7bf2a778576d825600030a110f3c0e3e8edc51dfaafe1c146e39a2027784957b"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
 torch = ["2e04bcc8b6536ba01a924cbcfb9eff2428be6c9cc73956df38dfcf63c948fbf5", "40ad926ebdef6db70811102ae1448584a0c338a2fce2ff718533b9016664398e", "43e40d9cf70d038fe9a9c06eaadf3f39756fe76a530a0bd1dec9f21654ee5851", "639e9414cd3a787c807206199bf3285815a41fac9b2e20aca0db9a971db5399e", "652b70751bbe974370feff27f51b6cd7856c14a57eb06fdd1c9f2dfcc2731401", "7822918f3d32a99db2bb5616a5c28d989d6e4b6a54d720cb25e60551dacafa1e", "96fd5e8ffc117f79d1baaa65da601d35411f341d90d8ca1204236925f164b043", "a002d509e98a3ea17f45affc5c440808d7ac119d7510bb27da7b184aafb59943", "c8dd2478d3e8c0da293c618be60432bb166fe36c50663e26b1fe9e7123365fe5"]
 torchvision = ["4911188843c10a2c66e8f3d0c3989647e626a7a75b8387e2dbbb3e5aa96887ad"]
+tqdm = ["d385c95361699e5cf7622485d9b9eae2d4864b21cd5a2374a9c381ffed701021", "e22977e3ebe961f72362f6ddfb9197cc531c9737aaf5f607ef09740c849ecd05"]
+urllib3 = ["61bf29cada3fc2fbefad4fdf059ea4bd1b4a86d2b6d15e1c7c0b582b9752fe39", "de9529817c93f27c8ccbfead6985011db27bd0ddfcdb2d86f3f663385c6a9c22"]

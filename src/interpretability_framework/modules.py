@@ -4,7 +4,11 @@ from typing import Tuple
 
 import torch
 from torch import Tensor
+from torch.nn import AlphaDropout
 from torch.nn import Dropout
+from torch.nn import Dropout2d
+from torch.nn import Dropout3d
+from torch.nn import FeatureAlphaDropout
 from torch.nn import functional
 from torch.nn import Module
 
@@ -29,16 +33,29 @@ class PredDropout(Dropout):
         return functional.dropout(input_, p=self.p, inplace=self.inplace)
 
 
+def _is_dropout(layer: Module) -> bool:
+    return (
+        isinstance(layer, Dropout)
+        or isinstance(layer, Dropout2d)
+        or isinstance(layer, Dropout3d)
+        or isinstance(layer, AlphaDropout)
+        or isinstance(layer, FeatureAlphaDropout)
+    )
+
+
 class _Ensemble(Module):
     """Module for ensemble models."""
 
-    def __init__(self, inner: Module, sample_size: int = 20):
+    def __init__(
+        self, inner: Module, sample_size: int = 20, dropout_train: bool = True
+    ):
         """Create a network with probabilistic predictions from a variable inner model.
 
         Args:
             inner: the inner network block
             sample_size: the number of samples of the inner prediction to use
              in the forward pass at eval time
+            dropout_train: flag whether to use dropout layers in eval mode
 
         """
         super(_Ensemble, self).__init__()
@@ -51,6 +68,28 @@ class _Ensemble(Module):
 
         self.sample_size = sample_size
         self.inner = inner
+
+        # Set dropout to train mode
+        self.dropout_eval = dropout_train
+        if dropout_train:
+            for module in inner.modules():
+                if _is_dropout(module):
+                    module.train()
+
+    def train(self, mode=True):
+        """Keep dropout modules in train mode, if necessary."""
+        self.training = mode
+
+        # Set everything to proper mode
+        for module in self.children():
+            module.train(mode)
+
+        # Set dropout modules to train.
+        if not mode and self.dropout_eval:
+            for module in filter(_is_dropout, self.inner.modules()):
+                module.train()
+
+        return self
 
 
 class MeanEnsemble(_Ensemble):
@@ -91,13 +130,14 @@ class PredictionEnsemble(_Ensemble):
         """
         # Calculate first prediction
         pred = self.inner.forward(input_)
+        pred_dim = pred.dim()
 
         # In eval mode, stack ensemble predictions
         if not self.training:
-            pred = torch.unsqueeze(pred, dim=0)
+            pred = torch.unsqueeze(pred, dim=pred_dim)
             for i in range(self.sample_size - 1):
-                new_pred = torch.unsqueeze(self.inner.forward(input_), dim=0)
-                pred = torch.cat((pred, new_pred))
+                new_pred = torch.unsqueeze(self.inner.forward(input_), dim=pred_dim)
+                pred = torch.cat((pred, new_pred), dim=pred_dim)
 
         return pred
 
@@ -110,8 +150,8 @@ class PredictiveEntropy(Module):
          to measure total uncertainty.
 
         Args:
-            input_: concatenated predictions for N classes and T samples,
-             of shape (T, N)
+            input_: concatenated predictions for K classes and T samples,
+             of shape (T, K)
 
         Returns:
             pred_entropy: the predictive entropy per class
@@ -130,8 +170,8 @@ class MutualInformation(Module):
         Also called Bayesian Active Learning by Disagreement (BALD)
 
         Args:
-            input_: concatenated predictions for N classes and T samples,
-             of shape (T, N)
+            input_: concatenated predictions for K classes and T samples,
+             of shape (T, K)
 
         Returns:
             the mutual information per class
@@ -148,8 +188,8 @@ class VariationRatio(Module):
          of total predictive uncertainty.
 
         Args:
-            input_: concatenated probabilistic predictions for N classes and T samples,
-             of shape (T, N)
+            input_: concatenated probabilistic predictions for K classes and T samples,
+             of shape (T, K)
 
         Returns:
             the total variation ratio
@@ -165,15 +205,15 @@ class ConfidenceMeanPrediction(Module):
         """Forward pass to calculate sampled mean and different uncertainties.
 
         Args:
-            input_: concatenated probabilistic predictions for N classes and T samples,
-             of shape (T, N)
+            input_: concatenated probabilistic predictions for K classes and T samples,
+             of shape (T, K)
 
         Returns:
             mean prediction, predictive entropy and mutual information
 
         """
         return (
-            input_.mean(dim=(0,)),
+            input_.mean(dim=(input_.dim() - 1,)),
             func.predictive_entropy(input_),
             func.mutual_information(input_),
         )
