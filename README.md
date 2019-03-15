@@ -44,58 +44,22 @@ todo
 
 ## Deployment and usage
 
+In the notebook folder you find tutorial implementations, which show how to use the framework. 
+
+Run the notebooks via poetry.
+
+```
+cd notebooks
+poetry run jupyter-notebook
+```
+
 ### Image Classification
 
-train.py specifies an example implementation for applying uncertainty measures for image classification.
-
-1. Load a model
-
-Use your model or an pretrained torchvision example, e.g.
-
-```
-alexnet = models.alexnet(pretrained=True)
-```
-
-2. Wrap your net with an PredictionEnsemble layer
-
-```
-ensemble = Sequential(
-    modules.PredictionEnsemble(inner=YOURMODEL), modules.ConfidenceMeanPrediction()
-)
-```
-
-3. Prepare ensemble by entering evaluation mode
-
-```
-ensemble.eval()
-```
-
-4. Make dropout layers re-active to use predictive dropout
-
-```
-for layer in list(alexnet.modules()):
-    if isinstance(layer, Dropout):
-        layer.train()
-```
-
-5. Load an img example with our dataloader
-
-```
-your_image = data_utils.get_example_from_path(<YOUR_PATH>),
-```
-
-6. Measure uncertainties
-	* total predictive entropy
-	* total mutual information
-	* variational ratio
-
-```
-pred, pred_entropy, mutual_info, var_ratio = ensemble(your_image)
-```
+Open Uncertainty Tutorial 1 - Image Classification Example using AlexNet.ipynb for further details.
 
 ### Image Segmentation
 
-TODO
+Open Uncertainty Tutorial 2 - Image Segmentation Example using FCN32.ipynb for furhter details. 
 
 ## Running the tests
 
