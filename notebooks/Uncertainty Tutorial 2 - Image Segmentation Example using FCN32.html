@@ -13160,7 +13160,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Interpretability-framework---Uncertainty-Tutorial-2">Interpretability-framework - Uncertainty Tutorial 2<a class="anchor-link" href="#Interpretability-framework---Uncertainty-Tutorial-2">&#182;</a></h1><h3 id="Step-1:-Load-pre-trained-FCN32-model">Step 1: Load pre-trained FCN32 model<a class="anchor-link" href="#Step-1:-Load-pre-trained-FCN32-model">&#182;</a></h3>
+<h1 id="Interpretability-framework---Uncertainty-Tutorial-2">Interpretability-framework - Uncertainty Tutorial 2<a class="anchor-link" href="#Interpretability-framework---Uncertainty-Tutorial-2">&#182;</a></h1><p>in this notebook you will learn how to use the interpretability framework in an image segmentation example and how to interpret the results.</p>
+<h2 id="Segmentation-example-with-FCN32s">Segmentation example with FCN32s<a class="anchor-link" href="#Segmentation-example-with-FCN32s">&#182;</a></h2><p>Demonstration of uncertainty measurement and visualization in an segmentation example.</p>
+<h3 id="Step-1:-Load-pre-trained-FCN32-model">Step 1: Load pre-trained FCN32 model<a class="anchor-link" href="#Step-1:-Load-pre-trained-FCN32-model">&#182;</a></h3><p><strong>Note: Monte Carlo Dropout ensembles only achieve proper results when used on a net which was trained with dropout. So check if the model you would like to use has dropout layers active in training.</strong></p>
+
 </div>
 </div>
 </div>
@@ -13385,6 +13388,21 @@ div#notebook {
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Interpretation-of-results">Interpretation of results<a class="anchor-link" href="#Interpretation-of-results">&#182;</a></h2><p>In contrast to the image classification example, we calculate predictions and uncertainties for each pixel of the image. 
+Hence, we can visualize the pixel uncertainties as an image and add a color scheme to make interpretations easier (red = high uncertainty, blue = low uncertainty).</p>
+<p>What can we see in these uncertainty images?</p>
+<ul>
+<li><strong>Total predictive entropy:</strong> the total predictive uncertainty of each pixel, we can detect which pixels have high uncertainty and therefore, are predicted with low confidence.</li>
+<li><strong>Mutual Information:</strong> the model uncertainty of each pixel, we can detect which pixels are predicted with low confidence due to the model.</li>
+<li><strong>Data Uncertainty:</strong> we can detect which pixels are predicted with low confidence due to the quality of the data (image).</li>
+</ul>
+
+</div>
+</div>
 </div>
     </div>
   </div>
