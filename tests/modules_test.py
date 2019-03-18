@@ -92,13 +92,13 @@ def test_variation_ratio(mocker):
     functional.variation_ratio.assert_called_once_with(input_)
 
 
-def test_confidence_mean_prediciton(mocker):
+def test_prediction_and_uncertainties(mocker):
     """Combined output layer test."""
     mocker.patch("interpretability_framework.functional.predictive_entropy")
     mocker.patch("interpretability_framework.functional.mutual_information")
 
     input_ = torch.tensor([[1.0, 0.5, 0.3]])
-    output, _, _ = modules.ConfidenceMeanPrediction()(input_)
+    output, _, _ = modules.PredictionAndUncertainties()(input_)
 
     assert torch.allclose(output, torch.tensor([0.6]))
 

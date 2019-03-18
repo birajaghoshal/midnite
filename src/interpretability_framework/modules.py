@@ -24,7 +24,7 @@ class PredDropout(Dropout):
         """Performs dropout at training and at test time.
 
         Args:
-            input_: the input layer
+            input_: the input data
 
         Returns:
             the dropout forward pass
@@ -110,9 +110,10 @@ class MeanEnsemble(_Ensemble):
         if self.training:
             return pred
         else:
-            for i in range(self.sample_size - 1):
-                pred += self.inner.forward(input_)
-            return pred.div(self.sample_size)
+            with torch.no_grad():
+                for i in range(self.sample_size - 1):
+                    pred += self.inner.forward(input_)
+                return pred.div(self.sample_size)
 
 
 class PredictionEnsemble(_Ensemble):
@@ -130,14 +131,24 @@ class PredictionEnsemble(_Ensemble):
         """
         # Calculate first prediction
         pred = self.inner.forward(input_)
-        pred_dim = pred.dim()
+        pred_shape = pred.size()
 
         # In eval mode, stack ensemble predictions
         if not self.training:
-            pred = torch.unsqueeze(pred, dim=pred_dim)
-            for i in range(self.sample_size - 1):
-                new_pred = torch.unsqueeze(self.inner.forward(input_), dim=pred_dim)
-                pred = torch.cat((pred, new_pred), dim=pred_dim)
+            with torch.no_grad():
+                for param in self.parameters():
+                    param.requires_grad = False
+                input_.requires_grad = False
+                # Allocate result tensor
+                result = torch.zeros((*pred_shape, self.sample_size))
+                # Store results in their slice
+                result.select(len(pred_shape), 0).copy_(pred)
+                del pred
+                for i in range(1, self.sample_size):
+                    pred = self.inner.forward(input_)
+                    result.select(len(pred_shape), i).copy_(pred)
+                    del pred
+                pred = result
 
         return pred
 
@@ -150,8 +161,8 @@ class PredictiveEntropy(Module):
          to measure total uncertainty.
 
         Args:
-            input_: concatenated predictions for K classes and T samples,
-             of shape (T, K)
+            input_: concatenated predictions for K classes and T samples (minibatch size N),
+             of shape (N, K, ..., T)
 
         Returns:
             pred_entropy: the predictive entropy per class
@@ -170,8 +181,8 @@ class MutualInformation(Module):
         Also called Bayesian Active Learning by Disagreement (BALD)
 
         Args:
-            input_: concatenated predictions for K classes and T samples,
-             of shape (T, K)
+            input_: concatenated predictions for K classes and T samples (minibatch size N),
+             of shape (N, K, ..., T)
 
         Returns:
             the mutual information per class
@@ -188,8 +199,8 @@ class VariationRatio(Module):
          of total predictive uncertainty.
 
         Args:
-            input_: concatenated probabilistic predictions for K classes and T samples,
-             of shape (T, K)
+            input_: concatenated predictions for K classes and T samples (minibatch size N),
+             of shape (N, K, ..., T)
 
         Returns:
             the total variation ratio
@@ -198,18 +209,18 @@ class VariationRatio(Module):
         return func.variation_ratio(input_)
 
 
-class ConfidenceMeanPrediction(Module):
+class PredictionAndUncertainties(Module):
     """Module to conveniently calculate sampled mean and uncertainties."""
 
     def forward(self, input_: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """Forward pass to calculate sampled mean and different uncertainties.
 
         Args:
-            input_: concatenated probabilistic predictions for K classes and T samples,
-             of shape (T, K)
+            input_: concatenated predictions for K classes and T samples (minibatch size N),
+             of shape (N, K, ..., T)
 
         Returns:
-            mean prediction, predictive entropy and mutual information
+            mean prediction, predictive entropy, mutual information
 
         """
         return (
