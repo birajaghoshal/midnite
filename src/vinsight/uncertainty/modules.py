@@ -12,7 +12,7 @@ from torch.nn import FeatureAlphaDropout
 from torch.nn import functional
 from torch.nn import Module
 
-import interpretability_framework.functional as func
+import vinsight.uncertainty.functional as func
 
 log = logging.getLogger(__name__)
 

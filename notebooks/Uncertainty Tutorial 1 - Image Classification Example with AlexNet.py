@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import data_utils
 from data_utils import DataConfig
 
-from interpretability_framework import modules
+from vinsight.uncertainty import modules
 
 
 # # Interpretability-framework - Uncertainty Tutorial 1
