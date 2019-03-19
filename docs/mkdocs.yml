@@ -1,4 +1,4 @@
-site_name: interpretability-framework
+site_name: vinsight
 use_directory_urls: false
 
 theme:

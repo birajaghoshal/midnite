@@ -2,7 +2,7 @@
 <a href="https://github.com/ambv/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 </p>
 
-# interpretability-framework
+# vinsight
 This is a framework for measuring and visualizing uncertainty in CNNs.
 
 Monte Carlo dropout is used to collect an ensemble of predictions, which are used as a basis for measuring data and model uncertainty.

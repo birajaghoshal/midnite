@@ -20,7 +20,7 @@ from data_utils import DataConfig
 from vinsight.uncertainty import modules
 
 
-# # Interpretability-framework - Uncertainty Tutorial 2
+# # vinsight - Uncertainty Tutorial 2
 # in this notebook you will learn how to use the interpretability framework in an image segmentation example and how to interpret the results.
 # 
 # ## Segmentation example with FCN32s

@@ -21,7 +21,7 @@ from data_utils import DataConfig
 from vinsight.uncertainty import modules
 
 
-# # Interpretability-framework - Uncertainty Tutorial 1
+# # vinsight - Uncertainty Tutorial 1
 # 
 # in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 

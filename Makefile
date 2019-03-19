@@ -13,7 +13,7 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the docker container
-	docker build --file docker/Dockerfile --tag luminovo/interpretability_framework:latest .
+	docker build --file docker/Dockerfile --tag luminovo/vinsight:latest .
 
 check: ## Run all static checks (like pre-commit hooks)
 	pre-commit run --all-files
@@ -22,7 +22,7 @@ docs: ## Build all docs
 	docker run --rm -it -v `pwd`/docs:/docs squidfunk/mkdocs-material build
 
 test: ## Run all tests
-	docker run -v `pwd`:/home/interpretability_framework luminovo/interpretability_framework:latest pytest tests/
+	docker run -v `pwd`:/home/vinsight luminovo/vinsight:latest pytest tests/
 
 
 # --------------Configuration-------------

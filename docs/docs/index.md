@@ -1,4 +1,4 @@
-# interpretability-framework
+# vinsight
 
 This is a framework for visualization and uncertainty in CNNs.
 

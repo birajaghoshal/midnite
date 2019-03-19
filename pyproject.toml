@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "interpretability_framework"
+name = "vinsight"
 version = "0.1.0"
 description = "This is a framework for visualization and uncertainty in CNNs."
 authors = ["Christina Aigner <christina@luminovo.ai >, Fabian Huch <fabian@luminovo.ai >"]

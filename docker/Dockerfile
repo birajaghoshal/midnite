@@ -6,7 +6,7 @@ RUN apt-get update
 RUN apt-get install -y sudo
 
 # create new user for service that is not root
-ENV USER=interpretability_framework
+ENV USER=vinsight
 RUN useradd -Um ${USER}
 RUN echo "${USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers;
 USER $USER
