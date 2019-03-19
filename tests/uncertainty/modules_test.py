@@ -126,3 +126,35 @@ def test_prediction_and_uncertainties(mocker):
 
     functional.predictive_entropy.assert_called_once_with(input_)
     functional.mutual_information.assert_called_once_with(input_)
+
+
+def test_prediction_ensemble_layer_modes():
+    """tests the prediction ensemble, if dropout layers are kept in train mode
+     while other layers switch to test mode after eval()"""
+
+    model = torch.nn.Sequential(modules.PredDropout(), torch.nn.Conv2d(1, 20, 5))
+
+    ensemble = modules.PredictionEnsemble(model)
+    assert_that(ensemble.training).is_true()
+    assert_that(ensemble.inner[0].training).is_true()
+    assert_that(ensemble.inner[1].training).is_true()
+    ensemble.eval()
+    assert_that(ensemble.training).is_false()
+    assert_that(ensemble.inner[0].training).is_true()
+    assert_that(ensemble.inner[1].training).is_false()
+
+
+def test_mean_ensemble_layer_modes():
+    """tests the mean ensemble, if dropout layers are kept in train mode
+     while other layers switch to test mode after eval()"""
+
+    model = torch.nn.Sequential(modules.PredDropout(), torch.nn.Conv2d(1, 20, 5))
+
+    mean_ensemble = modules.MeanEnsemble(model)
+    assert_that(mean_ensemble.training).is_true()
+    assert_that(mean_ensemble.inner[0].training).is_true()
+    assert_that(mean_ensemble.inner[1].training).is_true()
+    mean_ensemble.eval()
+    assert_that(mean_ensemble.training).is_false()
+    assert_that(mean_ensemble.inner[0].training).is_true()
+    assert_that(mean_ensemble.inner[1].training).is_false()
