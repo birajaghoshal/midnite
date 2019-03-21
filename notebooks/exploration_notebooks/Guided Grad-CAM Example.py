@@ -40,7 +40,7 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 
-# In[1]:
+# In[4]:
 
 
 # Given label number returns class name
@@ -49,7 +49,7 @@ def get_class_name(c):
     return ' '.join(labels[c].split(',')[0].split()[1:])
 
 
-# In[22]:
+# In[5]:
 
 
 #model = models.vgg19(pretrained=True)
@@ -73,15 +73,17 @@ model = model.eval()
 #   model = model.cuda()
 
 
-# In[14]:
+# In[6]:
 
 
 def GradCAM(img, c, features_fn, classifier_fn):
     feats = features_fn(img)
-    #feats = features_fn(img.cuda())
     _, N, H, W = feats.size()
     out = classifier_fn(feats)
     c_score = out[0, c]
+    print(out.size())
+    print(c_score)
+    
     grads = torch.autograd.grad(c_score, feats)
     w = grads[0][0].mean(-1).mean(-1)
     sal = torch.matmul(w, feats.view(N, H*W))
@@ -90,16 +92,22 @@ def GradCAM(img, c, features_fn, classifier_fn):
     return sal
 
 
-# In[27]:
+# In[ ]:
 
 
-img_path = '../data/imagenet_example_283.jpg'
+
+
+
+# In[7]:
+
+
+img_path = '../../data/imagenet_example_283.jpg'
 img_tensor = read_tensor(img_path)
 pp, cc = torch.topk(nn.Softmax(dim=1)(model(img_tensor)), 3)
 #pp, cc = torch.topk(nn.Softmax(dim=1)(model(img_tensor.cuda())), 3)
 
 
-# In[28]:
+# In[20]:
 
 
 plt.figure(figsize=(15, 5))
