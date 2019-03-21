@@ -27,7 +27,7 @@ def mean_prediction(input_: Tensor) -> Tensor:
         the mean prediction for all samples, i.e. p(y|x,D), of shape (N, K, ...)
 
     """
-    return torch.mean(input_, dim=(input_.dim() - 1,))
+    return torch.mean(input_, dim=(-1,))
 
 
 def predictive_entropy(input_: Tensor, mean_min_clamp=1e-40) -> Tensor:
@@ -45,10 +45,10 @@ def predictive_entropy(input_: Tensor, mean_min_clamp=1e-40) -> Tensor:
      i.e. H[y|x,D] = - sum_y p(y|x,D) * log p(y|x,D), of shape (N, K, ...)
 
     """
-    _ensemble_mean = mean_prediction(input_).clamp(mean_min_clamp)
-
     # Min clamp necessary in case of log(0)
-    return -_ensemble_mean * torch.log(_ensemble_mean)
+    _ensemble_mean = mean_prediction(input_).clamp_(mean_min_clamp)
+
+    return _ensemble_mean.mul_(_ensemble_mean.log()).mul_(-1.0)
 
 
 def mutual_information(input_: Tensor, input_mean_clamp=1e-40) -> Tensor:
@@ -70,14 +70,14 @@ def mutual_information(input_: Tensor, input_mean_clamp=1e-40) -> Tensor:
     pred_entropy = predictive_entropy(input_)
 
     num_samples = input_.size(dim=input_.dim() - 1)
-    input_ = input_.clamp(min=input_mean_clamp)
+    clamped_input = input_.clamp(min=input_mean_clamp)
 
     # Min clamp necessary in case of log(0)
-    expected_entropy = torch.div(
-        torch.sum(input_ * torch.log(input_), dim=(input_.dim() - 1,)), num_samples
+    expected_entropy = (
+        clamped_input.mul_(clamped_input.log()).sum(dim=-1).div_(num_samples)
     )
 
-    return pred_entropy + expected_entropy
+    return expected_entropy.add_(pred_entropy)
 
 
 def variation_ratio(input_: Tensor) -> Tensor:
@@ -92,15 +92,14 @@ def variation_ratio(input_: Tensor) -> Tensor:
     """
     # shape (N, K, ...)
     mean = mean_prediction(input_)
-    # extract (N, ...)
-    prob_sum_sizes = list(mean.size())
-    del prob_sum_sizes[1]
 
-    if not mean.sum(dim=(1,)).allclose(torch.ones(tuple(prob_sum_sizes))):
+    prob_sum = mean.sum(dim=(1,))
+
+    if not torch.allclose(prob_sum, torch.ones_like(prob_sum)):
         log.warning("variation ratio input not in probabilistic form, using softmax")
         mean = functional.softmax(mean, dim=1)
 
     # shape (N, ...)
     max_mean = torch.max(mean, dim=1)[0]
 
-    return torch.add(-max_mean, 1.0)
+    return max_mean.mul_(-1.0).add_(1.0)

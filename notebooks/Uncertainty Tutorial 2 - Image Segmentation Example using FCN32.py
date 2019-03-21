@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -18,6 +18,9 @@ import data_utils
 from data_utils import DataConfig
 
 from vinsight.uncertainty import modules
+
+if torch.cuda.is_available and torch.cuda.device_count() > 0:
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 # # vinsight - Uncertainty Tutorial 2
@@ -38,13 +41,16 @@ fully_conf_net.load_state_dict(torch.load(FCN32s.download()))
 
 
 # ### Step 2: Build and prepare MC ensemble
+# Decrease sample size if you have less than 8g memory or it takes too long on your machine.
 
 # In[3]:
 
 
 ensemble = Sequential(
-    modules.PredictionEnsemble(fully_conf_net),
-    Softmax(dim=1),
+    modules.PredictionEnsemble(
+        Sequential(fully_conf_net, Softmax(dim=1)),
+        sample_size=80
+    ),
     modules.PredictionAndUncertainties()
 )
 
@@ -61,7 +67,7 @@ img = data_utils.get_example_from_path("../data/fcn_example.jpg", DataConfig.FCN
 norm_img = torch.sub(img, img.min())
 norm_img = torch.div(norm_img, norm_img.max())
 
-plt.imshow(norm_img.squeeze(dim=0).permute(1, 2, 0))
+plt.imshow(norm_img.squeeze(dim=0).permute(1, 2, 0).cpu())
 plt.show()
 
 
@@ -72,15 +78,15 @@ plt.show()
 
 pred, pred_entropy, mutual_info = ensemble(img)
 print("Prediction:")
-plt.imshow(pred.argmax(dim=1).squeeze(dim=0).detach().numpy())
+plt.imshow(pred.argmax(dim=1).squeeze(dim=0).cpu())
 plt.show()
 
 print("Predictive entropy (total uncertainty):")
-plt.imshow(pred_entropy.sum(dim=1).squeeze(dim=0).detach().numpy())
+plt.imshow(pred_entropy.sum(dim=1).squeeze(dim=0).cpu())
 plt.show()
 
 print("Mutual information (model uncertainty):")
-plt.imshow(mutual_info.sum(dim=1).squeeze(dim=0).detach().numpy())
+plt.imshow(mutual_info.sum(dim=1).squeeze(dim=0).cpu())
 plt.show()
 
 

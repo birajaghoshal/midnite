@@ -140,7 +140,9 @@ class PredictionEnsemble(_Ensemble):
                     param.requires_grad = False
                 input_.requires_grad = False
                 # Allocate result tensor
-                result = torch.zeros((*pred_shape, self.sample_size))
+                result = torch.zeros(
+                    (*pred_shape, self.sample_size), requires_grad=False
+                )
                 # Store results in their slice
                 result.select(len(pred_shape), 0).copy_(pred)
                 del pred

@@ -20,6 +20,8 @@ class DataConfig(Enum):
 
 
 fcn_mean_bgr = np.array([104.00698793, 116.66876762, 122.67891434])
+alexnet_mean = np.array([0.485, 0.456, 0.406])
+alexnet_var = np.array([0.229, 0.224, 0.225])
 
 
 def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> list:
@@ -62,30 +64,28 @@ def get_example_from_path(path_to_img: str, config: DataConfig) -> Tensor:
     abs_path_to_img = Path(path_to_img).resolve()
 
     img = Image.open(abs_path_to_img)
+    # Workaround to check default tensor device as there is no method for it
+    device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
 
     if config is DataConfig.ALEX_NET:
         img.convert("RGB")
-        img = transforms.Compose(
-            [
-                transforms.Resize(227),
-                transforms.CenterCrop(227),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )(img)
+        img = transforms.Compose([transforms.Resize(227), transforms.CenterCrop(227)])(
+            img
+        )
+        img = (img - 255 * alexnet_mean) / (255 * alexnet_var)
+        img = img.transpose(2, 0, 1)
+        img = torch.from_numpy(img)
     elif config is DataConfig.FCN32:
         img = np.array(img, dtype=np.uint8)
         img = img[:, :, ::-1]  # RGB -> BGR
         img = img.astype(np.float64)
         img -= fcn_mean_bgr
         img = img.transpose(2, 0, 1)
-        img = torch.from_numpy(img).float()
+        img = torch.from_numpy(img)
     else:
         raise ValueError("Invalid config.")
 
-    return torch.unsqueeze(img, dim=0)
+    return torch.unsqueeze(img, dim=0).float().requires_grad_(False).to(device)
 
 
 def get_random_example(config: DataConfig) -> Tensor:
@@ -94,6 +94,9 @@ def get_random_example(config: DataConfig) -> Tensor:
     Returns: a tensor of size (1, 3, 227, 227) that represents a random image
 
     """
+    # Workaround to check default tensor device as there is no method for it
+    device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
+
     if config is DataConfig.ALEX_NET:
         random_img = torch.div(
             torch.randint(low=0, high=255, size=(3, 227, 227)).float(), 255.0
@@ -104,8 +107,8 @@ def get_random_example(config: DataConfig) -> Tensor:
     elif config is DataConfig.FCN32:
         random_img = np.random.randint(low=0, high=255, size=(3, 640, 488), dtype=float)
         random_img -= fcn_mean_bgr
-        random_img = torch.from_numpy(random_img).float()
+        random_img = torch.from_numpy(random_img)
     else:
         raise ValueError("Invalid config.")
 
-    return torch.unsqueeze(random_img, dim=0)
+    return torch.unsqueeze(random_img, dim=0).float().requires_grad_(False).to(device)
