@@ -14,7 +14,7 @@
 # In our example we use a pretrained ResNet for demonstration.
 # 
 
-# In[9]:
+# In[22]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -24,35 +24,28 @@ get_ipython().run_line_magic('cd', '../src')
 
 import data_utils
 from data_utils import DataConfig
-from vinsight.visualization import building_blocks
-import numpy as np
+from vinsight.visualization import methods
+from vinsight.visualization import interface
 from PIL import Image
 
 import torch
 from torch import Tensor
-from torch.nn import Module
-from torch.nn import Sequential
 from torch.nn import Softmax
 
 from torchvision import models
-from matplotlib import pyplot as plt
 
 
-# In[10]:
+# In[23]:
 
 
 model = models.resnet50(pretrained=True)
 
-# split model for activation mapping
-features_fn = Sequential(*list(model.children())[:-2])
-classifier_fn = Sequential(*(list(model.children())[-2:-1] + [building_blocks.Flatten()] + list(model.children())[-1:]))
-
 model.eval()
 
 
-# Load Image
+# ## Load Image
 
-# In[12]:
+# In[32]:
 
 
 img_path = "../data/imagenet_example_283.jpg"
@@ -65,6 +58,34 @@ input_ = data_utils.get_example_from_path(img_path, DataConfig.ALEX_NET)
 # 
 # 3) compute forward pass through layer of choice to retrieve output
 # 
+
+# ## select layer of interest
+# 
+# in ResNet, we have 9 layers, where 8 is the last feature layer and 10 the classification layer
+# 
+# **Note: please choose a layer between 0 and 8** #TODO method: check if choice is valid
+
+# In[33]:
+
+
+selected_layer = 8
+
+
+# ## select class of interest
+# in this example we use the topk classes and compute their saliency maps
+
+# In[36]:
+
+
+output_scores, output_classes = torch.topk(Softmax(dim=1)(model(input_)), 2)
+img = Image.open(img_path)
+
+top_layers, bottom_layers, bottom_split = interface.ModelSplit().get_split(model, selected_layer)
+
+for i, (score, c) in enumerate(zip(output_scores[0], output_classes[0])):
+    saliency_map = methods.SaliencyMap(top_layers, bottom_layers, bottom_split).visualize(c, input_)
+    methods.plot_saliency(saliency_map, img, c, score, selected_layer)
+
 
 # In[ ]:
 
