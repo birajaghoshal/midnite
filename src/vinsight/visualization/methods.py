@@ -1,14 +1,48 @@
 """Concrete implementations of visualization methods."""
+from abc import ABC
+from abc import abstractmethod
 from typing import List
+from typing import Optional
 
 import cv2
 import numpy as np
 import torch
+from numpy import ndarray
 from torch import Tensor
 from torch.nn import Module
 
 from vinsight.visualization import Activation
 from vinsight.visualization import NeuronSelector
+
+
+class TransformStep(ABC):
+    @abstractmethod
+    def transform(self, img: ndarray) -> ndarray:
+        pass
+
+
+class BlurTransformStep(TransformStep):
+    def __init__(self, blur_size: int = 5):
+        super().__init__()
+        self.blur_size = blur_size
+
+    def transform(self, img: ndarray) -> ndarray:
+        return cv2.blur(img, (self.blur_size, self.blur_size))
+
+
+class BlurResizeStep(BlurTransformStep):
+    def __init__(self, blur_size: int = 5, scale_fac: float = 1.2):
+        super().__init__(blur_size)
+        self.scale_fac = scale_fac
+
+    def transform(self, img: ndarray) -> ndarray:
+        return cv2.resize(
+            super().transform(img),
+            (0, 0),
+            fx=self.scale_fac,
+            fy=self.scale_fac,
+            interpolation=cv2.INTER_CUBIC,
+        )
 
 
 class PixelActivationOpt(Activation):
@@ -18,12 +52,12 @@ class PixelActivationOpt(Activation):
         self,
         layers: List[Module],
         top_layer_selector: NeuronSelector,
-        lr=1e-2,
-        steps=20,
-        iters=10,
-        size=250,
-        weight_decay=1e-6,
-        blur=5,
+        iter_transform: Optional[TransformStep] = None,
+        lr: float = 1e-2,
+        num_iters: int = 12,
+        steps_per_iter: int = 20,
+        init_size: int = 250,
+        weight_decay: float = 1e-6,
     ):
         """
         Args:
@@ -38,12 +72,14 @@ class PixelActivationOpt(Activation):
 
         """
         super().__init__(layers, top_layer_selector)
+        self.iter_transform = iter_transform
         self.lr = lr
-        self.steps = steps
-        self.iters = iters
-        self.size = size
+        if num_iters < 1 or steps_per_iter < 1:
+            raise ValueError("Must have at least one iteration")
+        self.num_iters = num_iters
+        self.steps_per_iter = steps_per_iter
+        self.init_size = init_size
         self.weight_decay = weight_decay
-        self.blur = blur
 
     def visualize(self) -> Tensor:
         """Perform visualization.
@@ -55,14 +91,20 @@ class PixelActivationOpt(Activation):
             layer.eval()
 
         # Starting image - tune uniform distribution weights if necessary
-        img = np.uint8(np.random.uniform(150, 180, (self.size, self.size, 3))) / float(
-            255
-        )
+        img = np.uint8(
+            np.random.uniform(150, 180, (self.init_size, self.init_size, 3))
+        ) / float(255)
 
-        for _ in range(self.iters):
-            # Blur image
-            img = cv2.blur(img, (self.blur, self.blur))
-            opt_res = torch.from_numpy(img).float().permute(2, 0, 1).unsqueeze(dim=0)
+        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
+
+        for i in range(self.num_iters):
+            opt_res = (
+                torch.from_numpy(img)
+                .float()
+                .permute(2, 0, 1)
+                .unsqueeze(dim=0)
+                .to(device)
+            )
             opt_res.requires_grad_(True)
 
             # Optimizer for image
@@ -70,7 +112,7 @@ class PixelActivationOpt(Activation):
                 [opt_res], lr=self.lr, weight_decay=self.weight_decay
             )
 
-            for _ in range(self.steps):
+            for _ in range(self.steps_per_iter):
                 # Reset gradient
                 optimizer.zero_grad()
 
@@ -80,7 +122,6 @@ class PixelActivationOpt(Activation):
                     out = layer(out)
 
                 # Calculate loss (mean of output of the last layer w.r.t to our mask)
-                # TODO cache mask
                 loss = -(
                     self.top_layer_selector.get_mask(out.size()[1:]) * out[0]
                 ).mean()
@@ -89,6 +130,9 @@ class PixelActivationOpt(Activation):
                 # Update image
                 optimizer.step()
 
-            img = opt_res.data.squeeze(dim=0).permute(1, 2, 0).detach().numpy()
+            if i + 1 < self.num_iters:
+                img = opt_res.squeeze(dim=0).permute(1, 2, 0).detach().cpu().numpy()
+                if self.iter_transform is not None:
+                    img = self.iter_transform.transform(img)
 
-        return torch.from_numpy(img).float()
+        return opt_res.squeeze(dim=0).permute(1, 2, 0).detach().cpu()
