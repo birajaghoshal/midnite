@@ -6,8 +6,33 @@ from typing import List
 from typing import Tuple
 
 import torch
+import torchvision
 from torch import Tensor
 from torch.nn import Module
+
+
+class ModelSplit(ABC):
+    """Splits the model into parts."""
+
+    def get_split(self, model: torchvision.models, layer: int) -> List[Module]:
+        """Returns a split of a model.
+
+        Args:
+            model: the model to be split
+            layer: layer index where the model should be split
+
+        Returns:
+            split: a list of Sequentials: split 1 goes until selected layer index,
+                split 2 until the end of feature layers, lastly, the flattened classifier
+
+        """
+        bottom_layers = list(model.children())[:layer]
+        top_layers = (
+            list(model.children())[layer:-1] + [Flatten()] + list(model.children())[-1:]
+        )
+        bottom_layer_split = SpatialSplit()
+
+        return top_layers, bottom_layers, bottom_layer_split
 
 
 class LayerSplit(ABC):
@@ -115,6 +140,17 @@ class NeuronSelector:
         return self.layer_split.get_mask(self.element, size)
 
 
+class Flatten(Module):
+    """One layer module that flattens its input.
+    This class is used to flatten the output of a layer split for saliency computation."""
+
+    def __init__(self):
+        super(Flatten, self).__init__()
+
+    def forward(self, x):
+        return x.view(x.size(0), -1)
+
+
 class Attribution(ABC):
     """Abstract base class for attribution methods.
 
@@ -123,22 +159,23 @@ class Attribution(ABC):
 
     """
 
-    def __init__(self, layers: List[Module], bottom_layer_split: LayerSplit):
+    def __init__(self, top_layers: List[Module], bottom_layer_split: LayerSplit):
         """
         Args:
-            layers: the list of adjacent layers to execute the method on
+            top_layers: the list of adjacent layers from ModelSplit
             bottom_layer_split: the split starting from which information are propagated
              through the network
 
         """
-        self.layers = layers
+        self.layers = top_layers
         self.bottom_layer_split = bottom_layer_split
 
     @abstractmethod
-    def visualize(self, input_: Tensor) -> Tensor:
+    def visualize(self, selected_class: int, input_: Tensor) -> Tensor:
         """Abstract method to call attribution method
 
         Args:
+            selected_class: the class for which the saliency should be computed
             input_: the input tensor
 
         Returns: a tensor showing attribution

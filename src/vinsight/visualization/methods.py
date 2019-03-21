@@ -5,13 +5,18 @@ from typing import List
 from typing import Optional
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from numpy import ndarray
+from PIL import Image
 from torch import Tensor
 from torch.nn import Module
+from torch.nn import Sequential
 
 from vinsight.visualization import Activation
+from vinsight.visualization import Attribution
+from vinsight.visualization import LayerSplit
 from vinsight.visualization import NeuronSelector
 
 
@@ -136,3 +141,81 @@ class PixelActivationOpt(Activation):
                     img = self.iter_transform.transform(img)
 
         return opt_res.squeeze(dim=0).permute(1, 2, 0).detach().cpu()
+
+
+def plot_saliency(
+    saliency: Tensor,
+    img: Image,
+    output_class: int,
+    output_score: int,
+    sel_layer: int,
+    plot_with_image=True,
+):
+    """Plots the saliency map.
+
+     Args:
+        saliency: tensor of class activations
+        img: input image
+        output_class: classification of the image
+        output_score: score of class prediction
+        sel_layer: layer for which saliency was computed
+        plot_with_image: plot saliency together with image (True) or alone (False)
+
+    """
+
+    sal_map = Image.fromarray(saliency.numpy())
+    sal_map = sal_map.resize(img.size, resample=Image.LINEAR)
+
+    plt.title(
+        "Activation map for class {} of layer {}, predicted with {:.1f}%".format(
+            output_class, sel_layer, 100 * float(output_score)
+        )
+    )
+    if plot_with_image:
+        plt.imshow(img)
+    plt.imshow(np.array(sal_map), alpha=0.5, cmap="jet")
+
+    plt.show()
+
+
+class SaliencyMap(Attribution):
+    """computes a saliency map for a selected class"""
+
+    def __init__(
+        self,
+        layers: List[Module],
+        bottom_layers: List[Module],
+        bottom_layer_split: LayerSplit,
+    ):
+        """
+        Args:
+            layers: the list of adjacent layers from ModelSplit
+            bottom_layers: list of lower level layers from ModelSplit
+            bottom_layer_split: the split starting from which information are propagated
+             through the network
+
+        """
+        super().__init__(layers, bottom_layer_split)
+        self.bottom_layers = bottom_layers
+
+    def visualize(self, selected_class, input_tensor: Tensor) -> Tensor:
+        """generates a saliency tensor for selected_class
+        Args:
+            selected_class: class for which the saliency is computed
+            input_tensor: input image as torch tensor
+        """
+
+        features = Sequential(*self.bottom_layers)(input_tensor)
+        output = Sequential(*self.layers)(features)
+
+        class_score = output[0, int(selected_class)]
+        _, N, H, W = features.size()
+
+        # computes and returns the sum of gradients of outputs w.r.t. the inputs
+        grads = torch.autograd.grad(class_score, features)
+        w = grads[0][0].mean(-1).mean(-1)
+        sal_map = torch.matmul(w, features.view(N, H * W))
+        sal_map = sal_map.view(H, W).detach()
+        sal_map = torch.max(sal_map, torch.zeros_like(sal_map))
+
+        return sal_map
