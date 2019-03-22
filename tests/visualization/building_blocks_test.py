@@ -1,10 +1,8 @@
 """Test for the building blocks"""
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
-from torchvision import models
 
 from vinsight.visualization import ChannelSplit
-from vinsight.visualization import ModelSplit
 from vinsight.visualization import NeuronSelector
 from vinsight.visualization import NeuronSplit
 from vinsight.visualization import SpatialSplit
@@ -67,19 +65,3 @@ def test_neuron_selector():
     selection = NeuronSelector(SpatialSplit(), [0, 1]).get_mask((2, 2, 2)).numpy()
 
     assert_array_equal(selection, [[[0, 1], [0, 0]], [[0, 1], [0, 0]]])
-
-
-def test_model_split(mocker):
-    """Tests if model layers were correctly separated."""
-
-    # TODO create mock model here
-    mock_model = models.resnet50(pretrained=True)
-
-    # +1 because added flattened layer
-    num_children = len(list(mock_model.children())) + 1
-
-    top_layers, bottom_layers, bottom_layer_split = ModelSplit().get_split(
-        mock_model, 4
-    )
-    assert_that(bottom_layers).is_length(4)
-    assert_that(top_layers).is_length(num_children - 4)

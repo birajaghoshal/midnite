@@ -5,11 +5,9 @@ from typing import List
 from typing import Optional
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from numpy import ndarray
-from PIL import Image
 from torch import Tensor
 from torch.nn import Module
 from torch.nn import Sequential
@@ -143,39 +141,15 @@ class PixelActivationOpt(Activation):
         return opt_res.squeeze(dim=0).permute(1, 2, 0).detach().cpu()
 
 
-def plot_saliency(
-    saliency: Tensor,
-    img: Image,
-    output_class: int,
-    output_score: int,
-    sel_layer: int,
-    plot_with_image=True,
-):
-    """Plots the saliency map.
+class Flatten(Module):
+    """One layer module that flattens its input.
+    This class is used to flatten the output of a layer split for saliency computation."""
 
-     Args:
-        saliency: tensor of class activations
-        img: input image
-        output_class: classification of the image
-        output_score: score of class prediction
-        sel_layer: layer for which saliency was computed
-        plot_with_image: plot saliency together with image (True) or alone (False)
+    def __init__(self):
+        super(Flatten, self).__init__()
 
-    """
-
-    sal_map = Image.fromarray(saliency.numpy())
-    sal_map = sal_map.resize(img.size, resample=Image.LINEAR)
-
-    plt.title(
-        "Activation map for class {} of layer {}, predicted with {:.1f}%".format(
-            output_class, sel_layer, 100 * float(output_score)
-        )
-    )
-    if plot_with_image:
-        plt.imshow(img)
-    plt.imshow(np.array(sal_map), alpha=0.5, cmap="jet")
-
-    plt.show()
+    def forward(self, x):
+        return x.view(x.size(0), -1)
 
 
 class SaliencyMap(Attribution):

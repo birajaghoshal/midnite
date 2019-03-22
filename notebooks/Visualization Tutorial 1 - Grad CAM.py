@@ -14,7 +14,7 @@
 # In our example we use a pretrained ResNet for demonstration.
 # 
 
-# In[22]:
+# In[21]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -24,9 +24,11 @@ get_ipython().run_line_magic('cd', '../src')
 
 import data_utils
 from data_utils import DataConfig
-from vinsight.visualization import methods
-from vinsight.visualization import interface
 from PIL import Image
+import plot_utils
+from vinsight.visualization import SaliencyMap
+from vinsight.visualization import Flatten
+from vinsight.visualization import SpatialSplit
 
 import torch
 from torch import Tensor
@@ -35,7 +37,7 @@ from torch.nn import Softmax
 from torchvision import models
 
 
-# In[23]:
+# In[16]:
 
 
 model = models.resnet50(pretrained=True)
@@ -45,7 +47,7 @@ model.eval()
 
 # ## Load Image
 
-# In[32]:
+# In[17]:
 
 
 img_path = "../data/imagenet_example_283.jpg"
@@ -65,26 +67,28 @@ input_ = data_utils.get_example_from_path(img_path, DataConfig.ALEX_NET)
 # 
 # **Note: please choose a layer between 0 and 8** #TODO method: check if choice is valid
 
-# In[33]:
+# In[18]:
 
 
-selected_layer = 8
+selected_layer = 7
 
 
 # ## select class of interest
 # in this example we use the topk classes and compute their saliency maps
 
-# In[36]:
+# In[22]:
 
 
 output_scores, output_classes = torch.topk(Softmax(dim=1)(model(input_)), 2)
 img = Image.open(img_path)
 
-top_layers, bottom_layers, bottom_split = interface.ModelSplit().get_split(model, selected_layer)
+bottom_layers = list(model.children())[:selected_layer]
+top_layers = (list(model.children())[selected_layer:-1] + [Flatten()] + list(model.children())[-1:])
+bottom_layer_split = SpatialSplit()
 
 for i, (score, c) in enumerate(zip(output_scores[0], output_classes[0])):
-    saliency_map = methods.SaliencyMap(top_layers, bottom_layers, bottom_split).visualize(c, input_)
-    methods.plot_saliency(saliency_map, img, c, score, selected_layer)
+    saliency_map = SaliencyMap(top_layers, bottom_layers, bottom_split).visualize(c, input_)
+    plot_utils.plot_saliency(saliency_map, img, c, score, selected_layer)
 
 
 # In[ ]:
