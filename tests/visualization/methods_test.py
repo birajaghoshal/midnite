@@ -93,13 +93,24 @@ def test_pixel_act_optimize(mocker):
 
     visualizer.opt_step(img)
 
-    assert_that(layers[0].training).is_false()
-    assert_that(layers[0].training).is_false()
-    neuron_sel.get_mask.assert_called_with(Size([3, 4, 4]))
-    assert_that(neuron_sel.get_mask.call_count).is_equal_to(2)
-    reg.loss.assert_called()
-    assert_that(reg.loss.call_count).is_equal_to(2)
+    # Check layers
     layers[0].forward.assert_called()
     layers[1].forward.assert_called()
+    assert_that(layers[0].training).is_false()
+    assert_that(layers[0].training).is_false()
     assert_that(layers[0].forward.call_count).is_equal_to(2)
     assert_that(layers[1].forward.call_count).is_equal_to(2)
+    layer_call_args = layers[0].forward.call_args_list
+    assert_that(layer_call_args[0][0][0].size()).is_equal_to(Size([1, 3, 4, 4]))
+    assert_that(layer_call_args[1][0][0].size()).is_equal_to(Size([1, 3, 4, 4]))
+
+    # Check neuron selector
+    neuron_sel.get_mask.assert_called_with(Size([3, 4, 4]))
+    assert_that(neuron_sel.get_mask.call_count).is_equal_to(2)
+
+    # Check regularizer
+    reg.loss.assert_called()
+    assert_that(reg.loss.call_count).is_equal_to(2)
+    loss_call_args = reg.loss.call_args_list
+    assert_that(loss_call_args[0][0][0].size()).is_equal_to(Size([3, 4, 4]))
+    assert_that(loss_call_args[1][0][0].size()).is_equal_to(Size([3, 4, 4]))

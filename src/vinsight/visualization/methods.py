@@ -145,7 +145,7 @@ class PixelActivation(Activation):
 
             loss = loss.unsqueeze(dim=0)
             if self.reg is not None:
-                loss += self.reg.loss(opt_img)
+                loss += self.reg.loss(opt_img.squeeze(dim=0))
             # Backward pass
             loss.backward()
             # Update image
