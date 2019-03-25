@@ -10,14 +10,14 @@ from vinsight.visualization import SpatialSplit
 
 def test_neuron_mask():
     """Test neuron masking"""
-    mask = NeuronSplit().get_mask([0, 1, 2], (1, 2, 3)).numpy()
+    mask = NeuronSplit().get_mask([0, 1, 2], [1, 2, 3]).numpy()
 
     assert_array_equal(mask, [[[0, 0, 0], [0, 0, 1]]])
 
 
 def test_neuron_split():
     """Check all neuron masks"""
-    masks = NeuronSplit().get_split((1, 1, 2))
+    masks = NeuronSplit().get_split([1, 1, 2])
 
     assert_that(masks).is_length(2)
     assert_array_equal(masks[0].numpy(), [[[1, 0]]])

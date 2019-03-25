@@ -4,141 +4,177 @@ from abc import abstractmethod
 from typing import List
 from typing import Optional
 
-import cv2
 import numpy as np
 import torch
-from numpy import ndarray
 from torch import Tensor
 from torch.nn import Module
 from torch.nn import Sequential
 
+from vinsight.utils import tensor_defaults
 from vinsight.visualization import Activation
 from vinsight.visualization import Attribution
 from vinsight.visualization import LayerSplit
 from vinsight.visualization import NeuronSelector
+from vinsight.visualization.transforms import TransformStep
 
 
-class TransformStep(ABC):
+class LossTerm(ABC):
+    """Abstract class for loss terms."""
+
+    def __init__(self, coefficient):
+        self.coefficient = coefficient
+
     @abstractmethod
-    def transform(self, img: ndarray) -> ndarray:
+    def loss(self, out: Tensor) -> Tensor:
+        """Calculates the loss for an output.
+
+        Args:
+            out: the tensor to calculate the loss for, of shape (c, w, h)
+
+        Returns:
+            a tensor representing the loss
+
+        """
         pass
 
 
-class BlurTransformStep(TransformStep):
-    def __init__(self, blur_size: int = 5):
-        super().__init__()
-        self.blur_size = blur_size
+class TVReg(LossTerm):
+    """Total Variation norm.
 
-    def transform(self, img: ndarray) -> ndarray:
-        return cv2.blur(img, (self.blur_size, self.blur_size))
+    For more information, read https://arxiv.org/pdf/1412.0035v1.pdf.
+    Loss is divided by number of elements to have consistent coefficients.
 
+    """
 
-class BlurResizeStep(BlurTransformStep):
-    def __init__(self, blur_size: int = 5, scale_fac: float = 1.2):
-        super().__init__(blur_size)
-        self.scale_fac = scale_fac
+    def __init__(self, coefficient: float = 0.01, beta: float = 2.0):
+        super().__init__(coefficient)
+        self.beta = beta
 
-    def transform(self, img: ndarray) -> ndarray:
-        return cv2.resize(
-            super().transform(img),
-            (0, 0),
-            fx=self.scale_fac,
-            fy=self.scale_fac,
-            interpolation=cv2.INTER_CUBIC,
+    def loss(self, out: Tensor) -> Tensor:
+        x_dist = (out[:, :-1, 1:] - out[:, :-1, :-1]).pow_(2)
+        y_dist = (out[:, 1:, :-1] - out[:, :-1, :-1]).pow_(2)
+        loss_sum = x_dist.add_(y_dist).pow_(self.beta / 2.0).sum()
+
+        return loss_sum.div_(out.size(0) * out.size(1) * out.size(2)).mul_(
+            self.coefficient
         )
 
 
-class PixelActivationOpt(Activation):
-    """Simple Activation Optimization, using only blur regularization"""
+class PixelActivation(Activation):
+    """Activation optimization (in Pixel space)."""
 
     def __init__(
         self,
         layers: List[Module],
         top_layer_selector: NeuronSelector,
-        iter_transform: Optional[TransformStep] = None,
         lr: float = 1e-2,
-        num_iters: int = 12,
-        steps_per_iter: int = 20,
+        weight_decay: float = 1e-7,
+        iter_n: int = 12,
+        opt_n: int = 20,
         init_size: int = 250,
-        weight_decay: float = 1e-6,
+        clamp: bool = True,
+        transform: Optional[TransformStep] = None,
+        reg: Optional[LossTerm] = None,
     ):
         """
         Args:
             layers: the list of adjacent layers to account for
             top_layer_selector: selector for the relevant activations
-            lr: learning rate
-            steps: number of optimization steps per iteration
-            iters: number of iteraions
-            size: width/height of visualization
-            weight_decay: weight decay of optimization
-            blur: blur factor for regularization
+            lr: learning rate of ADAM optimizer
+            weight_decay: weight decay of ADAM optimizer, can be understood as l1-reg
+            iter_n: number of iterations
+            opt_n: number of optimization steps per iteration
+            init_size: initial width/height of visualization
+            clamp: clamp image to [0, 1] space (natural image)
+            transform: transformations after each step
+            reg: regularization term
 
         """
         super().__init__(layers, top_layer_selector)
-        self.iter_transform = iter_transform
         self.lr = lr
-        if num_iters < 1 or steps_per_iter < 1:
-            raise ValueError("Must have at least one iteration")
-        self.num_iters = num_iters
-        self.steps_per_iter = steps_per_iter
-        self.init_size = init_size
         self.weight_decay = weight_decay
+        if iter_n < 1:
+            raise ValueError("Must have at least one iteration")
+        self.iter_n = iter_n
+        if opt_n < 1:
+            raise ValueError("Must have at least one optimization step per iteration")
+        self.opt_n = opt_n
+        if init_size < 1:
+            raise ValueError("Initial size has to be at least one")
+        self.init_size = init_size
+        self.clamp = clamp
+        self.transforms = transform
+        self.reg = reg
 
-    def visualize(self) -> Tensor:
-        """Perform visualization.
+    def opt_step(self, opt_img: Tensor) -> Tensor:
+        """Performs a single optimization step.
 
-        Returns: a tensor of dim (h, w, c) of the feature visualization
+        Args:
+            opt_img: the tensor to optimize, of shape (c, w, h)
+
+        Returns:
+            the optimized image as tensor of shape (c, w, h)
 
         """
+        # Make sure all layers are in evaluation mode
         for layer in self.layers:
             layer.eval()
+
+        # Clean up and prepare image
+        opt_img = opt_img.unsqueeze(dim=0).detach().requires_grad_(True)
+
+        # Optimizer for image
+        optimizer = torch.optim.Adam(
+            [opt_img], lr=self.lr, weight_decay=self.weight_decay
+        )
+
+        for _ in range(self.opt_n):
+            # Reset gradient
+            optimizer.zero_grad()
+
+            # Do a forward pass
+            out = opt_img
+            for layer in self.layers:
+                out = layer(out)
+
+            out = out.squeeze(dim=0)
+
+            # Calculate loss (mean of output of the last layer w.r.t to our mask)
+
+            loss = -((self.top_layer_selector.get_mask(out.size()) * out).mean())
+
+            loss = loss.unsqueeze(dim=0)
+            if self.reg is not None:
+                loss += self.reg.loss(opt_img)
+            # Backward pass
+            loss.backward()
+            # Update image
+            optimizer.step()
+
+        if self.clamp:
+            opt_img = opt_img.clamp(min=0, max=1)
+        return opt_img.squeeze(dim=0).detach()
+
+    def visualize(self) -> Tensor:
+        device, dtype = tensor_defaults()
 
         # Starting image - tune uniform distribution weights if necessary
         img = np.uint8(
             np.random.uniform(150, 180, (self.init_size, self.init_size, 3))
         ) / float(255)
+        opt_img = torch.from_numpy(img).permute((2, 0, 1)).to(dtype).to(device)
 
-        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
+        for n in range(self.iter_n):
+            # Optimization step
+            opt_img = self.opt_step(opt_img)
 
-        for i in range(self.num_iters):
-            opt_res = (
-                torch.from_numpy(img)
-                .float()
-                .permute(2, 0, 1)
-                .unsqueeze(dim=0)
-                .to(device)
-            )
-            opt_res.requires_grad_(True)
+            # Transformation step, if necessary
+            if n + 1 < self.iter_n and self.transforms is not None:
+                img = opt_img.permute((1, 2, 0)).detach().cpu().numpy()
+                img = self.transforms.transform(img)
+                opt_img = torch.from_numpy(img).permute(2, 0, 1).to(dtype).to(device)
 
-            # Optimizer for image
-            optimizer = torch.optim.Adam(
-                [opt_res], lr=self.lr, weight_decay=self.weight_decay
-            )
-
-            for _ in range(self.steps_per_iter):
-                # Reset gradient
-                optimizer.zero_grad()
-
-                # Do a forward pass
-                out = opt_res
-                for layer in self.layers:
-                    out = layer(out)
-
-                # Calculate loss (mean of output of the last layer w.r.t to our mask)
-                loss = -(
-                    self.top_layer_selector.get_mask(out.size()[1:]) * out[0]
-                ).mean()
-                # Backward pass
-                loss.backward()
-                # Update image
-                optimizer.step()
-
-            if i + 1 < self.num_iters:
-                img = opt_res.squeeze(dim=0).permute(1, 2, 0).detach().cpu().numpy()
-                if self.iter_transform is not None:
-                    img = self.iter_transform.transform(img)
-
-        return opt_res.squeeze(dim=0).permute(1, 2, 0).detach().cpu()
+        return opt_img.permute((1, 2, 0)).detach().cpu()
 
 
 class SaliencyMap(Attribution):

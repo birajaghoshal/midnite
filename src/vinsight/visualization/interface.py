@@ -11,7 +11,13 @@ from torch.nn import Module
 
 
 class LayerSplit(ABC):
-    """Abstract base class for splits of a layer."""
+    """Abstract base class for splits of a layer.
+
+    A 'split' represents a way to 'slice the cube' of the spatial and
+    channel positions of a layer. For more information, see
+    https://distill.pub/2018/building-blocks/
+
+    """
 
     @abstractmethod
     def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
@@ -44,14 +50,12 @@ class LayerSplit(ABC):
 class NeuronSplit(LayerSplit):
     """Split a layer neuron-wise, i.e. per single value."""
 
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
+    def get_split(self, size: List[int]) -> List[Tensor]:
         indexes = product(*map(range, size))
         return list(map(lambda idx: self.get_mask(idx, size), indexes))
 
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
-        if not len(index) == 3:
-            raise ValueError("Index has to have 3 dimensions")
-        mask = torch.zeros(*size)
+    def get_mask(self, index: List[int], size: List[int]) -> Tensor:
+        mask = torch.zeros(tuple(size))
         mask[tuple(index)] = 1
         return mask
 
@@ -86,11 +90,12 @@ class ChannelSplit(LayerSplit):
         return mask
 
 
+# TODO group split with matrix factorization
 # class GroupSplit(LayerSplit):
 
 
 class NeuronSelector:
-    """Select a neurons according to a specific split"""
+    """Selects a number of neurons according to a specific split"""
 
     def __init__(self, layer_split: LayerSplit, element: List[int]):
         """
@@ -131,6 +136,8 @@ class Attribution(ABC):
              through the network
 
         """
+        if len(top_layers) == 0:
+            raise ValueError("Must specify at least one top layer")
         self.layers = top_layers
         self.bottom_layer_split = bottom_layer_split
 
@@ -164,5 +171,7 @@ class Activation(ABC):
              extracted
 
         """
+        if len(layers) == 0:
+            raise ValueError("Must specify at least one layer")
         self.layers = layers
         self.top_layer_selector = top_layer_selector

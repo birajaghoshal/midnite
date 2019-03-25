@@ -11,6 +11,8 @@ from PIL import Image
 from torch import Tensor
 from torchvision.transforms import Normalize
 
+from vinsight import utils
+
 
 class DataConfig(Enum):
     """Available data configs for networks."""
@@ -64,8 +66,6 @@ def get_example_from_path(path_to_img: str, config: DataConfig) -> Tensor:
     abs_path_to_img = Path(path_to_img).resolve()
 
     img = Image.open(abs_path_to_img)
-    # Workaround to check default tensor device as there is no method for it
-    device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
 
     if config is DataConfig.ALEX_NET:
         img.convert("RGB")
@@ -85,7 +85,11 @@ def get_example_from_path(path_to_img: str, config: DataConfig) -> Tensor:
     else:
         raise ValueError("Invalid config.")
 
-    return torch.unsqueeze(img, dim=0).float().requires_grad_(False).to(device)
+    device, dtype = utils.tensor_defaults()
+
+    return (
+        torch.unsqueeze(img, dim=0).float().requires_grad_(False).to(dtype).to(device)
+    )
 
 
 def get_random_example(config: DataConfig) -> Tensor:
@@ -94,8 +98,6 @@ def get_random_example(config: DataConfig) -> Tensor:
     Returns: a tensor of size (1, 3, 227, 227) that represents a random image
 
     """
-    # Workaround to check default tensor device as there is no method for it
-    device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
 
     if config is DataConfig.ALEX_NET:
         random_img = torch.div(
@@ -111,4 +113,12 @@ def get_random_example(config: DataConfig) -> Tensor:
     else:
         raise ValueError("Invalid config.")
 
-    return torch.unsqueeze(random_img, dim=0).float().requires_grad_(False).to(device)
+    device, dtype = utils.tensor_defaults()
+
+    return (
+        torch.unsqueeze(random_img, dim=0)
+        .float()
+        .requires_grad_(False)
+        .to(dtype)
+        .to(device)
+    )
