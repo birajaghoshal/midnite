@@ -141,17 +141,6 @@ class PixelActivationOpt(Activation):
         return opt_res.squeeze(dim=0).permute(1, 2, 0).detach().cpu()
 
 
-class Flatten(Module):
-    """One layer module that flattens its input.
-    This class is used to flatten the output of a layer split for saliency computation."""
-
-    def __init__(self):
-        super(Flatten, self).__init__()
-
-    def forward(self, x):
-        return x.view(x.size(0), -1)
-
-
 class SaliencyMap(Attribution):
     """computes a saliency map for a selected class"""
 
@@ -178,18 +167,20 @@ class SaliencyMap(Attribution):
             selected_class: class for which the saliency is computed
             input_tensor: input image as torch tensor
         """
+        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
 
-        features = Sequential(*self.bottom_layers)(input_tensor)
+        features = Sequential(*self.bottom_layers)(input_tensor.to(device))
         output = Sequential(*self.layers)(features)
 
         class_score = output[0, int(selected_class)]
         _, N, H, W = features.size()
 
-        # computes and returns the sum of gradients of outputs w.r.t. the inputs
+        # computes and returns the sum of gradients of the class score
+        # w.r.t. the features of the selected layer
         grads = torch.autograd.grad(class_score, features)
         w = grads[0][0].mean(-1).mean(-1)
         sal_map = torch.matmul(w, features.view(N, H * W))
         sal_map = sal_map.view(H, W).detach()
-        sal_map = torch.max(sal_map, torch.zeros_like(sal_map))
+        sal_map = torch.max(sal_map, torch.zeros_like(sal_map).to(device)).cpu()
 
         return sal_map
