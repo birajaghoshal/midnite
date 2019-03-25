@@ -46,7 +46,7 @@ class TVReg(LossTerm):
 
     """
 
-    def __init__(self, coefficient: float = 0.01, beta: float = 2.0):
+    def __init__(self, coefficient: float = 0.1, beta: float = 2.0):
         super().__init__(coefficient)
         self.beta = beta
 
