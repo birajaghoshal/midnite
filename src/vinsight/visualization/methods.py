@@ -6,6 +6,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+from numpy import random
 from torch import Tensor
 from torch.nn import Module
 from torch.nn import Sequential
@@ -29,7 +30,8 @@ class LossTerm(ABC):
         """Calculates the loss for an output.
 
         Args:
-            out: the tensor to calculate the loss for, of shape (c, w, h)
+            out: the tensor to calculate the loss for, of shape
+             (channels, height,width)
 
         Returns:
             a tensor representing the loss
@@ -86,8 +88,8 @@ class PixelActivation(Activation):
             opt_n: number of optimization steps per iteration
             init_size: initial width/height of visualization
             clamp: clamp image to [0, 1] space (natural image)
-            transform: transformations after each step
-            reg: regularization term
+            transform: optional transformations after each step
+            reg: optional regularization term
 
         """
         super().__init__(layers, top_layer_selector)
@@ -110,10 +112,10 @@ class PixelActivation(Activation):
         """Performs a single optimization step.
 
         Args:
-            opt_img: the tensor to optimize, of shape (c, w, h)
+            opt_img: the tensor to optimize, of shape (c, h, w)
 
         Returns:
-            the optimized image as tensor of shape (c, w, h)
+            the optimized image as tensor of shape (c, h, w)
 
         """
         # Make sure all layers are in evaluation mode
@@ -155,14 +157,16 @@ class PixelActivation(Activation):
             opt_img = opt_img.clamp(min=0, max=1)
         return opt_img.squeeze(dim=0).detach()
 
-    def visualize(self) -> Tensor:
+    def visualize(self, input_: Optional[Tensor] = None) -> Tensor:
         device, dtype = tensor_defaults()
 
-        # Starting image - tune uniform distribution weights if necessary
-        img = np.uint8(
-            np.random.uniform(150, 180, (self.init_size, self.init_size, 3))
-        ) / float(255)
-        opt_img = torch.from_numpy(img).permute((2, 0, 1)).to(dtype).to(device)
+        if input_ is None:
+            # Create uniform random starting image
+            input_ = torch.from_numpy(
+                np.uint8(random.uniform(150, 180, (self.init_size, self.init_size, 3)))
+                / float(255)
+            )
+        opt_img = input_.permute((2, 0, 1)).to(dtype).to(device)
 
         for n in range(self.iter_n):
             # Optimization step

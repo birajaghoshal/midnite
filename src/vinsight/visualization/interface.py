@@ -3,6 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 from itertools import product
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 import torch
@@ -175,3 +176,17 @@ class Activation(ABC):
             raise ValueError("Must specify at least one layer")
         self.layers = layers
         self.top_layer_selector = top_layer_selector
+
+    @abstractmethod
+    def visualize(self, input_: Optional[Tensor] = None) -> Tensor:
+        """Visualizes an activation.
+
+        Args:
+            input_: an optional input image, usually a prior. Of shape (height, width,
+             channels).
+
+        Returns:
+            an activation visualization of shape (h, w, c).
+
+        """
+        pass
