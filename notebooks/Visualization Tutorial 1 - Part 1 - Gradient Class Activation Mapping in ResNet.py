@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # vinsight - Visualization Tutorial 1
+# # vinsight - Visualization Tutorial 1 - Part 1
 # 
 # in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 
@@ -10,7 +10,7 @@
 # Demonstration of visualizing the class activation mapping for an image classification example with ResNet.
 # 
 
-# In[2]:
+# In[10]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -22,8 +22,9 @@ import data_utils
 from data_utils import DataConfig
 from model_utils import ModelConfig
 from model_utils import split_model_with_classification
-from PIL import Image
 import plot_utils
+from PIL import Image
+
 from vinsight.visualization import SaliencyMap
 from vinsight.visualization import SpatialSplit
 from vinsight.visualization import ChannelSplit
@@ -42,7 +43,7 @@ from torchvision import models
 # 
 # In our example we use a pretrained ResNet for demonstration.
 
-# In[3]:
+# In[2]:
 
 
 device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
@@ -55,7 +56,7 @@ model.to(device);
 
 # ## Step 2: Load Image
 
-# In[4]:
+# In[3]:
 
 
 img_path = "../data/imagenet_example_283.jpg"
@@ -78,13 +79,19 @@ H, W = img.size
 # ### Visualization of layer attributions
 # it is possible to visualize attributions of a single layer, or from several layers together. In this example we demonstrate both.
 
-# In[5]:
+# In[4]:
 
 
 # example ResNet selection
 selected_layer_single = 8
 selected_layer_group = [5, 6, 7]
 
+
+# ### Single layer attribution
+# <img src="resources/class_activation_mapping_single.png">
+# 
+# ### Group layer attribution
+# <img src="resources/class_activation_mapping_group.png">
 
 # ## Step 4: Select layer splits - Class Visualization example
 # in this example we want to analyze the top classes of the classification output. 
@@ -93,7 +100,11 @@ selected_layer_group = [5, 6, 7]
 # 
 # Additionally, it is possible to create a bottom_layer_selector to visualize the class activations in greater detail, e.g. channel-wise or neuron-wise.
 
-# In[6]:
+# ### Possible splits for the NeuronSelector
+# <img src="resources/splits.png">
+# source: https://distill.pub/2018/building-blocks/
+
+# In[5]:
 
 
 top_layer_selector = NeuronSelector(NeuronSplit(), [283])
@@ -103,17 +114,18 @@ bottom_layer_selector = NeuronSelector(NeuronSplit(), [6, 0, 0])
 # ## Step 5: Split the model into base_layers and inspection_layers
 # splitting the model with classification returns a list of base layers up to the selected single layer and the list of layers (inspection layers) from the selected layer until the last layer of the model, the classification layer. The output of the inspected layers is a classification with dimension (1, 1000)
 
-# In[7]:
+# In[6]:
 
 
-base_layers, inspected_layers = split_model_with_classification(model, ModelConfig.RES_NET, selected_layer_single)
+base_layers, inspected_layers = split_model_with_classification(
+    model, ModelConfig.RES_NET, selected_layer_single)
 
 
 # ## Step 6: Generate Saliency Map
 # 
 # ### Example 1: Compute saliency map without bottom_layer_selector
 
-# In[8]:
+# In[7]:
 
 
 saliency = SaliencyMap(inspected_layers, top_layer_selector, base_layers, bottom_layer_selector=None).visualize(input_)
@@ -129,7 +141,7 @@ plot_utils.plot_saliency(sal_map, img, selected_layer_single, output_layer="clas
 # with this bottom_layer_split we analyse the total saliencies from above 
 # (total feature map with dimension (c, h, w)) and select a specific neuron which we want to inspect w.r.t. the top_layer_selector, but isolated from the rest of the feature map.
 
-# In[9]:
+# In[8]:
 
 
 saliency = SaliencyMap(inspected_layers, top_layer_selector, base_layers, bottom_layer_selector).visualize(input_)
@@ -145,7 +157,7 @@ plot_utils.plot_saliency(sal_map, img, selected_layer_single, output_layer="clas
 # This example demonstrates how to analyse attributions of several layers together, in other word, to compute their mean saliency w.r.t to the classification output. 
 # Additionally we apply a bottom layer neuron split.
 
-# In[10]:
+# In[9]:
 
 
 saliency_collector = torch.zeros((1, 1, H, W))

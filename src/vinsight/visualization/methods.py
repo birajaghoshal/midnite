@@ -218,6 +218,9 @@ class SaliencyMap(Attribution):
 
         # select the split of the output, for which the saliency should be computed
         score = self.top_layer_selector.get_value(output.squeeze())
+        # if top level split was a channel or spatial split, values need to be summed up to get single value
+        if not score.size() == 0:
+            score = score.sum(dim=0).sum(dim=0)
 
         _, N, H, W = features.size()
 

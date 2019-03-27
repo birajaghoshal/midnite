@@ -13116,7 +13116,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="vinsight---Visualization-Tutorial-1">vinsight - Visualization Tutorial 1<a class="anchor-link" href="#vinsight---Visualization-Tutorial-1">&#182;</a></h1><p>in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.</p>
+<h1 id="vinsight---Visualization-Tutorial-1---Part-1">vinsight - Visualization Tutorial 1 - Part 1<a class="anchor-link" href="#vinsight---Visualization-Tutorial-1---Part-1">&#182;</a></h1><p>in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.</p>
 <h2 id="Gradient-Class-Activation-Mapping-(Grad-CAM)-with-ResNet">Gradient Class Activation Mapping (Grad-CAM) with ResNet<a class="anchor-link" href="#Gradient-Class-Activation-Mapping-(Grad-CAM)-with-ResNet">&#182;</a></h2><p>Demonstration of visualizing the class activation mapping for an image classification example with ResNet.</p>
 
 </div>
@@ -13124,7 +13124,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> inline  
@@ -13136,8 +13136,9 @@ div#notebook {
 <span class="kn">from</span> <span class="nn">data_utils</span> <span class="k">import</span> <span class="n">DataConfig</span>
 <span class="kn">from</span> <span class="nn">model_utils</span> <span class="k">import</span> <span class="n">ModelConfig</span>
 <span class="kn">from</span> <span class="nn">model_utils</span> <span class="k">import</span> <span class="n">split_model_with_classification</span>
-<span class="kn">from</span> <span class="nn">PIL</span> <span class="k">import</span> <span class="n">Image</span>
 <span class="kn">import</span> <span class="nn">plot_utils</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="k">import</span> <span class="n">Image</span>
+
 <span class="kn">from</span> <span class="nn">vinsight.visualization</span> <span class="k">import</span> <span class="n">SaliencyMap</span>
 <span class="kn">from</span> <span class="nn">vinsight.visualization</span> <span class="k">import</span> <span class="n">SpatialSplit</span>
 <span class="kn">from</span> <span class="nn">vinsight.visualization</span> <span class="k">import</span> <span class="n">ChannelSplit</span>
@@ -13166,7 +13167,9 @@ div#notebook {
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>/home/christina/Development/interpretability-framework/src
+<pre>The autoreload extension is already loaded. To reload it, use:
+  %reload_ext autoreload
+/home/christina/Development/interpretability-framework/src
 </pre>
 </div>
 </div>
@@ -13185,7 +13188,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([])</span><span class="o">.</span><span class="n">is_cuda</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
@@ -13210,7 +13213,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">img_path</span> <span class="o">=</span> <span class="s2">&quot;../data/imagenet_example_283.jpg&quot;</span>
@@ -13249,7 +13252,7 @@ Input: a list of layers which should be visualized as attribution.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># example ResNet selection</span>
@@ -13265,6 +13268,15 @@ Input: a list of layers which should be visualized as attribution.
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Single-layer-attribution">Single layer attribution<a class="anchor-link" href="#Single-layer-attribution">&#182;</a></h3><p><img src="resources/class_activation_mapping_single.png"></p>
+<h3 id="Group-layer-attribution">Group layer attribution<a class="anchor-link" href="#Group-layer-attribution">&#182;</a></h3><p><img src="resources/class_activation_mapping_group.png"></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Step-4:-Select-layer-splits---Class-Visualization-example">Step 4: Select layer splits - Class Visualization example<a class="anchor-link" href="#Step-4:-Select-layer-splits---Class-Visualization-example">&#182;</a></h2><p>in this example we want to analyze the top classes of the classification output. 
 This means, we create a top-layer-selector with a Neuronsplit with the class of choice as split element.
 class 283 is the max classification for the imagenet_example_283.</p>
@@ -13273,9 +13285,18 @@ class 283 is the max classification for the imagenet_example_283.</p>
 </div>
 </div>
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Possible-splits-for-the-NeuronSelector">Possible splits for the NeuronSelector<a class="anchor-link" href="#Possible-splits-for-the-NeuronSelector">&#182;</a></h3><p><img src="resources/splits.png">
+source: <a href="https://distill.pub/2018/building-blocks/">https://distill.pub/2018/building-blocks/</a></p>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">top_layer_selector</span> <span class="o">=</span> <span class="n">NeuronSelector</span><span class="p">(</span><span class="n">NeuronSplit</span><span class="p">(),</span> <span class="p">[</span><span class="mi">283</span><span class="p">])</span>
@@ -13297,10 +13318,11 @@ class 283 is the max classification for the imagenet_example_283.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">base_layers</span><span class="p">,</span> <span class="n">inspected_layers</span> <span class="o">=</span> <span class="n">split_model_with_classification</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ModelConfig</span><span class="o">.</span><span class="n">RES_NET</span><span class="p">,</span> <span class="n">selected_layer_single</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">base_layers</span><span class="p">,</span> <span class="n">inspected_layers</span> <span class="o">=</span> <span class="n">split_model_with_classification</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span> <span class="n">ModelConfig</span><span class="o">.</span><span class="n">RES_NET</span><span class="p">,</span> <span class="n">selected_layer_single</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13317,7 +13339,7 @@ class 283 is the max classification for the imagenet_example_283.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">SaliencyMap</span><span class="p">(</span><span class="n">inspected_layers</span><span class="p">,</span> <span class="n">top_layer_selector</span><span class="p">,</span> <span class="n">base_layers</span><span class="p">,</span> <span class="n">bottom_layer_selector</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="n">input_</span><span class="p">)</span>
@@ -13367,7 +13389,7 @@ class 283 is the max classification for the imagenet_example_283.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">SaliencyMap</span><span class="p">(</span><span class="n">inspected_layers</span><span class="p">,</span> <span class="n">top_layer_selector</span><span class="p">,</span> <span class="n">base_layers</span><span class="p">,</span> <span class="n">bottom_layer_selector</span><span class="p">)</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="n">input_</span><span class="p">)</span>
@@ -13417,7 +13439,7 @@ Additionally we apply a bottom layer neuron split.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency_collector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">))</span>

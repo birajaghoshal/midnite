@@ -77,7 +77,7 @@ def split_model_without_classification(model, model_config, layer_idx, output_id
         layers: list of layers from the selected layer at layer_idx up to the output layer at output_idx
     """
     if model_config == ModelConfig.ALEX_NET:
-        if layer_idx not in range(13):
+        if layer_idx not in range(13) or output_idx not in range(13):
             raise ValueError("Not a valid layer selection AlexNet.")
 
         base_layers = list(model.features.children())[:layer_idx]

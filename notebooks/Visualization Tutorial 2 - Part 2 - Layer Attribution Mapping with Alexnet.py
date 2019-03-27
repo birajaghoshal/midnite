@@ -70,7 +70,10 @@ img = Image.open(img_path)
 H, W = img.size
 
 
-# ## Step 3: Select layer of interest
+# ## Layer attribution mapping
+# <img src="resources/Layer_Attribution_Mapping.png">
+
+# ## Step 3: Select Layer of Interest
 # 
 # in AlexNet there are 3 main layers (feature, avgpool and classification). For visualization we are interested in the feature layers, which consist of 13 layers. 
 # **Note: choose layers between 1 and 13 for AlexNet**
@@ -78,14 +81,14 @@ H, W = img.size
 # ### Single layer visualization
 # for example: we select layer number 5 as single layer (selected_layer) and want to compute its attribution to layer number 12 (output_layer).
 
-# In[23]:
+# In[4]:
 
 
 selected_input_layer = 5
 selected_output_layer = 10
 
 
-# ## Step 4: Select layer splits - Feature layer example
+# ## Step 4: Specify Layer Selectors
 # in this example we want to analyze the attribution of the selected layer 5 to layer 12. In other word, we want to know how much layer 5 contributed to layer 12, and more precisely how much the the bottom_layer_split of layer 5 contributed to the top_layer_split of layer 12.
 # 
 # This means, we create a top-layer-selector with a Neuronsplit with the neuron of choice as split element.
@@ -96,20 +99,24 @@ selected_output_layer = 10
 # the bottom_layer_selector needs to be an appropriate split for the selected_input_layer, 
 # and top_layer_selector needs to be an appropriate split for the selected_output_layer.**
 
-# In[24]:
+# ### Possible splits for a NeuronSelector
+# <img src="resources/splits.png">
+# source: https://distill.pub/2018/building-blocks/
+
+# In[5]:
 
 
 top_layer_selector = NeuronSelector(NeuronSplit(), [0, 0, 0])
 bottom_layer_selector = NeuronSelector(NeuronSplit(), [0, 0, 0])
 
 
-# ## Step 5: Split the model into base_layers and inspection_layers
+# ## Step 5: Split the Model into base_layers and inspection_layers
 # splitting the model with classification returns a list of base layers up to the selected single layer and the list of layers (inspection layers) from the selected layer until the specified output layer.
 
-# In[25]:
+# In[6]:
 
 
-base_layers, inspected_layers = split_model_without_classification(model, ModelConfig.ALEX_NET, selected_input_layer, selected_output_layer)
+base_layers, inspection_layers = split_model_without_classification(model, ModelConfig.ALEX_NET, selected_input_layer, selected_output_layer)
 
 
 # ## Step 6: Compute Saliency
@@ -117,10 +124,10 @@ base_layers, inspected_layers = split_model_without_classification(model, ModelC
 # ### bottom layer NeuronSplit with top layer NeuronSplit
 # Computing the saliency for the first neuron of layer 5 (NeuronSplit [0, 0, 0]) with respect to the first neuron of layer 10 (NeuronSplit [0, 0, 0]). We can see that this neuron detects the right eye of the cat.
 
-# In[26]:
+# In[7]:
 
 
-saliency = SaliencyMap(inspected_layers, top_layer_selector, base_layers, bottom_layer_selector).visualize(input_)
+saliency = SaliencyMap(inspection_layers, top_layer_selector, base_layers, bottom_layer_selector).visualize(input_)
         
 # upsample saliency to the pixel dimensions of the image
 sal_map = interpolate(saliency.unsqueeze(dim=0).unsqueeze(dim=0), size=(H, W), mode='bilinear', align_corners=True)
@@ -129,10 +136,10 @@ sal_map = interpolate(saliency.unsqueeze(dim=0).unsqueeze(dim=0), size=(H, W), m
 plot_utils.plot_saliency(sal_map, img, selected_input_layer, output_layer=selected_output_layer)
 
 
-# ## Example 2 (Steps 3-6): top layer ChannelSplit and bottom layer ChannelSplit
+# ## Example 2 : top-layer Channel Split and bottom-layer Channel Split (Steps 3-6)
 # which activations did channel 90 of layer 5 have w.r.t. to channel 90 of layer 10?
 
-# In[106]:
+# In[8]:
 
 
 # select layers of interest
@@ -147,7 +154,7 @@ base_layers, inspected_layers = split_model_without_classification(
     model, ModelConfig.ALEX_NET, selected_input_layer, selected_output_layer)
 
 
-# In[108]:
+# In[9]:
 
 
 # compute saliency
@@ -160,10 +167,10 @@ sal_map = interpolate(saliency.unsqueeze(dim=0).unsqueeze(dim=0), size=(H, W), m
 plot_utils.plot_saliency(sal_map, img, selected_input_layer, output_layer=selected_output_layer)
 
 
-# ## Example 3 (Steps 3-6): top layer NeuronSplit (class) and bottom layer SpacialSplit
+# ## Example 3 : top layer Neuron Split and bottom layer Spacial Split (Steps 3-6)
 # How much did layer the spatial dimension [3,3] of layer 10 contribute to the class activation score of the classification layer.
 
-# In[167]:
+# In[10]:
 
 
 # select layers of interest
@@ -177,7 +184,7 @@ bottom_layer_selector = NeuronSelector(SpatialSplit(), [3, 3])
 base_layers, inspected_layers = split_model_with_classification(model, ModelConfig.ALEX_NET, selected_input_layer)
 
 
-# In[168]:
+# In[11]:
 
 
 saliency = SaliencyMap(inspected_layers, top_layer_selector, base_layers, bottom_layer_selector).visualize(input_)
@@ -186,5 +193,5 @@ saliency = SaliencyMap(inspected_layers, top_layer_selector, base_layers, bottom
 sal_map = interpolate(saliency.unsqueeze(dim=0).unsqueeze(dim=0), size=(H, W), mode='bilinear', align_corners=True)
         
 # plot saliencies with the input image
-plot_utils.plot_saliency(sal_map, img, selected_input_layer, output_layer=selected_output_layer)
+plot_utils.plot_saliency(sal_map, img, selected_input_layer, output_layer="classification")
 
