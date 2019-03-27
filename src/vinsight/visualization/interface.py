@@ -120,6 +120,19 @@ class NeuronSelector:
         """
         return self.layer_split.get_mask(self.element, size)
 
+    def get_value(self, input_tensor: Tensor) -> Tensor:
+        """Retrieves the value of the element in the input tensor.
+        Args:
+            input_tensor: input from which the element should be selected.
+                input describes the layer output.
+        Returns:
+            the value of the element in the input tensor,
+            if Neuronsplit returns single value tensor,
+            if Channelsplit returns two dimensional tensor,
+            if Spacialsplit returns one dimensional tensor.
+        """
+        return input_tensor[tuple(self.element)]
+
 
 class Attribution(ABC):
     """Abstract base class for attribution methods.
@@ -129,25 +142,30 @@ class Attribution(ABC):
 
     """
 
-    def __init__(self, top_layers: List[Module], bottom_layer_split: LayerSplit):
+    def __init__(
+        self,
+        layers: List[Module],
+        top_layer_selector: NeuronSelector,
+        base_layers: List[Module],
+    ):
         """
         Args:
-            top_layers: the list of adjacent layers from ModelSplit
-            bottom_layer_split: the split starting from which information are propagated
-             through the network
+            layers: the list of ajacent layers to execute the method on
+            top_layer_selector: the target split for analyzing attribution
+            base_layers: list of previous layers up to the bottom layer
 
         """
-        if len(top_layers) == 0:
+        if len(layers) == 0:
             raise ValueError("Must specify at least one top layer")
-        self.layers = top_layers
-        self.bottom_layer_split = bottom_layer_split
+        self.layers = layers
+        self.top_layer_selector = top_layer_selector
+        self.base_layers = base_layers
 
     @abstractmethod
-    def visualize(self, selected_class: int, input_: Tensor) -> Tensor:
+    def visualize(self, input_: Tensor) -> Tensor:
         """Abstract method to call attribution method
 
         Args:
-            selected_class: the class for which the saliency should be computed
             input_: the input tensor
 
         Returns: a tensor showing attribution

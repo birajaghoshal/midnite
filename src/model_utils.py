@@ -23,7 +23,9 @@ class ModelConfig(Enum):
     RES_NET = (auto(),)
 
 
-def split_model(model: models, model_config: ModelConfig, layer_idx: int):
+def split_model_with_classification(
+    model: models, model_config: ModelConfig, layer_idx: int
+):
     """ Generates a model split at a  selected layer
     Args:
         model: model to be split
@@ -36,27 +38,55 @@ def split_model(model: models, model_config: ModelConfig, layer_idx: int):
     if model_config == ModelConfig.ALEX_NET:
         if layer_idx not in range(13):
             raise ValueError("Not a valid layer selection AlexNet.")
-        else:
-            bottom_layers = list(model.features.children())[:layer_idx]
-            top_layers = (
-                list(model.features.children())[layer_idx:-1]
-                + list(model.features.children())[-1:]
-                + list(model.avgpool.children())[:]
-                + [Flatten()]
-                + list(model.classifier.children())[:]
-            )
-            return bottom_layers, top_layers
+
+        base_layers = list(model.features.children())[:layer_idx]
+        layers = (
+            list(model.features.children())[layer_idx:-1]
+            + list(model.features.children())[-1:]
+            + list(model.avgpool.children())[:]
+            + [Flatten()]
+            + list(model.classifier.children())[:]
+        )
+        return base_layers, layers
 
     elif model_config == ModelConfig.RES_NET:
         if layer_idx not in range(9):
             raise ValueError("Not a valid layer selection for ResNet.")
-        bottom_layers = list(model.children())[:layer_idx]
-        top_layers = (
+
+        base_layers = list(model.children())[:layer_idx]
+        layers = (
             list(model.children())[layer_idx:-1]
             + [Flatten()]
             + list(model.children())[-1:]
         )
-        return bottom_layers, top_layers
+        return base_layers, layers
 
     else:
-        raise ValueError("Invalid model for this example.")
+        raise ValueError("Invalid model config.")
+
+
+def split_model_without_classification(model, model_config, layer_idx, output_idx):
+    """ Generates a model split at a  selected layer
+    Args:
+        model: model to be split
+        model_config: Enum type of the model (AlexNet, ResNet etc.)
+        layer_idx: index of the layer where model should be split
+        output_idx: index of the output layer
+    Return:
+        base_layers: list of layers from first layer of the model to the selected layer of inspection
+        layers: list of layers from the selected layer at layer_idx up to the output layer at output_idx
+    """
+    if model_config == ModelConfig.ALEX_NET:
+        if layer_idx not in range(13):
+            raise ValueError("Not a valid layer selection AlexNet.")
+
+        base_layers = list(model.features.children())[:layer_idx]
+
+        layers = (
+            list(model.features.children())[layer_idx:output_idx]
+            + list(model.features.children())[output_idx : output_idx + 1]
+        )
+        return base_layers, layers
+
+    else:
+        raise ValueError("Invalid model config.")

@@ -10,9 +10,8 @@ from torch import Tensor
 def plot_saliency(
     saliency: Tensor,
     img: Image,
-    output_class: int,
-    output_score: int,
     sel_layer: List[int],
+    output_layer,
     plot_with_image=True,
 ):
     """Plots the saliency map.
@@ -31,10 +30,10 @@ def plot_saliency(
     sal_map = sal_map.resize(img.size, resample=Image.LINEAR)
 
     plt.title(
-        "Activation map for class {} \n "
-        "predicted with {:.1f}% \n "
-        "for layers: {}".format(output_class, 100 * float(output_score), sel_layer)
+        "Activation map for layers: {} "
+        "with respect to layer: {}".format(sel_layer, output_layer)
     )
+
     if plot_with_image:
         plt.imshow(img)
     plt.imshow(np.array(sal_map), alpha=0.5, cmap="jet")

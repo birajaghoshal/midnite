@@ -14,7 +14,6 @@ from torch.nn import Sequential
 from vinsight.utils import tensor_defaults
 from vinsight.visualization import Activation
 from vinsight.visualization import Attribution
-from vinsight.visualization import LayerSplit
 from vinsight.visualization import NeuronSelector
 from vinsight.visualization.transforms import TransformStep
 
@@ -182,43 +181,59 @@ class PixelActivation(Activation):
 
 
 class SaliencyMap(Attribution):
-    """computes a saliency map for a selected class"""
+    """computes a saliency map of a bottom layer selection wrt the top layer selection.
+        How much does neuron x of layer X (bottom layer selection)
+        contribute to neuron y of layer Y (top layer selection)?
+    """
 
     def __init__(
         self,
         layers: List[Module],
-        bottom_layers: List[Module],
-        bottom_layer_split: LayerSplit,
+        top_layer_selector: NeuronSelector,
+        base_layers: List[Module],
+        bottom_layer_selector,
     ):
         """
         Args:
-            layers: the list of adjacent layers from ModelSplit
-            bottom_layers: list of lower level layers from ModelSplit
-            bottom_layer_split: the split starting from which information are propagated
-             through the network
+            layers: the list of layers from selected layer until output layer (model split)
+            top_layer_selector: specifies the split of interest in the output layer
+            base_layers: list of layers from first layer of the model up to the selected layer
+            bottom_layer_selector: specifies the split of interest in the selected layer
 
         """
-        super().__init__(layers, bottom_layer_split)
-        self.bottom_layers = bottom_layers
+        super().__init__(layers, top_layer_selector, base_layers)
+        self.bottom_layer_selector = bottom_layer_selector
 
-    def visualize(self, selected_class, input_tensor: Tensor) -> Tensor:
+    def visualize(self, input_tensor: Tensor) -> Tensor:
         """generates a saliency tensor for selected_class
         Args:
-            selected_class: class for which the saliency is computed
             input_tensor: input image as torch tensor
         """
         device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
 
-        features = Sequential(*self.bottom_layers)(input_tensor.to(device))
+        # features of the selected layer
+        features = Sequential(*self.base_layers)(input_tensor)
+        # features of the output layer
         output = Sequential(*self.layers)(features)
 
-        class_score = output[0, int(selected_class)]
+        # select the split of the output, for which the saliency should be computed
+        score = self.top_layer_selector.get_value(output.squeeze())
+
         _, N, H, W = features.size()
 
-        # computes and returns the sum of gradients of the class score
+        # computes and returns the sum of gradients of the output layer score
         # w.r.t. the features of the selected layer
-        grads = torch.autograd.grad(class_score, features)
-        w = grads[0][0].mean(-1).mean(-1)
+        grads = torch.autograd.grad(score, features)
+
+        # if the bottom layer should additionally be split to make activations more precise
+        # otherwise standard spatial split on the input image dimensions
+        if self.bottom_layer_selector is None:
+            w = grads[0][0].mean(-1).mean(-1)
+        else:
+            split_mask = self.bottom_layer_selector.get_mask(features.squeeze().size())
+            grads = grads[0][0, :] * split_mask
+            w = grads.mean(-1).mean(-1)
+
         sal_map = torch.matmul(w, features.view(N, H * W))
         sal_map = sal_map.view(H, W).detach()
         sal_map = torch.max(sal_map, torch.zeros_like(sal_map).to(device)).cpu()
