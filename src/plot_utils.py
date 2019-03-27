@@ -30,7 +30,7 @@ def plot_saliency(
     sal_map = sal_map.resize(img.size, resample=Image.LINEAR)
 
     plt.title(
-        "Activation map for layers: {} "
+        "Activation map for layer: {} "
         "with respect to layer: {}".format(sel_layer, output_layer)
     )
 
