@@ -5,7 +5,7 @@ description = "This is a framework for visualization and uncertainty in CNNs."
 authors = ["Christina Aigner <christina@luminovo.ai >, Fabian Huch <fabian@luminovo.ai >"]
 
 [tool.poetry.dependencies]
-python = "^3.6.7"
+python = "^3.6"
 torch = "^1.0"
 numpy = "^1.16"
 pytest-mock = "^1.10"

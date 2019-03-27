@@ -738,8 +738,8 @@ version = "3.4.2"
 notebook = ">=4.4.1"
 
 [metadata]
-content-hash = "46ec113dbad4eca3f480966d1d274d465116a11e957ab003d32d0a672d76dd7c"
-python-versions = "^3.6.7"
+content-hash = "8ba2a112e48579028c6f87bb1cb5a2f86fe56d7e83ec629b3d14b55f3a4bbfa5"
+python-versions = "^3.6"
 
 [metadata.hashes]
 appnope = ["5b26757dc6f79a3b7dc9fab95359328d5747fcb2409d331ea66d0272b90ab2a0", "8b995ffe925347a2138d7ac0fe77155e4311a0ea6d6da4f5128fe4b3cbe5ed71"]
