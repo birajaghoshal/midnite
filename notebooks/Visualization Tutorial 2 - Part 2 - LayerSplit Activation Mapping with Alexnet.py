@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # vinsight - Visualization Tutorial 1
+# # vinsight - Visualization Tutorial 1 - Part 2
 # 
 # in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 
-# ## Gradient Class Activation Mapping (Grad-CAM) with ResNet
+# ## LayerSplit Activation Mapping with AlexNet
 # 
-# Demonstration of visualizing the class activation mapping for an image classification example with ResNet.
+# Demonstration of visualizing layer attribution, the activation mapping  between two specified layers and their splits. We umple with ResNet.
 # 
 # Additionally, you can test GradCAM AlexNet (see model_utils).
 

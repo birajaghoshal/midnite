@@ -10,7 +10,7 @@
 # Demonstration of visualizing the class activation mapping for an image classification example with ResNet.
 # 
 
-# In[3]:
+# In[2]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -42,7 +42,7 @@ from torchvision import models
 # 
 # In our example we use a pretrained ResNet for demonstration.
 
-# In[4]:
+# In[3]:
 
 
 device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
@@ -55,10 +55,10 @@ model.to(device);
 
 # ## Step 2: Load Image
 
-# In[6]:
+# In[4]:
 
 
-img_path = "../../data/imagenet_example_283.jpg"
+img_path = "../data/imagenet_example_283.jpg"
 #img_path = "../data/ood_example.jpg"
 
 # load image as torch tensor for computation, we can also load alexnet data for ResNet.
@@ -73,12 +73,12 @@ H, W = img.size
 # 
 # in ResNet, we have 9 layers, where 8 is the last feature layer and 10 the classification layer
 # Input: a list of layers which should be visualized as attribution.
-# **Note: choose a layers between 1 and 8 for ResNet**
+# **Note: choose layers between 1 and 8 for ResNet**
 
 # ### Visualization of layer attributions
 # it is possible to visualize attributions of a single layer, or from several layers together. In this example we demonstrate both.
 
-# In[70]:
+# In[5]:
 
 
 # example ResNet selection
@@ -87,13 +87,13 @@ selected_layer_group = [5, 6, 7]
 
 
 # ## Step 4: Select layer splits - Class Visualization example
-# in this example we want to analyze the top two classes of the classification output. 
+# in this example we want to analyze the top classes of the classification output. 
 # This means, we create a top-layer-selector with a Neuronsplit with the class of choice as split element.
 # class 283 is the max classification for the imagenet_example_283. 
 # 
 # Additionally, it is possible to create a bottom_layer_selector to visualize the class activations in greater detail, e.g. channel-wise or neuron-wise.
 
-# In[67]:
+# In[6]:
 
 
 top_layer_selector = NeuronSelector(NeuronSplit(), [283])
@@ -103,7 +103,7 @@ bottom_layer_selector = NeuronSelector(NeuronSplit(), [6, 0, 0])
 # ## Step 5: Split the model into base_layers and inspection_layers
 # splitting the model with classification returns a list of base layers up to the selected single layer and the list of layers (inspection layers) from the selected layer until the last layer of the model, the classification layer. The output of the inspected layers is a classification with dimension (1, 1000)
 
-# In[52]:
+# In[7]:
 
 
 base_layers, inspected_layers = split_model_with_classification(model, ModelConfig.RES_NET, selected_layer_single)
@@ -113,7 +113,7 @@ base_layers, inspected_layers = split_model_with_classification(model, ModelConf
 # 
 # ### Example 1: Compute saliency map without bottom_layer_selector
 
-# In[53]:
+# In[8]:
 
 
 saliency = SaliencyMap(inspected_layers, top_layer_selector, base_layers, bottom_layer_selector=None).visualize(input_)
@@ -129,7 +129,7 @@ plot_utils.plot_saliency(sal_map, img, selected_layer_single, output_layer="clas
 # with this bottom_layer_split we analyse the total saliencies from above 
 # (total feature map with dimension (c, h, w)) and select a specific neuron which we want to inspect w.r.t. the top_layer_selector, but isolated from the rest of the feature map.
 
-# In[68]:
+# In[9]:
 
 
 saliency = SaliencyMap(inspected_layers, top_layer_selector, base_layers, bottom_layer_selector).visualize(input_)
@@ -145,7 +145,7 @@ plot_utils.plot_saliency(sal_map, img, selected_layer_single, output_layer="clas
 # This example demonstrates how to analyse attributions of several layers together, in other word, to compute their mean saliency w.r.t to the classification output. 
 # Additionally we apply a bottom layer neuron split.
 
-# In[73]:
+# In[10]:
 
 
 saliency_collector = torch.zeros((1, 1, H, W))
