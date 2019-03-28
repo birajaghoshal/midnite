@@ -14,5 +14,5 @@ def tensor_defaults() -> Tuple[device, dtype]:
 
     """
     default = torch.tensor([])
-    device = "cuda" + str(torch.cuda.current_device()) if default.is_cuda else "cpu"
+    device = "cuda:" + str(torch.cuda.current_device()) if default.is_cuda else "cpu"
     return torch.device(device), default.dtype
