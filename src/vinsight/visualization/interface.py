@@ -31,7 +31,7 @@ class LayerSplit(ABC):
             a list of masks containing a mask for each split
 
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
@@ -45,7 +45,7 @@ class LayerSplit(ABC):
             a single split mask
 
         """
-        pass
+        raise NotImplementedError()
 
 
 class NeuronSplit(LayerSplit):
@@ -80,7 +80,7 @@ class ChannelSplit(LayerSplit):
     """Split a layer by its channels."""
 
     def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
-        indexes = map(lambda idx: [idx], range(size[1]))
+        indexes = map(lambda idx: [idx], range(size[0]))
         return list(map(lambda idx: self.get_mask(idx, size), indexes))
 
     def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
@@ -171,7 +171,7 @@ class Attribution(ABC):
         Returns: a tensor showing attribution
 
         """
-        pass
+        raise NotImplementedError()
 
 
 class Activation(ABC):
@@ -207,4 +207,4 @@ class Activation(ABC):
             an activation visualization of shape (h, w, c).
 
         """
-        pass
+        raise NotImplementedError()

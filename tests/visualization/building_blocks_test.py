@@ -45,6 +45,15 @@ def test_spatial_split():
     assert_array_equal(masks[3].numpy(), [[[0, 0], [0, 1]], [[0, 0], [0, 1]]])
 
 
+def test_spatial_split_dims():
+    """Check all spatial masks for all different dimensions"""
+    masks = SpatialSplit().get_split((3, 2, 1))
+
+    assert_that(masks).is_length(2)
+    assert_array_equal(masks[0].numpy(), [[[1], [0]], [[1], [0]], [[1], [0]]])
+    assert_array_equal(masks[1].numpy(), [[[0], [1]], [[0], [1]], [[0], [1]]])
+
+
 def test_channel_mask():
     """Test channel masking"""
     mask = ChannelSplit().get_mask([1], (3, 2, 2)).numpy()
@@ -59,6 +68,16 @@ def test_channel_split():
     assert_that(masks).is_length(2)
     assert_array_equal(masks[0].numpy(), [[[1, 1], [1, 1]], [[0, 0], [0, 0]]])
     assert_array_equal(masks[1].numpy(), [[[0, 0], [0, 0]], [[1, 1], [1, 1]]])
+
+
+def test_channel_split_dims():
+    """Check all channel masks for all different dimensions"""
+    masks = ChannelSplit().get_split((3, 2, 1))
+
+    assert_that(masks).is_length(3)
+    assert_array_equal(masks[0].numpy(), [[[1], [1]], [[0], [0]], [[0], [0]]])
+    assert_array_equal(masks[1].numpy(), [[[0], [0]], [[1], [1]], [[0], [0]]])
+    assert_array_equal(masks[2].numpy(), [[[0], [0]], [[0], [0]], [[1], [1]]])
 
 
 def test_neuron_selector():

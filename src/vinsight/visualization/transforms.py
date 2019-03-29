@@ -22,7 +22,7 @@ class TransformStep(ABC):
             the transformed image
 
         """
-        pass
+        raise NotImplementedError()
 
     def __add__(self, other):
         """Method to easily concatenate two transformations.

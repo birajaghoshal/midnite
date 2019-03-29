@@ -36,7 +36,7 @@ class LossTerm(ABC):
             a tensor representing the loss
 
         """
-        pass
+        raise NotImplementedError()
 
 
 class TVReg(LossTerm):
