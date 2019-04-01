@@ -48,7 +48,14 @@ class LayerSplit(ABC):
         raise NotImplementedError()
 
     def get_mean(self, input_):
+        """Returns the mean of an input along the split dimension.
 
+        Args:
+            input_: Tensor for which the mean should be computed
+        Returns:
+            a tensor of mean values.
+
+        """
         raise NotImplementedError()
 
 
@@ -150,21 +157,21 @@ class Attribution(ABC):
 
     def __init__(
         self,
-        layers: List[Module],
+        inspection_layers: List[Module],
         top_layer_selector: NeuronSelector,
         base_layers: List[Module],
         bottom_layer_split: LayerSplit,
     ):
         """
         Args:
-            layers: the list of ajacent layers to execute the method on
+            inspection_layers: the list of ajacent layers to execute the method on
             top_layer_selector: the target split for analyzing attribution
             base_layers: list of previous layers up to the bottom layer
 
         """
-        if len(layers) == 0:
+        if len(inspection_layers) == 0:
             raise ValueError("Must specify at least one top layer")
-        self.layers = layers
+        self.inspection_layers = inspection_layers
         self.top_layer_selector = top_layer_selector
         self.base_layers = base_layers
         self.bottom_layer_split = bottom_layer_split

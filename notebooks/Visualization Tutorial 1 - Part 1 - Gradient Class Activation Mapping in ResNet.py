@@ -10,7 +10,7 @@
 # Demonstration of visualizing the class activation mapping for an image classification example with ResNet.
 # 
 
-# In[57]:
+# In[1]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -46,7 +46,7 @@ if torch.cuda.is_available and torch.cuda.device_count() > 0:
 # 
 # In our example we use a pretrained ResNet for demonstration.
 
-# In[58]:
+# In[2]:
 
 
 device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
@@ -59,7 +59,7 @@ model.to(device);
 
 # ## Step 2: Load Image
 
-# In[59]:
+# In[3]:
 
 
 img_path = "../data/imagenet_example_283.jpg"
@@ -82,7 +82,7 @@ H, W = img.size
 # ### Visualization of layer attributions
 # it is possible to visualize attributions of a single layer, or from several layers together. In this example we demonstrate both.
 
-# In[60]:
+# In[4]:
 
 
 # example ResNet selection
@@ -103,7 +103,7 @@ selected_layer = 8
 # <img src="resources/splits.png">
 # source: https://distill.pub/2018/building-blocks/
 
-# In[61]:
+# In[5]:
 
 
 top_layer_selector = NeuronSelector(NeuronSplit(), [283])
@@ -113,7 +113,7 @@ bottom_layer_split = SpatialSplit()
 # ## Step 5: Split the model into base_layers and inspection_layers
 # splitting the model with classification returns a list of base layers up to the selected single layer and the list of layers (inspection layers) from the selected layer until the last layer of the model, the classification layer. The output of the inspected layers is a classification with dimension (1, 1000)
 
-# In[62]:
+# In[6]:
 
 
 base_layers, inspected_layers = split_model_with_classification(
@@ -124,7 +124,7 @@ base_layers, inspected_layers = split_model_with_classification(
 # 
 # ### Example 1: Compute saliency map with bottom-layer spatial split
 
-# In[63]:
+# In[7]:
 
 
 saliency = SaliencyMap(
@@ -146,16 +146,32 @@ sal_map = interpolate(
 plot_utils.plot_saliency(sal_map, img, selected_layer, output_layer="classification")
 
 
+# ## Guided Backpropagation
+
+# In[8]:
+
+
+saliency = SaliencyMap(
+    inspected_layers, 
+    top_layer_selector, 
+    base_layers, 
+    bottom_layer_split
+).guided_backprop(input_, from_input=True)
+
+# plot saliencies with the input image
+plot_utils.plot_guided_backprop(saliency, img)
+
+
 # ### Example 2: Compute saliency map with bottom layer channel split.
 
-# In[64]:
+# In[9]:
 
 
 top_layer_selector = NeuronSelector(NeuronSplit(), [283])
 bottom_layer_split = ChannelSplit()
 
 
-# In[65]:
+# In[10]:
 
 
 saliency = SaliencyMap(
@@ -174,13 +190,13 @@ for (value, idx) in zip(top_values, top_channels):
 # ### Example 3: Compute saliency map with neuron split
 # 
 
-# In[66]:
+# In[11]:
 
 
 bottom_layer_split = NeuronSplit()
 
 
-# In[67]:
+# In[12]:
 
 
 saliency = SaliencyMap(

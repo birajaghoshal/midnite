@@ -3,6 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -192,44 +193,101 @@ class SaliencyMap(Attribution):
 
     def __init__(
         self,
-        layers: List[Module],
+        inspection_layers: List[Module],
         top_layer_selector: NeuronSelector,
         base_layers: List[Module],
         bottom_layer_split: LayerSplit,
     ):
         """
         Args:
-            layers: the list of layers from selected layer until output layer (model split)
+            inspection_layers: the list of layers from selected layer until output layer (model split)
             top_layer_selector: specifies the split of interest in the output layer
             base_layers: list of layers from first layer of the model up to the selected layer
             bottom_layer_split: specifies the split of interest in the selected layer
 
         """
-        super().__init__(layers, top_layer_selector, base_layers, bottom_layer_split)
+        super().__init__(
+            inspection_layers, top_layer_selector, base_layers, bottom_layer_split
+        )
 
-    def visualize(self, input_tensor: Tensor) -> Tensor:
-        """generates a saliency tensor for selected_class
+    def _forward_pass(self, input_tensor) -> Tuple[Tensor, Tensor]:
+        """ Computes a forward pass through the network.
         Args:
-            input_tensor: input image as torch tensor
+            input_tensor: input image
+        Returns:
+             features: intermediate output of the network. pass through the base_layers
+             out: output of the pass through the whole network. pass through base_layers and inspection_layers
         """
-        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
-
         # features of the selected layer
         features = Sequential(*self.base_layers)(input_tensor)
         # features of the output layer
-        out = Sequential(*self.layers)(features).squeeze()
+        out = Sequential(*self.inspection_layers)(features).squeeze()
 
-        # select the output element, for which the saliency should be computed
+        return features, out
+
+    def _generate_gradients(self, out: Tensor, backprop_variable: Tensor) -> Tensor:
+        """ Computes the gradients of the base layer output w.r.t. the inspection layer output.
+
+        Args:
+            out: output of the forward pass
+            backprop_variable: the Tensor for which the gradients should be computed
+        Returns:
+             features: result of the forward pass through base_layers
+             gradients: gradients of features with respect to the model output
+        """
+
+        # select the output element, for which gradient should be computed
         out_masked = self.top_layer_selector.get_mask(out.size()) * out
 
         # compute a single value from the mask, reduce dimensions with mean
         score = out_masked.mean(-1).mean(-1).mean(-1)
 
-        _, N, H, W = features.size()
-
         # computes and returns the sum of gradients of the output layer score
         # w.r.t. the features of the selected layer
-        grads = torch.autograd.grad(score, features)[0][0]
+        gradients = torch.autograd.grad(score, backprop_variable)[0][0]
+
+        return gradients
+
+    def guided_backprop(self, input_tensor, from_input=True) -> Tensor:
+        """ Computes the positive guided gradients of an input tensor.
+
+        Args:
+            input_tensor: input image
+            from_input: specifies if gradients should be computed from either the input image
+                or intermediate features of the selected layer.
+        Returns:
+             a tensor of positive gradients (activations)
+        """
+        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
+
+        input_tensor.requires_grad_(True)
+
+        features, out = self._forward_pass(input_tensor)
+
+        if from_input:
+            gradients = self._generate_gradients(out, input_tensor)
+        else:
+            gradients = self._generate_gradients(out, features)
+
+        positive_grads = (
+            torch.max(gradients, torch.zeros_like(gradients).to(device)).cpu().detach()
+        )
+
+        return positive_grads
+
+    def visualize(self, input_tensor: Tensor) -> Tensor:
+        """generates a saliency tensor for an input image at the selected intermediate layer
+        Args:
+            input_tensor: input image as torch tensor
+
+        """
+        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
+
+        features, out = self._forward_pass(input_tensor)
+        grads = self._generate_gradients(out, features)
+
+        _, N, H, W = features.size()
+
         avg_pooling_weight = self.bottom_layer_split.get_mean(grads)
 
         if isinstance(self.bottom_layer_split, SpatialSplit):
