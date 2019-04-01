@@ -47,6 +47,10 @@ class LayerSplit(ABC):
         """
         raise NotImplementedError()
 
+    def get_mean(self, input_):
+
+        raise NotImplementedError()
+
 
 class NeuronSplit(LayerSplit):
     """Split a layer neuron-wise, i.e. per single value."""
@@ -59,6 +63,11 @@ class NeuronSplit(LayerSplit):
         mask = torch.zeros(tuple(size))
         mask[tuple(index)] = 1
         return mask
+
+    def get_mean(self, input_: Tensor) -> Tensor:
+        if not len(input_.size()) == 3:
+            raise ValueError("Channel index needs one dimension. Got: ", input_.size())
+        return input_
 
 
 class SpatialSplit(LayerSplit):
@@ -75,6 +84,11 @@ class SpatialSplit(LayerSplit):
         mask[:, index[0], index[1]] = 1
         return mask
 
+    def get_mean(self, input_: Tensor) -> Tensor:
+        if not len(input_.size()) == 3:
+            raise ValueError("Channel index needs one dimension. Got: ", input_.size())
+        return input_.mean(-1).mean(-1)
+
 
 class ChannelSplit(LayerSplit):
     """Split a layer by its channels."""
@@ -89,6 +103,11 @@ class ChannelSplit(LayerSplit):
         mask = torch.zeros(*size)
         mask[index[0]] = 1
         return mask
+
+    def get_mean(self, input_: Tensor) -> Tensor:
+        if not len(input_.size()) == 3:
+            raise ValueError("Channel index needs one dimension. Got: ", input_.size())
+        return input_.mean(0)
 
 
 # TODO group split with matrix factorization
@@ -120,19 +139,6 @@ class NeuronSelector:
         """
         return self.layer_split.get_mask(self.element, size)
 
-    def get_value(self, input_tensor: Tensor) -> Tensor:
-        """Retrieves the value of the element in the input tensor.
-        Args:
-            input_tensor: input from which the element should be selected.
-                input describes the layer output.
-        Returns:
-            the value of the element in the input tensor,
-            if Neuronsplit returns single value tensor,
-            if Channelsplit returns two dimensional tensor,
-            if Spacialsplit returns one dimensional tensor.
-        """
-        return input_tensor[tuple(self.element)]
-
 
 class Attribution(ABC):
     """Abstract base class for attribution methods.
@@ -147,6 +153,7 @@ class Attribution(ABC):
         layers: List[Module],
         top_layer_selector: NeuronSelector,
         base_layers: List[Module],
+        bottom_layer_split: LayerSplit,
     ):
         """
         Args:
@@ -160,6 +167,7 @@ class Attribution(ABC):
         self.layers = layers
         self.top_layer_selector = top_layer_selector
         self.base_layers = base_layers
+        self.bottom_layer_split = bottom_layer_split
 
     @abstractmethod
     def visualize(self, input_: Tensor) -> Tensor:

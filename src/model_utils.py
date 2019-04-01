@@ -32,7 +32,7 @@ def split_model_with_classification(
         model_config: Enum type of the model (AlexNet, ResNet etc.)
         layer_idx: index of the layer where model should be split
     Return:
-        bottom_layer: first part of the model, layers from beginning to the layer of inspection
+        base_layers: first part of the model, inspection_layers from beginning to the layer of inspection
         top_layer: rest of the model
     """
     if model_config == ModelConfig.ALEX_NET:
@@ -40,26 +40,26 @@ def split_model_with_classification(
             raise ValueError("Not a valid layer selection AlexNet.")
 
         base_layers = list(model.features.children())[:layer_idx]
-        layers = (
+        inspection_layers = (
             list(model.features.children())[layer_idx:-1]
             + list(model.features.children())[-1:]
             + list(model.avgpool.children())[:]
             + [Flatten()]
             + list(model.classifier.children())[:]
         )
-        return base_layers, layers
+        return base_layers, inspection_layers
 
     elif model_config == ModelConfig.RES_NET:
         if layer_idx not in range(9):
             raise ValueError("Not a valid layer selection for ResNet.")
 
         base_layers = list(model.children())[:layer_idx]
-        layers = (
+        inspection_layers = (
             list(model.children())[layer_idx:-1]
             + [Flatten()]
             + list(model.children())[-1:]
         )
-        return base_layers, layers
+        return base_layers, inspection_layers
 
     else:
         raise ValueError("Invalid model config.")
@@ -73,8 +73,8 @@ def split_model_without_classification(model, model_config, layer_idx, output_id
         layer_idx: index of the layer where model should be split
         output_idx: index of the output layer
     Return:
-        base_layers: list of layers from first layer of the model to the selected layer of inspection
-        layers: list of layers from the selected layer at layer_idx up to the output layer at output_idx
+        base_layers: list of inspection_layers from first layer of the model to the selected layer of inspection
+        inspection_layers: list of inspection_layers from the selected layer at layer_idx up to the output layer at output_idx
     """
     if model_config == ModelConfig.ALEX_NET:
         if layer_idx not in range(13) or output_idx not in range(13):
@@ -82,11 +82,11 @@ def split_model_without_classification(model, model_config, layer_idx, output_id
 
         base_layers = list(model.features.children())[:layer_idx]
 
-        layers = (
+        inspection_layers = (
             list(model.features.children())[layer_idx:output_idx]
             + list(model.features.children())[output_idx : output_idx + 1]
         )
-        return base_layers, layers
+        return base_layers, inspection_layers
 
     else:
         raise ValueError("Invalid model config.")

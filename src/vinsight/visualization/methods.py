@@ -14,7 +14,11 @@ from torch.nn import Sequential
 from vinsight.utils import tensor_defaults
 from vinsight.visualization import Activation
 from vinsight.visualization import Attribution
+from vinsight.visualization import ChannelSplit
+from vinsight.visualization import LayerSplit
 from vinsight.visualization import NeuronSelector
+from vinsight.visualization import NeuronSplit
+from vinsight.visualization import SpatialSplit
 from vinsight.visualization.transforms import TransformStep
 
 
@@ -191,18 +195,17 @@ class SaliencyMap(Attribution):
         layers: List[Module],
         top_layer_selector: NeuronSelector,
         base_layers: List[Module],
-        bottom_layer_selector,
+        bottom_layer_split: LayerSplit,
     ):
         """
         Args:
             layers: the list of layers from selected layer until output layer (model split)
             top_layer_selector: specifies the split of interest in the output layer
             base_layers: list of layers from first layer of the model up to the selected layer
-            bottom_layer_selector: specifies the split of interest in the selected layer
+            bottom_layer_split: specifies the split of interest in the selected layer
 
         """
-        super().__init__(layers, top_layer_selector, base_layers)
-        self.bottom_layer_selector = bottom_layer_selector
+        super().__init__(layers, top_layer_selector, base_layers, bottom_layer_split)
 
     def visualize(self, input_tensor: Tensor) -> Tensor:
         """generates a saliency tensor for selected_class
@@ -214,31 +217,35 @@ class SaliencyMap(Attribution):
         # features of the selected layer
         features = Sequential(*self.base_layers)(input_tensor)
         # features of the output layer
-        output = Sequential(*self.layers)(features)
+        out = Sequential(*self.layers)(features).squeeze()
 
-        # select the split of the output, for which the saliency should be computed
-        score = self.top_layer_selector.get_value(output.squeeze())
-        # if top level split was a channel or spatial split, values need to be summed up to get single value
-        if not score.size() == 0:
-            score = score.sum(dim=0).sum(dim=0)
+        # select the output element, for which the saliency should be computed
+        out_masked = self.top_layer_selector.get_mask(out.size()) * out
+
+        # compute a single value from the mask, reduce dimensions with mean
+        score = out_masked.mean(-1).mean(-1).mean(-1)
 
         _, N, H, W = features.size()
 
         # computes and returns the sum of gradients of the output layer score
         # w.r.t. the features of the selected layer
-        grads = torch.autograd.grad(score, features)
+        grads = torch.autograd.grad(score, features)[0][0]
+        avg_pooling_weight = self.bottom_layer_split.get_mean(grads)
 
-        # if the bottom layer should additionally be split to make activations more precise
-        # otherwise standard spatial split on the input image dimensions
-        if self.bottom_layer_selector is None:
-            w = grads[0][0].mean(-1).mean(-1)
+        if isinstance(self.bottom_layer_split, SpatialSplit):
+            saliency = torch.matmul(avg_pooling_weight, features.view(N, H * W))
+            saliency = saliency.view(H, W)
+        elif isinstance(self.bottom_layer_split, ChannelSplit):
+            saliency = torch.matmul(
+                features.view(N, H * W), avg_pooling_weight.view(H * W)
+            )
+        elif isinstance(self.bottom_layer_split, NeuronSplit):
+            saliency = features.squeeze()
         else:
-            split_mask = self.bottom_layer_selector.get_mask(features.squeeze().size())
-            grads = grads[0][0, :] * split_mask
-            w = grads.mean(-1).mean(-1)
+            raise ValueError("not a valid split class for bottom_layer_split")
 
-        sal_map = torch.matmul(w, features.view(N, H * W))
-        sal_map = sal_map.view(H, W).detach()
-        sal_map = torch.max(sal_map, torch.zeros_like(sal_map).to(device)).cpu()
+        sal_map = (
+            torch.max(saliency, torch.zeros_like(saliency).to(device)).cpu().detach()
+        )
 
         return sal_map

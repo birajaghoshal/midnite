@@ -87,28 +87,33 @@ def test_neuron_selector():
     assert_array_equal(selection, [[[0, 1], [0, 0]], [[0, 1], [0, 0]]])
 
 
-def test_neuron_value():
-    """Test if the neuron selector correctly retrieves a neuron value from an input tensor"""
-    # use test input with unique values and dimensions
-    input_3d = torch.tensor([[[1, 2, 3, 4, 5]], [[6, 7, 8, 9, 10]]])
-    input_1d = torch.tensor([1, 2, 3, 4, 5])
-    value = NeuronSelector(NeuronSplit(), [0, 0, 0]).get_value(input_3d)
-    assert_array_equal(value.numpy(), 1)
-    value = NeuronSelector(NeuronSplit(), [2]).get_value(input_1d)
-    assert_array_equal(value.numpy(), 3)
+def test_neuron_mean():
+    """tests if the neuron split mean is computed correctly and output has correct dimensions.
+    neuron mean is the identity function."""
+    input_ = torch.tensor([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]])
+    mean = NeuronSplit().get_mean(input_)
+    assert_array_equal(mean, input_)
+    assert_that(mean.size()).is_equal_to(input_.size())
 
 
-def test_channel_value():
-    """Test if the neuron selector correctly retrieves a channel from an input tensor"""
-    # use test input with unique values and dimensions
-    input_ = torch.tensor([[[1, 2, 3, 4, 5]], [[6, 7, 8, 9, 10]]])
-    value = NeuronSelector(ChannelSplit(), [0]).get_value(input_)
-    assert_array_equal(value, [[1, 2, 3, 4, 5]])
+def test_spatial_mean():
+    """tests if the spatial split mean is computed correctly and output has correct dimensions.
+    spatial mean output dimensions are the number of channels"""
+    input_ = torch.tensor(
+        [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[9.0, 7.0], [2.0, 3.0]]]
+    )
+    mean = SpatialSplit().get_mean(input_)
+    assert_array_equal(mean.numpy(), [2.5, 6.5, 5.25])
+    # output dim = number of channels
+    assert_that(mean.numpy().shape).is_equal_to((3,))
 
 
-def test_spatial_value():
-    """Test if the neuron selector correctly retrieves a spatial from an input tensor"""
-    # use test input with unique values and dimensions
-    input_ = torch.tensor([[[1, 2, 3, 4, 5]], [[6, 7, 8, 9, 10]]])
-    value = NeuronSelector(SpatialSplit(), [0, 0]).get_value(input_)
-    assert_array_equal(value, [1, 2, 3, 4, 5])
+def test_channel_mean():
+    """tests if the channel split mean is computed correctly and output has correct dimensions.
+    channel mean output dimension are the spatial dimensions."""
+    input_ = torch.tensor(
+        [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[9.0, 7.0], [2.0, 3.0]]]
+    )
+    mean = ChannelSplit().get_mean(input_)
+    assert_array_equal(mean.numpy(), [[5.0, 5.0], [4.0, 5.0]])
+    assert_that(mean.numpy().shape).is_equal_to(input_[0].numpy().shape)
