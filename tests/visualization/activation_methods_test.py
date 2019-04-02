@@ -7,16 +7,16 @@ from torch import Size
 from torch.nn import Dropout2d
 from torch.nn import Module
 
-from vinsight.visualization import LossTerm
 from vinsight.visualization import NeuronSelector
 from vinsight.visualization import PixelActivation
 from vinsight.visualization import TransformStep
-from vinsight.visualization import TVReg
+from vinsight.visualization import TVRegularization
+from vinsight.visualization import WeightDecay
 
 
 def test_tv_reg_all_same():
     """Test that tv loss is zero if all pixels are eqal."""
-    reg = TVReg()
+    reg = TVRegularization()
     loss = reg.loss(torch.ones((2, 2, 3)))
 
     assert_that(loss.item()).is_equal_to(0.0)
@@ -24,7 +24,7 @@ def test_tv_reg_all_same():
 
 def test_tv_reg():
     """Test tv loss for an arbitrary example."""
-    reg = TVReg(0.5, 4.0)
+    reg = TVRegularization(0.5, 4.0)
     loss = reg.loss(
         torch.tensor(
             [
@@ -38,6 +38,35 @@ def test_tv_reg():
     assert_that(loss.item()).is_close_to(0.0441, 1e-4)
 
 
+def test_activation_init(mocker):
+    """Test the more complex init logic in the pixel activation"""
+    sut = PixelActivation(
+        [mocker.Mock(spec=torch.nn.Module)], mocker.Mock(spec=NeuronSelector)
+    )
+
+    assert_that(sut.weight_decay).is_equal_to(0.0)
+    assert_that(sut.output_regularizers).is_not_none()
+    assert_that(sut.output_regularizers).is_empty()
+
+    sut = PixelActivation(
+        [mocker.Mock(spec=torch.nn.Module)],
+        mocker.Mock(spec=NeuronSelector),
+        regularization=[WeightDecay(0.5)],
+    )
+    assert_that(sut.weight_decay).is_equal_to(0.5)
+    assert_that(sut.output_regularizers).is_not_none()
+    assert_that(sut.output_regularizers).is_empty()
+
+    tv_reg = TVRegularization()
+    sut = PixelActivation(
+        [mocker.Mock(spec=torch.nn.Module)],
+        mocker.Mock(spec=NeuronSelector),
+        regularization=[tv_reg, WeightDecay(0.5)],
+    )
+    assert_that(sut.weight_decay).is_equal_to(0.5)
+    assert_that(sut.output_regularizers).contains(tv_reg)
+
+
 def test_pixel_activation_visualize(mocker):
     """Test the iterative optimization of the activation visualization."""
     # Setup data
@@ -46,7 +75,7 @@ def test_pixel_activation_visualize(mocker):
 
     # Setup mocks
     mocker.patch(
-        "vinsight.visualization.methods.PixelActivation.opt_step", return_value=img
+        "vinsight.visualization.methods.PixelActivation._opt_step", return_value=img
     )
     tran_step = mocker.Mock(spec=TransformStep)
     tran_step.transform = mocker.Mock(return_value=np_img)
@@ -68,8 +97,8 @@ def test_pixel_activation_visualize(mocker):
 
     # Check opt step calls
     assert_array_equal(out, np_img)
-    assert_that(PixelActivation.opt_step.call_count).is_equal_to(3)
-    opt_step = PixelActivation.opt_step.call_args_list
+    assert_that(PixelActivation._opt_step.call_count).is_equal_to(3)
+    opt_step = PixelActivation._opt_step.call_args_list
     assert_that(opt_step[0][0][0].size()).contains_sequence(3, 4, 4)
     assert_array_equal(opt_step[1][0][0].detach(), img.numpy())
     assert_array_equal(opt_step[2][0][0].detach(), img.numpy())
@@ -84,20 +113,18 @@ def test_pixel_act_optimize(mocker):
     mocker.spy(layers[1], "forward")
     neuron_sel = mocker.Mock(spec=NeuronSelector)
     neuron_sel.get_mask = mocker.Mock(return_value=torch.ones((3, 4, 4)))
-    reg = mocker.Mock(spec=LossTerm)
+    reg = mocker.Mock(spec=TVRegularization)
     reg.loss = mocker.Mock(return_value=0.05)
 
     visualizer = PixelActivation(
-        layers, neuron_sel, lr=1e-4, weight_decay=1e-5, opt_n=2, reg=reg
+        layers, neuron_sel, lr=1e-4, opt_n=2, regularization=[WeightDecay(1e-5), reg]
     )
 
-    visualizer.opt_step(img)
+    visualizer._opt_step(img)
 
     # Check layers
     layers[0].forward.assert_called()
     layers[1].forward.assert_called()
-    assert_that(layers[0].training).is_false()
-    assert_that(layers[0].training).is_false()
     assert_that(layers[0].forward.call_count).is_equal_to(2)
     assert_that(layers[1].forward.call_count).is_equal_to(2)
     layer_call_args = layers[0].forward.call_args_list

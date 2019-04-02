@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 import numpy as np
 import torch
@@ -23,28 +24,34 @@ from vinsight.visualization import SpatialSplit
 from vinsight.visualization.transforms import TransformStep
 
 
-class LossTerm(ABC):
-    """Abstract class for loss terms."""
+class OutputRegularization(ABC):
+    """Base class for regularizations on an output term."""
 
-    def __init__(self, coefficient):
+    def __init__(self, coefficient: float = 0.1):
+        """
+
+        Args:
+            coefficient: how much regularization to apply
+
+        """
         self.coefficient = coefficient
 
     @abstractmethod
     def loss(self, out: Tensor) -> Tensor:
         """Calculates the loss for an output.
 
-        Args:
-            out: the tensor to calculate the loss for, of shape
-             (channels, height,width)
+         Args:
+             out: the tensor to calculate the loss for, of shape
+              (channels, height,width)
 
-        Returns:
-            a tensor representing the loss
+         Returns:
+             a tensor representing the loss
 
-        """
+         """
         raise NotImplementedError()
 
 
-class TVReg(LossTerm):
+class TVRegularization(OutputRegularization):
     """Total Variation norm.
 
     For more information, read https://arxiv.org/pdf/1412.0035v1.pdf.
@@ -53,6 +60,13 @@ class TVReg(LossTerm):
     """
 
     def __init__(self, coefficient: float = 0.1, beta: float = 2.0):
+        """
+
+        Args:
+            coefficient: how much regularization to apply
+            beta: beta-parameter of total variation
+
+        """
         super().__init__(coefficient)
         self.beta = beta
 
@@ -66,6 +80,22 @@ class TVReg(LossTerm):
         )
 
 
+class WeightDecay:
+    """Weight decay regularization."""
+
+    def __init__(self, decay_factor):
+        """
+
+        Args:
+            decay_factor: decay factor for optimizer
+
+        """
+        self.decay_factor = decay_factor
+
+
+Regularization = Union[OutputRegularization, WeightDecay]
+
+
 class PixelActivation(Activation):
     """Activation optimization (in Pixel space)."""
 
@@ -74,31 +104,28 @@ class PixelActivation(Activation):
         layers: List[Module],
         top_layer_selector: NeuronSelector,
         lr: float = 1e-2,
-        weight_decay: float = 1e-7,
         iter_n: int = 12,
         opt_n: int = 20,
         init_size: int = 250,
         clamp: bool = True,
         transform: Optional[TransformStep] = None,
-        reg: Optional[LossTerm] = None,
+        regularization: List[Regularization] = None,
     ):
         """
         Args:
             layers: the list of adjacent layers to account for
             top_layer_selector: selector for the relevant activations
             lr: learning rate of ADAM optimizer
-            weight_decay: weight decay of ADAM optimizer, can be understood as l1-reg
             iter_n: number of iterations
             opt_n: number of optimization steps per iteration
             init_size: initial width/height of visualization
             clamp: clamp image to [0, 1] space (natural image)
-            transform: optional transformations after each step
-            reg: optional regularization term
+            transform: optional transformation after each step
+            regularization: optional list of regularization terms
 
         """
         super().__init__(layers, top_layer_selector)
         self.lr = lr
-        self.weight_decay = weight_decay
         if iter_n < 1:
             raise ValueError("Must have at least one iteration")
         self.iter_n = iter_n
@@ -110,9 +137,26 @@ class PixelActivation(Activation):
         self.init_size = init_size
         self.clamp = clamp
         self.transforms = transform
-        self.reg = reg
 
-    def opt_step(self, opt_img: Tensor) -> Tensor:
+        if regularization is None:
+            regularization = []
+
+        # Filter out weight decay
+        weight_decay = list(
+            reg for reg in regularization if isinstance(reg, WeightDecay)
+        )
+        if len(weight_decay) > 1:
+            raise ValueError("Can at most have one weight decay regularizer")
+        elif len(weight_decay) == 1:
+            self.weight_decay = weight_decay[0].decay_factor
+        else:
+            self.weight_decay = 0.0
+        # Add all output regularizers
+        self.output_regularizers = list(
+            reg for reg in regularization if isinstance(reg, OutputRegularization)
+        )
+
+    def _opt_step(self, opt_img: Tensor) -> Tensor:
         """Performs a single optimization step.
 
         Args:
@@ -122,14 +166,8 @@ class PixelActivation(Activation):
             the optimized image as tensor of shape (c, h, w)
 
         """
-        # Make sure all layers are in evaluation mode
-        for layer in self.layers:
-            layer.eval()
-
-        # Clean up and prepare image
-        opt_img = (
-            opt_img.unsqueeze(dim=0).detach().to(get_device()).requires_grad_(True)
-        )
+        # Add minibatch dim and clean up gradient
+        opt_img = opt_img.unsqueeze(dim=0).detach().requires_grad_(True)
 
         # Optimizer for image
         optimizer = torch.optim.Adam(
@@ -151,8 +189,10 @@ class PixelActivation(Activation):
             loss = -((self.top_layer_selector.get_mask(out.size()) * out).mean())
 
             loss = loss.unsqueeze(dim=0)
-            if self.reg is not None:
-                loss += self.reg.loss(opt_img.squeeze(dim=0))
+
+            for reg in self.output_regularizers:
+                loss += reg.loss(opt_img.squeeze(dim=0))
+
             # Backward pass
             loss.backward()
             # Update image
@@ -163,9 +203,9 @@ class PixelActivation(Activation):
         return opt_img.squeeze(dim=0).detach()
 
     def visualize(self, input_: Optional[Tensor] = None) -> Tensor:
-        # Move all layers to current device
+        # Move all layers to current device and set to eval mode
         for layer in self.layers:
-            layer.to(get_device())
+            layer.to(get_device()).eval()
 
         if input_ is None:
             # Create uniform random starting image
@@ -177,15 +217,15 @@ class PixelActivation(Activation):
 
         for n in range(self.iter_n):
             # Optimization step
-            opt_img = self.opt_step(opt_img)
+            opt_img = self._opt_step(opt_img)
 
             # Transformation step, if necessary
             if n + 1 < self.iter_n and self.transforms is not None:
-                img = opt_img.permute((1, 2, 0)).detach().cpu().numpy()
+                img = opt_img.detach().permute((1, 2, 0)).cpu().numpy()
                 img = self.transforms.transform(img)
-                opt_img = torch.from_numpy(img).permute(2, 0, 1).to(get_device())
+                opt_img = torch.from_numpy(img).to(get_device()).permute(2, 0, 1)
 
-        return opt_img.permute((1, 2, 0)).detach()
+        return opt_img.detach().permute((1, 2, 0))
 
 
 class SaliencyMap(Attribution):

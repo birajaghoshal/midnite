@@ -31,13 +31,13 @@ class TransformStep(ABC):
             other: the second transformation to apply
 
         Returns:
-            a TransformationSequence containing self and other
+            a TransformSequence containing self and other
 
         """
-        return TransformationSequence(self, other)
+        return TransformSequence(self, other)
 
 
-class TransformationSequence(TransformStep):
+class TransformSequence(TransformStep):
     """Concatenates a number of transform steps as a sequence."""
 
     def __init__(self, *steps: TransformStep):
@@ -53,7 +53,7 @@ class TransformationSequence(TransformStep):
         return self
 
 
-class BlurTrans(TransformStep):
+class BlurTransform(TransformStep):
     """Blur transformation step."""
 
     def __init__(self, blur_size: int = 5):
@@ -63,7 +63,7 @@ class BlurTrans(TransformStep):
         return cv2.blur(img, (self.blur_size, self.blur_size))
 
 
-class ResizeTrans(TransformStep):
+class ResizeTransform(TransformStep):
     """Resize transformation step.
 
     If you use this in an iterative optimization, make sure to start with a smaller
@@ -78,7 +78,7 @@ class ResizeTrans(TransformStep):
         return cv2.resize(img, (0, 0), fx=self.scale_fac, fy=self.scale_fac)
 
 
-class RandomTrans(TransformStep):
+class RandomTransform(TransformStep):
     """Applies translation, rotation, and scale in a random direction"""
 
     def __init__(
@@ -105,7 +105,7 @@ class RandomTrans(TransformStep):
         return cv2.resize(img, (0, 0), fx=scale, fy=scale)
 
 
-class BilateralTrans(TransformStep):
+class BilateralTransform(TransformStep):
     """Bilateral filter step"""
 
     def __init__(self, diameter=9, color_tolerance=75, dist_tolerance=75):

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
 get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('cd', '../../src')
+get_ipython().run_line_magic('cd', '../src')
 
 from torchvision import models
 from torch.nn.modules import Softmax
@@ -26,10 +26,9 @@ from vinsight.visualization import *
 alexnet = models.alexnet(pretrained=True)
 
 
-# # 1. Channel-wise regularization comparisons
+# # 1. Channel-wise regularization/transformation comparisons
 # Here we will look at the effect of different regularizers.
 # ## 1.1 No regularization
-# Per default, some weight decay is used, which can be seen as l1-reg. Hence we set it to zero in most of the following experiments.
 
 # In[3]:
 
@@ -37,7 +36,6 @@ alexnet = models.alexnet(pretrained=True)
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    weight_decay=0
 ).visualize())
 
 
@@ -50,7 +48,7 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    weight_decay=5e-6
+    regularization = [WeightDecay(5e-6)]
 ).visualize())
 
 
@@ -63,8 +61,7 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    weight_decay=0,
-    transform = BlurTrans()
+    transform = BlurTransform()
 ).visualize())
 
 
@@ -77,8 +74,7 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    weight_decay=0,
-    transform=BilateralTrans()
+    transform=BilateralTransform()
 ).visualize())
 
 
@@ -91,8 +87,7 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    weight_decay=0,
-    transform=RandomTrans()
+    transform=RandomTransform()
 ).visualize())
 
 
@@ -105,8 +100,7 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    weight_decay=0,
-    transform=ResizeTrans(),
+    transform=ResizeTransform(),
     init_size=50
 ).visualize())
 
@@ -120,8 +114,7 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    weight_decay=0,
-    reg=TVReg(coefficient=0.5)
+    regularization=[TVRegularization(0.5)]
 ).visualize())
 
 
@@ -138,10 +131,9 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:9],
     NeuronSelector(ChannelSplit(), [1]),
-    transform=RandomTrans()+BlurTrans()+ResizeTrans(),
-    weight_decay=3e-7,
-    init_size=50,
-    reg=TVReg()
+    transform=RandomTransform()+BlurTransform()+ResizeTransform(),
+    regularization=[TVRegularization(), WeightDecay(3e-7)],
+    init_size=50
 ).visualize())
 
 
@@ -155,20 +147,21 @@ show(PixelActivation(
 show(PixelActivation(
     alexnet.features[:6],
     NeuronSelector(SpatialSplit(), [3, 3]),
-    transform=BlurTrans(),
-    weight_decay=1e-6,
+    transform=BlurTransform(),
+    regularization=[WeightDecay(1e-6)]
 ).visualize())
 
 
 # # 3.2 Individual Neurons
 
-# In[12]:
+# In[13]:
 
 
 show(PixelActivation(
     alexnet.features[:11],
     NeuronSelector(NeuronSplit(), [0, 0, 0]),
-    transform=BlurTrans(),
+    transform=BlurTransform(),
+    regularization=[WeightDecay(1e-7)]
 ).visualize())
 
 

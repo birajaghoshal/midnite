@@ -18,7 +18,7 @@ from vinsight import get_device
 log = logging.getLogger(__name__)
 
 
-class PredDropout(Dropout):
+class PredictionDropout(Dropout):
     """Layer for dropout at prediction time."""
 
     def forward(self, input_: Tensor) -> Tensor:

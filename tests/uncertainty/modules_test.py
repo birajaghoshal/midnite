@@ -17,7 +17,7 @@ def test_dropout_layer():
 
     """
     # Set dropout layer to evaluation mode
-    dropout_layer = modules.PredDropout()
+    dropout_layer = modules.PredictionDropout()
     dropout_layer.eval()
 
     # Check that dropout still is applied
@@ -35,7 +35,7 @@ def test_mean_ensemble_layer():
     Checks if the layer correctly calculates an ensemble mean.
 
     """
-    inner = modules.PredDropout()
+    inner = modules.PredictionDropout()
     ensemble = modules.MeanEnsemble(inner)
     ensemble.eval()
 
@@ -52,7 +52,7 @@ def test_ensemble_layer():
     Checks if the ensemble layer does the sampling correctly.
 
     """
-    inner = modules.PredDropout()
+    inner = modules.PredictionDropout()
     ensemble = modules.PredictionEnsemble(inner)
     ensemble.eval()
 
@@ -65,7 +65,7 @@ def test_ensemble_layer():
 
 def test_ensembles_autograd(mocker):
     """Test if autograd is disabled in mean ensemble"""
-    inner = modules.PredDropout()
+    inner = modules.PredictionDropout()
     ensemble = modules.PredictionEnsemble(inner)
     out = ensemble(torch.zeros(1, requires_grad=True))
     assert_that(out.requires_grad).is_true()
@@ -132,7 +132,7 @@ def test_prediction_ensemble_layer_modes():
     """tests the prediction ensemble, if dropout layers are kept in train mode
      while other layers switch to test mode after eval()"""
 
-    model = torch.nn.Sequential(modules.PredDropout(), torch.nn.Conv2d(1, 20, 5))
+    model = torch.nn.Sequential(modules.PredictionDropout(), torch.nn.Conv2d(1, 20, 5))
 
     ensemble = modules.PredictionEnsemble(model)
     assert_that(ensemble.training).is_true()
@@ -148,7 +148,7 @@ def test_mean_ensemble_layer_modes():
     """tests the mean ensemble, if dropout layers are kept in train mode
      while other layers switch to test mode after eval()"""
 
-    model = torch.nn.Sequential(modules.PredDropout(), torch.nn.Conv2d(1, 20, 5))
+    model = torch.nn.Sequential(modules.PredictionDropout(), torch.nn.Conv2d(1, 20, 5))
 
     mean_ensemble = modules.MeanEnsemble(model)
     assert_that(mean_ensemble.training).is_true()

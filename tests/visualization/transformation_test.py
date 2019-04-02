@@ -4,19 +4,19 @@ import numpy as np
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
 
-from vinsight.visualization.transforms import BilateralTrans
-from vinsight.visualization.transforms import BlurTrans
-from vinsight.visualization.transforms import RandomTrans
-from vinsight.visualization.transforms import ResizeTrans
-from vinsight.visualization.transforms import TransformationSequence
+from vinsight.visualization.transforms import BilateralTransform
+from vinsight.visualization.transforms import BlurTransform
+from vinsight.visualization.transforms import RandomTransform
+from vinsight.visualization.transforms import ResizeTransform
+from vinsight.visualization.transforms import TransformSequence
 from vinsight.visualization.transforms import TransformStep
 
 
 def test_transform_step_add():
     """Test adding of transform steps"""
-    step = BlurTrans() + BlurTrans()
+    step = BlurTransform() + BlurTransform()
 
-    assert_that(step).is_instance_of(TransformationSequence)
+    assert_that(step).is_instance_of(TransformSequence)
     assert_that(step.steps).is_length(2)
 
 
@@ -28,7 +28,7 @@ def test_sequence(mocker):
     step1.transform = mocker.Mock(return_value=img1)
     step2 = mocker.Mock(spec=TransformStep)
 
-    seq = TransformationSequence(step1, step2)
+    seq = TransformSequence(step1, step2)
     seq.transform(img0)
 
     step1.transform.assert_called_once_with(img0)
@@ -41,7 +41,7 @@ def test_sequence_add(mocker):
     step2 = mocker.Mock(spec=TransformStep)
     step3 = mocker.Mock(spec=TransformStep)
 
-    seq = TransformationSequence(step1, step2) + step3
+    seq = TransformSequence(step1, step2) + step3
     seq.transform(np.array(0))
 
     step1.transform.assert_called_once()
@@ -55,7 +55,7 @@ def test_blur_trans(mocker):
     img1 = np.array(1)
     mocker.patch("cv2.blur", return_value=img1)
 
-    step = BlurTrans(blur_size=10)
+    step = BlurTransform(blur_size=10)
     res = step.transform(img0)
 
     cv2.blur.assert_called_once_with(img0, (10, 10))
@@ -68,7 +68,7 @@ def test_resize_trans(mocker):
     img1 = np.array(1)
     mocker.patch("cv2.resize", return_value=img1)
 
-    step = ResizeTrans(scale_fac=2.0)
+    step = ResizeTransform(scale_fac=2.0)
     res = step.transform(img0)
 
     cv2.resize.assert_called_once_with(img0, (0, 0), fx=2.0, fy=2.0)
@@ -81,7 +81,7 @@ def test_bilateral_trans(mocker):
     img1 = np.array(1)
     mocker.patch("cv2.bilateralFilter", return_value=img1)
 
-    step = BilateralTrans(10, 100, 110)
+    step = BilateralTransform(10, 100, 110)
     res = step.transform(img0)
 
     cv2.bilateralFilter.assert_called_once_with(img0, 10, 100, 110)
@@ -95,7 +95,7 @@ def test_random_trans(mocker):
     mocker.patch("cv2.warpAffine", return_value=img0)
     mocker.patch("cv2.resize", return_value=img1)
 
-    step = RandomTrans()
+    step = RandomTransform()
     res = step.transform(img0)
 
     assert_that(cv2.warpAffine.call_count).is_equal_to(2)

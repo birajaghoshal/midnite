@@ -69,7 +69,7 @@ class NeuronSplit(LayerSplit):
         return list(map(lambda idx: self.get_mask(idx, size), indexes))
 
     def get_mask(self, index: List[int], size: List[int]) -> Tensor:
-        mask = torch.zeros(tuple(size))
+        mask = torch.zeros(tuple(size), device=get_device())
         mask[tuple(index)] = 1
         return mask
 
@@ -89,7 +89,7 @@ class SpatialSplit(LayerSplit):
     def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
         if not len(index) == 2:
             raise ValueError("Spatial index need two dimensions. Got: ", index)
-        mask = torch.zeros(*size)
+        mask = torch.zeros(*size, device=get_device())
         mask[:, index[0], index[1]] = 1
         return mask
 
@@ -109,7 +109,7 @@ class ChannelSplit(LayerSplit):
     def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
         if not len(index) == 1:
             raise ValueError("Channel index needs one dimension. Got: ", index)
-        mask = torch.zeros(*size)
+        mask = torch.zeros(*size, device=get_device())
         mask[index[0]] = 1
         return mask
 
