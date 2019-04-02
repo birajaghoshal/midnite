@@ -12,7 +12,7 @@ from torch import Tensor
 from torch.nn import Module
 from torch.nn import Sequential
 
-from vinsight.utils import tensor_defaults
+from vinsight import get_device
 from vinsight.visualization import Activation
 from vinsight.visualization import Attribution
 from vinsight.visualization import ChannelSplit
@@ -127,7 +127,9 @@ class PixelActivation(Activation):
             layer.eval()
 
         # Clean up and prepare image
-        opt_img = opt_img.unsqueeze(dim=0).detach().requires_grad_(True)
+        opt_img = (
+            opt_img.unsqueeze(dim=0).detach().to(get_device()).requires_grad_(True)
+        )
 
         # Optimizer for image
         optimizer = torch.optim.Adam(
@@ -146,7 +148,6 @@ class PixelActivation(Activation):
             out = out.squeeze(dim=0)
 
             # Calculate loss (mean of output of the last layer w.r.t to our mask)
-
             loss = -((self.top_layer_selector.get_mask(out.size()) * out).mean())
 
             loss = loss.unsqueeze(dim=0)
@@ -162,15 +163,17 @@ class PixelActivation(Activation):
         return opt_img.squeeze(dim=0).detach()
 
     def visualize(self, input_: Optional[Tensor] = None) -> Tensor:
-        device, dtype = tensor_defaults()
+        # Move all layers to current device
+        for layer in self.layers:
+            layer.to(get_device())
 
         if input_ is None:
             # Create uniform random starting image
             input_ = torch.from_numpy(
                 np.uint8(random.uniform(150, 180, (self.init_size, self.init_size, 3)))
                 / float(255)
-            )
-        opt_img = input_.permute((2, 0, 1)).to(dtype).to(device)
+            ).float()
+        opt_img = input_.permute((2, 0, 1)).to(get_device())
 
         for n in range(self.iter_n):
             # Optimization step
@@ -180,9 +183,9 @@ class PixelActivation(Activation):
             if n + 1 < self.iter_n and self.transforms is not None:
                 img = opt_img.permute((1, 2, 0)).detach().cpu().numpy()
                 img = self.transforms.transform(img)
-                opt_img = torch.from_numpy(img).permute(2, 0, 1).to(dtype).to(device)
+                opt_img = torch.from_numpy(img).permute(2, 0, 1).to(get_device())
 
-        return opt_img.permute((1, 2, 0)).detach().cpu()
+        return opt_img.permute((1, 2, 0)).detach()
 
 
 class SaliencyMap(Attribution):
@@ -258,8 +261,8 @@ class SaliencyMap(Attribution):
         Returns:
              a tensor of positive gradients (activations)
         """
-        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
 
+        input_tensor.to(get_device())
         input_tensor.requires_grad_(True)
 
         features, out = self._forward_pass(input_tensor)
@@ -270,7 +273,9 @@ class SaliencyMap(Attribution):
             gradients = self._generate_gradients(out, features)
 
         positive_grads = (
-            torch.max(gradients, torch.zeros_like(gradients).to(device)).cpu().detach()
+            torch.max(gradients, torch.zeros_like(gradients).to(get_device()))
+            .cpu()
+            .detach()
         )
 
         return positive_grads
@@ -281,7 +286,10 @@ class SaliencyMap(Attribution):
             input_tensor: input image as torch tensor
 
         """
-        device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
+        # Move all layers to current device
+        for layer in self.layers + self.base_layers:
+            layer.to(get_device())
+        input_tensor.to(get_device())
 
         features, out = self._forward_pass(input_tensor)
         grads = self._generate_gradients(out, features)
@@ -302,8 +310,8 @@ class SaliencyMap(Attribution):
         else:
             raise ValueError("not a valid split class for bottom_layer_split")
 
-        sal_map = (
-            torch.max(saliency, torch.zeros_like(saliency).to(device)).cpu().detach()
-        )
+        sal_map = torch.max(
+            saliency, torch.zeros_like(saliency).to(get_device())
+        ).detach()
 
         return sal_map

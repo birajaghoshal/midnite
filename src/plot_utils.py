@@ -5,6 +5,58 @@ from torch import squeeze
 from torch import Tensor
 
 
+def show(img: Tensor, scale: float = 1.0):
+    """Shows an torch tensor as image using pyplot.
+
+     Fixes image dimensions, if necessary.
+
+    Args:
+        img: the tensor to show
+        scale: the scale of the plot to show
+
+    """
+    # Detach from gradient
+    img = img.detach()
+    # Fix minibatch dimension if necessary
+    if img.size(dim=0) == 1:
+        img = img.squeeze(dim=0)
+
+    # Image with color channels
+    if len(img.size()) == 3:
+        if not img.size(dim=2) == 3:
+            # Permute or squeeze if necessary
+            if img.size(dim=0) == 3:
+                img = img.permute(1, 2, 0)
+            elif img.size(dim=2) == 1:
+                img = img.squeeze(dim=2)
+            else:
+                raise ValueError("Invalid number of channels for image")
+    # Also not image without channels
+    elif not len(img.size()) == 2:
+        raise ValueError("Invalid dimensions for image")
+
+    # Transfer to cpu and plot
+    fix, ax = plt.subplots(figsize=(8 * scale, 6 * scale))
+    ax.grid(False)
+    ax.imshow(img.cpu())
+    plt.show()
+
+
+def show_normalized(img: Tensor, scale: float = 1.0):
+    """Shows the normalized version of a torch tensor as image using pyplot.
+
+    Fixes image dimensions, if necessary.
+
+    Args:
+        img: the tensor to show
+        scale: the scale of the plot to show
+
+    """
+    img = img - img.min()
+    img.div_(img.max())
+    show(img, scale)
+
+
 def plot_saliency(
     saliency: Tensor, img: Image, sel_layer: int, output_layer, plot_with_image=True
 ):

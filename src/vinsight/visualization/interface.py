@@ -10,6 +10,8 @@ import torch
 from torch import Tensor
 from torch.nn import Module
 
+from vinsight import get_device
+
 
 class LayerSplit(ABC):
     """Abstract base class for splits of a layer.
@@ -208,6 +210,9 @@ class Activation(ABC):
         if len(layers) == 0:
             raise ValueError("Must specify at least one layer")
         self.layers = layers
+        for layer in self.layers:
+            layer.to(get_device())
+
         self.top_layer_selector = top_layer_selector
 
     @abstractmethod
