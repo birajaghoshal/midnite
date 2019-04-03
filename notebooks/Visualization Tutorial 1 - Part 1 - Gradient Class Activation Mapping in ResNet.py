@@ -10,7 +10,7 @@
 # Demonstration of visualizing the class activation mapping for an image classification example with ResNet.
 # 
 
-# In[11]:
+# In[27]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -20,11 +20,12 @@ get_ipython().run_line_magic('cd', '../src')
 
 import data_utils
 from data_utils import DataConfig
-from model_utils import ModelConfig
+from model_utils import ModelConfig, Flatten
 from model_utils import split_model_with_classification
 import plot_utils
 from PIL import Image
 
+from vinsight import get_device
 from vinsight.visualization import SaliencyMap
 from vinsight.visualization import GuidedBackpropagation
 from vinsight.visualization import SpatialSplit
@@ -39,32 +40,26 @@ from torch.nn.functional import interpolate
 
 from torchvision import models
 
-if torch.cuda.is_available and torch.cuda.device_count() > 0:
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
-
 
 # ## Step 1: Load pretrained model
 # 
 # In our example we use a pretrained ResNet for demonstration.
 
-# In[2]:
+# In[22]:
 
-
-device = torch.device("cuda" if torch.tensor([]).is_cuda else "cpu")
 
 model = models.resnet50(pretrained=True)
 
 model.eval()
-model.to(device);
+model.to(get_device());
 
 
 # ## Step 2: Load Image
 
-# In[3]:
+# In[24]:
 
 
 img_path = "../data/imagenet_example_283.jpg"
-#img_path = "../data/ood_example.jpg"
 
 # load image as torch tensor for computation, we can also load alexnet data for ResNet.
 input_ = data_utils.get_example_from_path(img_path, DataConfig.ALEX_NET)
@@ -83,7 +78,7 @@ H, W = img.size
 # ### Visualization of layer attributions
 # it is possible to visualize attributions of a single layer, or from several layers together. In this example we demonstrate both.
 
-# In[6]:
+# In[25]:
 
 
 # example ResNet selection
@@ -114,18 +109,23 @@ bottom_layer_split = SpatialSplit()
 # ## Step 5: Split the model into base_layers and inspection_layers
 # splitting the model with classification returns a list of base layers up to the selected single layer and the list of layers (inspection layers) from the selected layer until the last layer of the model, the classification layer. The output of the inspected layers is a classification with dimension (1, 1000)
 
-# In[8]:
+# In[28]:
 
 
-base_layers, inspected_layers = split_model_with_classification(
-    model, ModelConfig.RES_NET, selected_layer)
+base_layers = list(model.children())[:selected_layer]
+
+inspection_layers = (
+    list(model.children())[selected_layer:-1]
+    + [Flatten()]
+    + list(model.children())[-1:]
+)
 
 
 # ## Step 6: Generate Saliency Map
 # 
 # ### Example 1: Compute saliency map with bottom-layer spatial split
 
-# In[9]:
+# In[31]:
 
 
 saliency = SaliencyMap(
@@ -134,10 +134,10 @@ saliency = SaliencyMap(
     base_layers, 
     bottom_layer_split
 ).visualize(input_)
-        
+
 # upsample saliency to the pixel dimensions of the image
 sal_map = interpolate(
-    saliency.unsqueeze(dim=0).unsqueeze(dim=0), 
+    saliency.unsqueeze(dim=0), 
     size=(H, W), 
     mode='bilinear', 
     align_corners=True

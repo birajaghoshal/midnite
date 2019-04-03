@@ -3,7 +3,6 @@ from abc import ABC
 from abc import abstractmethod
 from typing import List
 from typing import Optional
-from typing import Tuple
 from typing import Union
 
 import numpy as np
@@ -248,6 +247,7 @@ class GuidedBackpropagation(Attribution):
         out_masked = self.top_layer_selector.get_mask(out.size()) * out
         # take mean over all dimensions
         score = out_masked.mean()
+
         return score
 
     def visualize(self, input_tensor: Tensor) -> Tensor:
@@ -255,10 +255,8 @@ class GuidedBackpropagation(Attribution):
 
         Args:
             input_tensor: input image
-            from_input: specifies if gradients should be computed from either the input image
-                or intermediate features of the selected layer.
         Returns:
-             a tensor of positive gradients (activations)
+             a tensor of positive gradients (activations) with spatial split
         """
         input_tensor.to(get_device())
 

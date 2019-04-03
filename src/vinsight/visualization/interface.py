@@ -239,15 +239,6 @@ class Attribution(ABC):
         """
         raise NotImplementedError()
 
-    def select_top_layer_score(self, output_forward: Tensor) -> Tensor:
-        """
-
-        Args:
-            output_forward: the output of the forward pass through the layers
-        Return:
-            a single value tensor with the target score for computing the gradients
-        """
-
 
 class Activation(ABC):
     """Abstract base class for activation methods.

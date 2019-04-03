@@ -9,7 +9,6 @@ from torch.nn import Module
 
 from vinsight.visualization import GuidedBackpropagation
 from vinsight.visualization import LayerSplit
-from vinsight.visualization import LossTerm
 from vinsight.visualization import NeuronSelector
 from vinsight.visualization import PixelActivation
 from vinsight.visualization import TransformStep
