@@ -226,6 +226,8 @@ class PixelActivation(Activation):
 
 
 class GuidedBackpropagation(Attribution):
+    """Performs guided backpropagation (forward + backward pass) and returns the positive gradients."""
+
     def __init__(
         self,
         layers: List[Module],
@@ -286,8 +288,7 @@ class GuidedBackpropagation(Attribution):
 
 class SaliencyMap(Attribution):
     """computes a saliency map of the output of the base layers wrt the top layer selection.
-        How much does neuron x of layer X (bottom layer selection)
-        contribute to neuron y of layer Y (top layer selection)?
+        How much does neuron x of layer X (bottom layer selection) contribute to neuron y of layer Y (top layer selection)?
     """
 
     def __init__(

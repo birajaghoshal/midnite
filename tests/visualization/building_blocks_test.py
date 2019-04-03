@@ -2,6 +2,7 @@
 import torch
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
+from torch import Size
 
 from vinsight.visualization import ChannelSplit
 from vinsight.visualization import NeuronSelector
@@ -127,3 +128,21 @@ def test_invert_spatial():
 def test_invert_channel():
     split = ChannelSplit().invert()
     assert_that(split).is_instance_of(SpatialSplit)
+
+
+def test_fill_dimensions_spatial():
+    input_ = torch.ones((4, 4))
+    filled = SpatialSplit().fill_dimensions(input_)
+    assert_that(filled.size()).is_equal_to(Size([1, 4, 4]))
+
+
+def test_fill_dimensions_channel():
+    input_ = torch.ones((4))
+    filled = ChannelSplit().fill_dimensions(input_)
+    assert_that(filled.size()).is_equal_to(Size([4, 1, 1]))
+
+
+def test_fill_dimensions_neuron():
+    input_ = torch.ones((3, 4, 4))
+    filled = NeuronSplit().fill_dimensions(input_)
+    assert_that(filled.size()).is_equal_to(Size([3, 4, 4]))

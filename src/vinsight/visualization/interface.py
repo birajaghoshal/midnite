@@ -97,6 +97,11 @@ class NeuronSplit(LayerSplit):
     """Split a layer neuron-wise, i.e. per single value."""
 
     def fill_dimensions(self, input_):
+        if not len(input_.size()) == 3:
+            raise ValueError(
+                "Input needs to have 3 neuron dimensions: (c, h, w). Got: ",
+                len(input_.size()),
+            )
         return input_
 
     def invert(self) -> LayerSplit:
@@ -119,6 +124,11 @@ class SpatialSplit(LayerSplit):
     """Split a layer by spatial positions."""
 
     def fill_dimensions(self, input_):
+        if not len(input_.size()) == 2:
+            raise ValueError(
+                "Input needs to have 2 spatial dimensions: (h, w). Got: ",
+                len(input_.size()),
+            )
         return input_.unsqueeze(dim=0)
 
     def invert(self) -> LayerSplit:
@@ -140,7 +150,6 @@ class SpatialSplit(LayerSplit):
             raise ValueError(
                 "Input needs to have 3 dimensions: (c, h, w). Got: ", len(input_.size())
             )
-
         # mean over channel dimension, so that there is one mean value for each spatial
         return input_.mean(0)
 
@@ -149,6 +158,11 @@ class ChannelSplit(LayerSplit):
     """Split a layer by its channels."""
 
     def fill_dimensions(self, input_):
+        if not len(input_.size()) == 1:
+            raise ValueError(
+                "Input needs to have 1 channel dimensions: (c,). Got: ",
+                len(input_.size()),
+            )
         return input_.unsqueeze(dim=1).unsqueeze(dim=2)
 
     def invert(self) -> LayerSplit:
