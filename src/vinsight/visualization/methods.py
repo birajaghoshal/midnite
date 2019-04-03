@@ -227,6 +227,8 @@ class PixelActivation(Activation):
 
 
 class GuidedBackpropagation(Attribution):
+    """Performs guided backpropagation (forward + backward pass) and returns the positive gradients."""
+
     def __init__(
         self,
         layers: List[Module],
@@ -244,6 +246,7 @@ class GuidedBackpropagation(Attribution):
         """
         # ignore batch dimension for masking
         out = out.squeeze(dim=0)
+
         # select the output element, for which gradient should be computed
         out_masked = self.top_layer_selector.get_mask(out.size()) * out
         # take mean over all dimensions
@@ -286,8 +289,7 @@ class GuidedBackpropagation(Attribution):
 
 class SaliencyMap(Attribution):
     """computes a saliency map of the output of the base layers wrt the top layer selection.
-        How much does neuron x of layer X (bottom layer selection)
-        contribute to neuron y of layer Y (top layer selection)?
+        How much does neuron x of layer X (bottom layer selection) contribute to neuron y of layer Y (top layer selection)?
     """
 
     def __init__(
@@ -319,8 +321,7 @@ class SaliencyMap(Attribution):
         """
         # Move all layers to current device
         for layer in self.layers + self.base_layers:
-            layer.to(get_device())
-            layer.eval()
+            layer.to(get_device()).eval()
 
         input_tensor.to(get_device())
 
