@@ -100,14 +100,6 @@ def plot_guided_backprop(saliency: Tensor, img):
         img: input image
     """
 
-    saliency = squeeze(saliency)
-    if not len(saliency.size()) == 3:
-        raise ValueError(
-            "saliency has to have 3 dimensions with more than one element, got: ",
-            len(saliency.size()),
-        )
-
-    saliency = saliency.mean(0)
     sal_img = Image.fromarray(saliency.numpy())
     sal_img = sal_img.resize(img.size, resample=Image.LINEAR)
     plt.imshow(sal_img)

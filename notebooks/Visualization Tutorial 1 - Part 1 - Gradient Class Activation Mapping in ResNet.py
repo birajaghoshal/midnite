@@ -10,7 +10,7 @@
 # Demonstration of visualizing the class activation mapping for an image classification example with ResNet.
 # 
 
-# In[27]:
+# In[1]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -20,8 +20,7 @@ get_ipython().run_line_magic('cd', '../src')
 
 import data_utils
 from data_utils import DataConfig
-from model_utils import ModelConfig, Flatten
-from model_utils import split_model_with_classification
+from model_utils import Flatten
 import plot_utils
 from PIL import Image
 
@@ -45,7 +44,7 @@ from torchvision import models
 # 
 # In our example we use a pretrained ResNet for demonstration.
 
-# In[22]:
+# In[2]:
 
 
 model = models.resnet50(pretrained=True)
@@ -56,7 +55,7 @@ model.to(get_device());
 
 # ## Step 2: Load Image
 
-# In[24]:
+# In[3]:
 
 
 img_path = "../data/imagenet_example_283.jpg"
@@ -78,7 +77,7 @@ H, W = img.size
 # ### Visualization of layer attributions
 # it is possible to visualize attributions of a single layer, or from several layers together. In this example we demonstrate both.
 
-# In[25]:
+# In[4]:
 
 
 # example ResNet selection
@@ -99,7 +98,7 @@ selected_layer = 8
 # <img src="resources/splits.png">
 # source: https://distill.pub/2018/building-blocks/
 
-# In[7]:
+# In[5]:
 
 
 top_layer_selector = NeuronSelector(NeuronSplit(), [283])
@@ -109,7 +108,7 @@ bottom_layer_split = SpatialSplit()
 # ## Step 5: Split the model into base_layers and inspection_layers
 # splitting the model with classification returns a list of base layers up to the selected single layer and the list of layers (inspection layers) from the selected layer until the last layer of the model, the classification layer. The output of the inspected layers is a classification with dimension (1, 1000)
 
-# In[28]:
+# In[6]:
 
 
 base_layers = list(model.children())[:selected_layer]
@@ -123,13 +122,19 @@ inspection_layers = (
 
 # ## Step 6: Generate Saliency Map
 # 
+# **Return values for each split:** 
+# 
+# * NeuronSplit() returns saliency with full dimensions of the selected layer - 3 dimensions (c, h, w)
+# * ChannelSplit() returns a saliency value for each channel, hence returns 1 dimension (c)
+# * SpatialSplit() returns a saliency value for each spatial, hence returns 2 dimensions (h, w)
+# 
 # ### Example 1: Compute saliency map with bottom-layer spatial split
 
-# In[31]:
+# In[7]:
 
 
 saliency = SaliencyMap(
-    inspected_layers, 
+    inspection_layers, 
     top_layer_selector, 
     base_layers, 
     bottom_layer_split
@@ -137,7 +142,7 @@ saliency = SaliencyMap(
 
 # upsample saliency to the pixel dimensions of the image
 sal_map = interpolate(
-    saliency.unsqueeze(dim=0), 
+    saliency.unsqueeze(dim=0).unsqueeze(dim=0), 
     size=(H, W), 
     mode='bilinear', 
     align_corners=True
@@ -149,33 +154,33 @@ plot_utils.plot_saliency(sal_map, img, selected_layer, output_layer="classificat
 
 # ## Guided Backpropagation
 
-# In[16]:
+# In[8]:
 
 
 backprop = GuidedBackpropagation(
-    base_layers,
-    top_layer_selector, 
+    (list(model.children())[:-1] + [Flatten()] + list(model.children())[-1:]),
+    top_layer_selector,
     bottom_layer_split
 ).visualize(input_)
 
 # plot saliencies with the input image
-#plot_utils.plot_guided_backprop(saliency, img)
+plot_utils.plot_guided_backprop(saliency, img)
 
 
 # ### Example 2: Compute saliency map with bottom layer channel split.
 
-# In[17]:
+# In[9]:
 
 
 top_layer_selector = NeuronSelector(NeuronSplit(), [283])
 bottom_layer_split = ChannelSplit()
 
 
-# In[18]:
+# In[10]:
 
 
 saliency = SaliencyMap(
-    inspected_layers, 
+    inspection_layers, 
     top_layer_selector, 
     base_layers, 
     bottom_layer_split
@@ -190,23 +195,23 @@ for (value, idx) in zip(top_values, top_channels):
 # ### Example 3: Compute saliency map with neuron split
 # 
 
-# In[19]:
+# In[11]:
 
 
 bottom_layer_split = NeuronSplit()
 
 
-# In[20]:
+# In[12]:
 
 
 saliency = SaliencyMap(
-    inspected_layers, 
+    inspection_layers, 
     top_layer_selector, 
     base_layers, 
     bottom_layer_split
 ).visualize(input_)
 
-print("Neuron activations for channel 39 of layer 5: \n{}".format(saliency[39]))
+print("Neuron activations for channel 39 of layer {}:".format(selected_layer))
 
 # visualize the neurons of channel 39
 # upsample saliency to the pixel dimensions of the image

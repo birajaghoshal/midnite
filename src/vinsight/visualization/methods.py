@@ -243,6 +243,7 @@ class GuidedBackpropagation(Attribution):
         """
         # ignore batch dimension for masking
         out = out.squeeze(dim=0)
+
         # select the output element, for which gradient should be computed
         out_masked = self.top_layer_selector.get_mask(out.size()) * out
         # take mean over all dimensions

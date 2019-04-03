@@ -11,6 +11,7 @@ from vinsight.visualization import GuidedBackpropagation
 from vinsight.visualization import LayerSplit
 from vinsight.visualization import NeuronSelector
 from vinsight.visualization import PixelActivation
+from vinsight.visualization import SpatialSplit
 from vinsight.visualization import TransformStep
 from vinsight.visualization import TVRegularization
 from vinsight.visualization import WeightDecay
@@ -183,3 +184,29 @@ def test_select_top_layer_score_1d(mocker):
 
     assert_that(score.size()).is_equal_to(Size([]))
     assert_that(score).is_equal_to(1)
+
+
+def test_guided_backprop_spatial(mocker):
+    img = torch.zeros((1, 3, 4, 4))
+    layers = [Dropout2d(), Dropout2d()]
+
+    mocker.spy(layers[0], "forward")
+    mocker.spy(layers[1], "forward")
+    mocker.patch("torch.autograd.grad", return_value=torch.randn(1, 3, 4, 4))
+
+    top_layer_sel = mocker.Mock(spec=NeuronSelector)
+    top_layer_sel.get_mask = mocker.Mock(return_value=torch.ones((3, 4, 4)))
+
+    backprop = GuidedBackpropagation(layers, top_layer_sel, SpatialSplit())
+    pos_grad = backprop.visualize(img)
+
+    # Check forward pass
+    layers[0].forward.assert_called()
+    layers[1].forward.assert_called()
+    assert_that(layers[0].training).is_false()
+    assert_that(layers[1].training).is_false()
+    assert_that(np.all(pos_grad.numpy() >= 0)).is_true()
+
+    # check output wrt split dimension
+    # spatial split = 2 dim
+    assert_that(pos_grad.size()).is_equal_to(Size([4, 4]))
