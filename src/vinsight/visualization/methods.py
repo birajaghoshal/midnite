@@ -12,6 +12,7 @@ from torch import Tensor
 from torch.nn import Module
 from torch.nn import Sequential
 from torch.nn.functional import relu
+from tqdm import trange
 
 from vinsight import get_device
 from vinsight.visualization import Activation
@@ -212,7 +213,7 @@ class PixelActivation(Activation):
             ).float()
         opt_img = input_.permute((2, 0, 1)).to(get_device())
 
-        for n in range(self.iter_n):
+        for n in trange(self.iter_n):
             # Optimization step
             opt_img = self._opt_step(opt_img)
 

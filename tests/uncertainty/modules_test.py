@@ -29,38 +29,42 @@ def test_dropout_layer():
     assert_that(output).contains_only(2.0, 0.0)
 
 
-def test_mean_ensemble_layer():
+def test_mean_ensemble_layer(mocker):
     """Mean ensemble layer test
 
     Checks if the layer correctly calculates an ensemble mean.
 
     """
     inner = modules.PredictionDropout()
-    ensemble = modules.MeanEnsemble(inner)
+    mocker.spy(inner, "forward")
+    ensemble = modules.MeanEnsemble(inner, 30)
     ensemble.eval()
 
     input_ = torch.ones((1, 10))
     output = ensemble(input_)
 
-    assert torch.allclose(input_, output, atol=0.3)
+    assert torch.allclose(input_, output, atol=0.34)
     assert not torch.allclose(input_, output)
+    assert_that(inner.forward.call_count).is_equal_to(30)
 
 
-def test_ensemble_layer():
+def test_ensemble_layer(mocker):
     """Ensemble layer test
 
     Checks if the ensemble layer does the sampling correctly.
 
     """
     inner = modules.PredictionDropout()
-    ensemble = modules.PredictionEnsemble(inner)
+    mocker.spy(inner, "forward")
+    ensemble = modules.PredictionEnsemble(inner, 25)
     ensemble.eval()
 
     input_ = torch.ones((1, 10))
     output = ensemble(input_)
 
-    assert_that(output.size()).is_equal_to((1, 10, 20))
+    assert_that(output.size()).is_equal_to((1, 10, 25))
     assert torch.all((output == 0.0) + (output == 2.0))
+    assert_that(inner.forward.call_count).is_equal_to(25)
 
 
 def test_ensembles_autograd(mocker):

@@ -11,6 +11,7 @@ from torch.nn import Dropout3d
 from torch.nn import FeatureAlphaDropout
 from torch.nn import functional
 from torch.nn import Module
+from tqdm import tqdm
 
 import vinsight.uncertainty.functional as func
 from vinsight import get_device
@@ -109,15 +110,21 @@ class MeanEnsemble(_Ensemble):
 
         """
         input_.to(get_device())
-        pred = self.inner.forward(input_)
 
         if self.training:
-            return pred
+            return self.inner.forward(input_)
         else:
             with torch.no_grad():
-                for i in range(self.sample_size - 1):
-                    pred += self.inner.forward(input_)
-                return pred.div(self.sample_size)
+                with tqdm(
+                    range(self.sample_size - 1), total=self.sample_size
+                ) as sample_range:
+                    sample_range.update()
+                    pred = self.inner.forward(input_)
+
+                    # Calc remaining forward pass
+                    for _ in sample_range:
+                        pred += self.inner.forward(input_)
+                    return pred.div(self.sample_size)
 
 
 class PredictionEnsemble(_Ensemble):
@@ -134,32 +141,38 @@ class PredictionEnsemble(_Ensemble):
 
         """
         input_.to(get_device())
-        # Calculate first prediction
-        pred = self.inner.forward(input_)
-        pred_shape = pred.size()
 
         # In eval mode, stack ensemble predictions
-        if not self.training:
+        if self.training:
+            return self.inner.forward(input_)
+        else:
             with torch.no_grad():
+                # Disable all gradients
                 for param in self.parameters():
                     param.requires_grad = False
                 input_.requires_grad = False
-                # Allocate result tensor
-                result = torch.zeros(
-                    (*pred_shape, self.sample_size),
-                    requires_grad=False,
-                    device=get_device(),
-                )
-                # Store results in their slice
-                result.select(len(pred_shape), 0).copy_(pred)
-                del pred
-                for i in range(1, self.sample_size):
-                    pred = self.inner.forward(input_)
-                    result.select(len(pred_shape), i).copy_(pred)
-                    del pred
-                pred = result
 
-        return pred
+                # Track progress
+                with tqdm(
+                    range(self.sample_size - 1), total=self.sample_size
+                ) as sample_range:
+                    sample_range.update()
+
+                    pred = self.inner.forward(input_)
+                    pred_shape = pred.size()
+
+                    # Allocate result tensor
+                    result = torch.zeros(
+                        (*pred_shape, self.sample_size), device=get_device()
+                    )
+                    # Store results in their slice
+                    result.select(len(pred_shape), 0).copy_(pred)
+
+                    for i in sample_range:
+                        pred = self.inner.forward(input_)
+                        result.select(len(pred_shape), i).copy_(pred)
+
+                    return result
 
 
 class PredictiveEntropy(Module):
