@@ -189,7 +189,13 @@ def test_select_top_layer_score_1d(mocker):
     assert_that(score).is_equal_to(1)
 
 
-def test_guided_backprop_visualize(mocker):
+def guided_backprop_visualize(mocker, split: LayerSplit):
+    """Contains all setups and functions for testing GuidedBackpropagation.visualize()
+    Args:
+        split: the split for which guided backprop should be computed.
+    Returns:
+        the positive gradient activations in the split dimension.
+    """
     img = torch.zeros((1, 3, 4, 4))
     layers = [Dropout2d(), Dropout2d()]
 
@@ -200,8 +206,8 @@ def test_guided_backprop_visualize(mocker):
     top_layer_sel = mocker.Mock(spec=NeuronSelector)
     top_layer_sel.get_mask = mocker.Mock(return_value=torch.ones((3, 4, 4)))
 
-    backprop_spatial = GuidedBackpropagation(layers, top_layer_sel, SpatialSplit())
-    pos_grad_spatial = backprop_spatial.visualize(img)
+    backprop_spatial = GuidedBackpropagation(layers, top_layer_sel, split)
+    pos_grad = backprop_spatial.visualize(img)
 
     # Check forward pass
     layers[0].forward.assert_called()
@@ -209,106 +215,56 @@ def test_guided_backprop_visualize(mocker):
     assert_that(layers[0].training).is_false()
     assert_that(layers[1].training).is_false()
 
-    assert_that(np.all(pos_grad_spatial.numpy() >= 0)).is_true()
-    assert_that(pos_grad_spatial.size()).is_equal_to(Size([4, 4]))
+    return pos_grad
 
-    backprop_channel = GuidedBackpropagation(layers, top_layer_sel, ChannelSplit())
-    pos_grad_channel = backprop_channel.visualize(img)
 
-    assert_that(np.all(pos_grad_channel.numpy() >= 0)).is_true()
+def test_guided_backprop_spatial(mocker):
+    """tests the correct computation of guided gradients for a spatial split"""
+    pos_grad = guided_backprop_visualize(mocker, SpatialSplit())
+
+    assert_that(np.all(pos_grad.numpy() >= 0)).is_true()
+    assert_that(pos_grad.size()).is_equal_to(Size([4, 4]))
+
+
+def test_guided_backprop_channel(mocker):
+    """tests correct computation of guided gradients for a channel split"""
+    pos_grad = guided_backprop_visualize(mocker, ChannelSplit())
+
+    assert_that(np.all(pos_grad.numpy() >= 0)).is_true()
     # check output wrt split dimension
-    assert_that(pos_grad_channel.size()).is_equal_to(Size([3]))
+    assert_that(pos_grad.size()).is_equal_to(Size([3]))
 
-    backprop_neuron = GuidedBackpropagation(layers, top_layer_sel, NeuronSplit())
-    pos_grad_neuron = backprop_neuron.visualize(img)
 
-    assert_that(np.all(pos_grad_neuron.numpy() >= 0)).is_true()
+def test_guided_backprop_neuron(mocker):
+    """tests the correct computation of guided gradients for a neuron split"""
+    pos_grad = guided_backprop_visualize(mocker, NeuronSplit())
+
+    assert_that(np.all(pos_grad.numpy() >= 0)).is_true()
     # check output wrt split dimension
-    assert_that(pos_grad_neuron.size()).is_equal_to(Size([3, 4, 4]))
+    assert_that(pos_grad.size()).is_equal_to(Size([3, 4, 4]))
 
 
-def test_saliency_visualize_spatial(mocker):
+def saliency_visualize(mocker, split):
+    """Contains all setups and functions for testing SaliencyMap.visualize()
+    Args:
+        split: the split for which the saliency should be computed.
+    Returns:
+        the positive saliency activations in the split dimension.
+    """
     img = torch.zeros((1, 3, 4, 4))
     base_layers = [Dropout2d(), Dropout2d()]
     mocker.spy(base_layers[0], "forward")
     mocker.spy(base_layers[1], "forward")
 
     # spatial case
-    mocker.patch(
-        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
-        return_value=torch.ones((3)),
-    )
+
     mocker.patch(
         "vinsight.visualization.interface.SpatialSplit.invert",
         return_value=ChannelSplit(),
     )
     mocker.patch(
-        "vinsight.visualization.interface.ChannelSplit.fill_dimensions",
-        return_value=torch.ones((3, 1, 1)),
-    )
-
-    sal_map = SaliencyMap(
-        [mocker.Mock(spec=Module)],
-        mocker.Mock(spec=NeuronSelector),
-        base_layers,
-        SpatialSplit(),
-    ).visualize(img)
-
-    base_layers[0].forward.assert_called()
-    base_layers[1].forward.assert_called()
-    assert_that(base_layers[0].training).is_false()
-    assert_that(base_layers[1].training).is_false()
-
-    assert_that(np.all(sal_map.numpy() >= 0)).is_true()
-    assert_that(sal_map.size()).is_equal_to(Size([4, 4]))
-
-
-def test_saliency_visualize_channel(mocker):
-    img = torch.zeros((1, 3, 4, 4))
-    base_layers = [Dropout2d(), Dropout2d()]
-    mocker.spy(base_layers[0], "forward")
-    mocker.spy(base_layers[1], "forward")
-
-    # spatial case
-    mocker.patch(
-        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
-        return_value=torch.ones((4, 4)),
-    )
-    mocker.patch(
         "vinsight.visualization.interface.ChannelSplit.invert",
         return_value=SpatialSplit(),
-    )
-    mocker.patch(
-        "vinsight.visualization.interface.SpatialSplit.fill_dimensions",
-        return_value=torch.ones((1, 4, 4)),
-    )
-
-    sal_map = SaliencyMap(
-        [mocker.Mock(spec=Module)],
-        mocker.Mock(spec=NeuronSelector),
-        base_layers,
-        ChannelSplit(),
-    ).visualize(img)
-
-    base_layers[0].forward.assert_called()
-    base_layers[1].forward.assert_called()
-    assert_that(base_layers[0].training).is_false()
-    assert_that(base_layers[1].training).is_false()
-
-    assert_that(np.all(sal_map.numpy() >= 0)).is_true()
-    assert_that(sal_map.size()).is_equal_to(Size([3]))
-
-
-def test_saliency_visualize_neuron(mocker):
-    img = torch.zeros((1, 3, 4, 4))
-    base_layers = [Dropout2d(), Dropout2d()]
-    mocker.spy(base_layers[0], "forward")
-    mocker.spy(base_layers[1], "forward")
-
-    # spatial case
-    mocker.patch(
-        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
-        return_value=torch.ones((3, 4, 4)),
     )
     mocker.patch(
         "vinsight.visualization.interface.NeuronSplit.invert",
@@ -318,18 +274,64 @@ def test_saliency_visualize_neuron(mocker):
         "vinsight.visualization.interface.NeuronSplit.fill_dimensions",
         return_value=torch.ones((3, 4, 4)),
     )
+    mocker.patch(
+        "vinsight.visualization.interface.SpatialSplit.fill_dimensions",
+        return_value=torch.ones((1, 4, 4)),
+    )
+    mocker.patch(
+        "vinsight.visualization.interface.ChannelSplit.fill_dimensions",
+        return_value=torch.ones((3, 1, 1)),
+    )
 
     sal_map = SaliencyMap(
-        [mocker.Mock(spec=Module)],
-        mocker.Mock(spec=NeuronSelector),
-        base_layers,
-        NeuronSplit(),
+        [mocker.Mock(spec=Module)], mocker.Mock(spec=NeuronSelector), base_layers, split
     ).visualize(img)
 
     base_layers[0].forward.assert_called()
     base_layers[1].forward.assert_called()
     assert_that(base_layers[0].training).is_false()
     assert_that(base_layers[1].training).is_false()
+
+    return sal_map
+
+
+def test_saliency_visualize_spatial(mocker):
+    """test the correct computation and dimensions of the saliency for a spatial split"""
+
+    mocker.patch(
+        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
+        return_value=torch.randn((3)),
+    )
+
+    sal_map = saliency_visualize(mocker, SpatialSplit())
+
+    assert_that(np.all(sal_map.numpy() >= 0)).is_true()
+    assert_that(sal_map.size()).is_equal_to(Size([4, 4]))
+
+
+def test_saliency_visualize_channel(mocker):
+    """test the correct computation and dimensions of the saliency for a channel split"""
+
+    mocker.patch(
+        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
+        return_value=torch.ones((4, 4)),
+    )
+
+    sal_map = saliency_visualize(mocker, ChannelSplit())
+
+    assert_that(np.all(sal_map.numpy() >= 0)).is_true()
+    assert_that(sal_map.size()).is_equal_to(Size([3]))
+
+
+def test_saliency_visualize_neuron(mocker):
+    """test the correct computation and dimensions of the saliency for a neuron split"""
+
+    mocker.patch(
+        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
+        return_value=torch.ones((3, 4, 4)),
+    )
+
+    sal_map = saliency_visualize(mocker, NeuronSplit())
 
     assert_that(np.all(sal_map.numpy() >= 0)).is_true()
     assert_that(sal_map.size()).is_equal_to(Size([3, 4, 4]))

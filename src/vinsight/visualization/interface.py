@@ -68,14 +68,21 @@ class LayerSplit(ABC):
 
     @abstractmethod
     def fill_dimensions(self, input_):
-        """Fills up the dimensions with unsqueeze(), so that output is (c, h, w) """
+        """Fills up the dimensions with unsqueeze(), so that output is (c, h, w)
+        Args:
+            input_: tensor which needs to be unsqueezed.
+        Returns:
+            the input_ with dimension (c, h, w)
+
+            """
         raise NotImplementedError()
 
 
 class Identity(LayerSplit):
-    """ """
+    """"""
 
     def fill_dimensions(self, input_):
+        # TODO Update
         return input_
 
     def invert(self) -> LayerSplit:
@@ -98,10 +105,7 @@ class NeuronSplit(LayerSplit):
 
     def fill_dimensions(self, input_):
         if not len(input_.size()) == 3:
-            raise ValueError(
-                "Input needs to have 3 neuron dimensions: (c, h, w). Got: ",
-                len(input_.size()),
-            )
+            raise (ValueError)
         return input_
 
     def invert(self) -> LayerSplit:
@@ -126,8 +130,9 @@ class SpatialSplit(LayerSplit):
     def fill_dimensions(self, input_):
         if not len(input_.size()) == 2:
             raise ValueError(
-                "Input needs to have 2 spatial dimensions: (h, w). Got: ",
-                len(input_.size()),
+                "Input needs to have 2 spatial dimensions: (h, w). Got: {}".format(
+                    len(input_.size())
+                )
             )
         return input_.unsqueeze(dim=0)
 
@@ -148,7 +153,9 @@ class SpatialSplit(LayerSplit):
     def get_mean(self, input_: Tensor) -> Tensor:
         if not len(input_.size()) == 3:
             raise ValueError(
-                "Input needs to have 3 dimensions: (c, h, w). Got: ", len(input_.size())
+                "Input needs to have 3 dimensions: (c, h, w). Got: {}".format(
+                    len(input_.size())
+                )
             )
         # mean over channel dimension, so that there is one mean value for each spatial
         return input_.mean(0)
@@ -174,7 +181,7 @@ class ChannelSplit(LayerSplit):
 
     def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
         if not len(index) == 1:
-            raise ValueError("Channel index needs one dimension. Got: ", index)
+            raise ValueError("Channel index needs one dimension. Got: {}".format(index))
         mask = torch.zeros(*size, device=get_device())
         mask[index[0]] = 1
         return mask
