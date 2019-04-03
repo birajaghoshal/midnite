@@ -23,6 +23,11 @@ class LayerSplit(ABC):
     """
 
     @abstractmethod
+    def invert(self):
+        """Returns an inverted split"""
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
         """Returns a split, i.e. all masks.
 
@@ -49,6 +54,7 @@ class LayerSplit(ABC):
         """
         raise NotImplementedError()
 
+    @abstractmethod
     def get_mean(self, input_):
         """Returns the mean of an input along the split dimension.
 
@@ -60,9 +66,41 @@ class LayerSplit(ABC):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def fill_dimensions(self, input_):
+        """Fills up the dimensions with unsqueeze(), so that output is (c, h, w) """
+        raise NotImplementedError()
+
+
+class Identity(LayerSplit):
+    """ """
+
+    def fill_dimensions(self, input_):
+        return input_
+
+    def invert(self) -> LayerSplit:
+        return NeuronSplit()
+
+    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
+        return [self.get_mask([], size)]
+
+    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
+        if len(index) > 0:
+            raise ValueError("No index required for identity split")
+        return torch.ones(size)
+
+    def get_mean(self, input_):
+        return input_.mean()
+
 
 class NeuronSplit(LayerSplit):
     """Split a layer neuron-wise, i.e. per single value."""
+
+    def fill_dimensions(self, input_):
+        return input_
+
+    def invert(self) -> LayerSplit:
+        return Identity()
 
     def get_split(self, size: List[int]) -> List[Tensor]:
         indexes = product(*map(range, size))
@@ -74,13 +112,17 @@ class NeuronSplit(LayerSplit):
         return mask
 
     def get_mean(self, input_: Tensor) -> Tensor:
-        if not len(input_.size()) == 3:
-            raise ValueError("Channel index needs one dimension. Got: ", input_.size())
         return input_
 
 
 class SpatialSplit(LayerSplit):
     """Split a layer by spatial positions."""
+
+    def fill_dimensions(self, input_):
+        return input_.unsqueeze(dim=0)
+
+    def invert(self) -> LayerSplit:
+        return ChannelSplit()
 
     def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
         indexes = product(*map(range, size[1:]))
@@ -95,12 +137,22 @@ class SpatialSplit(LayerSplit):
 
     def get_mean(self, input_: Tensor) -> Tensor:
         if not len(input_.size()) == 3:
-            raise ValueError("Channel index needs one dimension. Got: ", input_.size())
-        return input_.mean(-1).mean(-1)
+            raise ValueError(
+                "Input needs to have 3 dimensions: (c, h, w). Got: ", len(input_.size())
+            )
+
+        # mean over channel dimension, so that there is one mean value for each spatial
+        return input_.mean(0)
 
 
 class ChannelSplit(LayerSplit):
     """Split a layer by its channels."""
+
+    def fill_dimensions(self, input_):
+        return input_.unsqueeze(dim=1).unsqueeze(dim=2)
+
+    def invert(self) -> LayerSplit:
+        return SpatialSplit()
 
     def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
         indexes = map(lambda idx: [idx], range(size[0]))
@@ -114,9 +166,8 @@ class ChannelSplit(LayerSplit):
         return mask
 
     def get_mean(self, input_: Tensor) -> Tensor:
-        if not len(input_.size()) == 3:
-            raise ValueError("Channel index needs one dimension. Got: ", input_.size())
-        return input_.mean(0)
+        # mean over spatials, s.t. there is one mean value for each channel
+        return input_.mean(-1).mean(-1)
 
 
 # TODO group split with matrix factorization
@@ -159,23 +210,21 @@ class Attribution(ABC):
 
     def __init__(
         self,
-        inspection_layers: List[Module],
+        layers: List[Module],
         top_layer_selector: NeuronSelector,
-        base_layers: List[Module],
         bottom_layer_split: LayerSplit,
     ):
         """
         Args:
-            inspection_layers: the list of ajacent layers to execute the method on
+            layers: the list of ajacent layers to execute the method on
             top_layer_selector: the target split for analyzing attribution
-            base_layers: list of previous layers up to the bottom layer
+            bottom_layer_split: split of the selected layer
 
         """
-        if len(inspection_layers) == 0:
-            raise ValueError("Must specify at least one top layer")
-        self.inspection_layers = inspection_layers
+        if len(layers) == 0:
+            raise ValueError("Must specify at least one layer")
+        self.layers = layers
         self.top_layer_selector = top_layer_selector
-        self.base_layers = base_layers
         self.bottom_layer_split = bottom_layer_split
 
     @abstractmethod
@@ -189,6 +238,15 @@ class Attribution(ABC):
 
         """
         raise NotImplementedError()
+
+    def select_top_layer_score(self, output_forward: Tensor) -> Tensor:
+        """
+
+        Args:
+            output_forward: the output of the forward pass through the layers
+        Return:
+            a single value tensor with the target score for computing the gradients
+        """
 
 
 class Activation(ABC):

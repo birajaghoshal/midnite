@@ -12,15 +12,13 @@ from numpy import random
 from torch import Tensor
 from torch.nn import Module
 from torch.nn import Sequential
+from torch.nn.functional import relu
 
 from vinsight import get_device
 from vinsight.visualization import Activation
 from vinsight.visualization import Attribution
-from vinsight.visualization import ChannelSplit
 from vinsight.visualization import LayerSplit
 from vinsight.visualization import NeuronSelector
-from vinsight.visualization import NeuronSplit
-from vinsight.visualization import SpatialSplit
 from vinsight.visualization.transforms import TransformStep
 
 
@@ -228,8 +226,67 @@ class PixelActivation(Activation):
         return opt_img.detach().permute((1, 2, 0))
 
 
+class GuidedBackpropagation(Attribution):
+    def __init__(
+        self,
+        layers: List[Module],
+        top_layer_selector: NeuronSelector,
+        bottom_layer_split: LayerSplit,
+    ):
+        super().__init__(layers, top_layer_selector, bottom_layer_split)
+
+    def select_top_layer_score(self, out: Tensor) -> Tensor:
+        """ Computes the mean of the top layer selection, hence the target value for backpropagation.
+        Args:
+            out: output of the forward pass
+        Returns:
+            score: target value (single value tensor) for gradient computation
+        """
+        # ignore batch dimension for masking
+        out = out.squeeze(dim=0)
+        # select the output element, for which gradient should be computed
+        out_masked = self.top_layer_selector.get_mask(out.size()) * out
+        # take mean over all dimensions
+        score = out_masked.mean()
+        return score
+
+    def visualize(self, input_tensor: Tensor) -> Tensor:
+        """ Computes the positive guided gradients of an input tensor.
+
+        Args:
+            input_tensor: input image
+            from_input: specifies if gradients should be computed from either the input image
+                or intermediate features of the selected layer.
+        Returns:
+             a tensor of positive gradients (activations)
+        """
+        input_tensor.to(get_device())
+
+        # Move all layers to current device
+        for layer in self.layers:
+            layer.to(get_device())
+            layer.eval()
+
+        input_tensor.requires_grad_(True)
+
+        # forward pass
+        out = Sequential(*self.layers)(input_tensor)
+
+        # retrieve mean score of top layer selector
+        score = self.select_top_layer_score(out)
+
+        # compute gradients of input w.r.t the top level score, get rid of partial derivative dimension
+        gradients = torch.autograd.grad(score, input_tensor)[0]
+
+        # get only positive gradients
+        positive_grads = relu(gradients).to(get_device()).cpu().detach()
+
+        # mean over bottom layer split dimension
+        return self.bottom_layer_split.get_mean(positive_grads.squeeze(dim=0))
+
+
 class SaliencyMap(Attribution):
-    """computes a saliency map of a bottom layer selection wrt the top layer selection.
+    """computes a saliency map of the output of the base layers wrt the top layer selection.
         How much does neuron x of layer X (bottom layer selection)
         contribute to neuron y of layer Y (top layer selection)?
     """
@@ -249,76 +306,11 @@ class SaliencyMap(Attribution):
             bottom_layer_split: specifies the split of interest in the selected layer
 
         """
-        super().__init__(
-            inspection_layers, top_layer_selector, base_layers, bottom_layer_split
+        super().__init__(inspection_layers, top_layer_selector, bottom_layer_split)
+        self.base_layers = base_layers
+        self.backpropagator = GuidedBackpropagation(
+            self.layers, self.top_layer_selector, self.bottom_layer_split.invert()
         )
-
-    def _forward_pass(self, input_tensor) -> Tuple[Tensor, Tensor]:
-        """ Computes a forward pass through the network.
-        Args:
-            input_tensor: input image
-        Returns:
-             features: intermediate output of the network. pass through the base_layers
-             out: output of the pass through the whole network. pass through base_layers and inspection_layers
-        """
-        # features of the selected layer
-        features = Sequential(*self.base_layers)(input_tensor)
-        # features of the output layer
-        out = Sequential(*self.inspection_layers)(features).squeeze()
-
-        return features, out
-
-    def _generate_gradients(self, out: Tensor, backprop_variable: Tensor) -> Tensor:
-        """ Computes the gradients of the base layer output w.r.t. the inspection layer output.
-
-        Args:
-            out: output of the forward pass
-            backprop_variable: the Tensor for which the gradients should be computed
-        Returns:
-             features: result of the forward pass through base_layers
-             gradients: gradients of features with respect to the model output
-        """
-
-        # select the output element, for which gradient should be computed
-        out_masked = self.top_layer_selector.get_mask(out.size()) * out
-
-        # compute a single value from the mask, reduce dimensions with mean
-        score = out_masked.mean(-1).mean(-1).mean(-1)
-
-        # computes and returns the sum of gradients of the output layer score
-        # w.r.t. the features of the selected layer
-        gradients = torch.autograd.grad(score, backprop_variable)[0][0]
-
-        return gradients
-
-    def guided_backprop(self, input_tensor, from_input=True) -> Tensor:
-        """ Computes the positive guided gradients of an input tensor.
-
-        Args:
-            input_tensor: input image
-            from_input: specifies if gradients should be computed from either the input image
-                or intermediate features of the selected layer.
-        Returns:
-             a tensor of positive gradients (activations)
-        """
-
-        input_tensor.to(get_device())
-        input_tensor.requires_grad_(True)
-
-        features, out = self._forward_pass(input_tensor)
-
-        if from_input:
-            gradients = self._generate_gradients(out, input_tensor)
-        else:
-            gradients = self._generate_gradients(out, features)
-
-        positive_grads = (
-            torch.max(gradients, torch.zeros_like(gradients).to(get_device()))
-            .cpu()
-            .detach()
-        )
-
-        return positive_grads
 
     def visualize(self, input_tensor: Tensor) -> Tensor:
         """generates a saliency tensor for an input image at the selected intermediate layer
@@ -329,29 +321,22 @@ class SaliencyMap(Attribution):
         # Move all layers to current device
         for layer in self.layers + self.base_layers:
             layer.to(get_device())
+            layer.eval()
+
         input_tensor.to(get_device())
 
-        features, out = self._forward_pass(input_tensor)
-        grads = self._generate_gradients(out, features)
+        # forward pass through base layers
+        intermediate = Sequential(*self.base_layers)(input_tensor).detach()
 
-        _, N, H, W = features.size()
+        # retrieve the alpha weight
+        intermediate_back = self.backpropagator.visualize(intermediate).detach()
+        # get rid of batch dimension
+        alpha = intermediate_back.squeeze(dim=0)
+        # fill dimensions s.t. each split has dim (c, h, w)
+        alpha = self.bottom_layer_split.invert().fill_dimensions(alpha)
 
-        avg_pooling_weight = self.bottom_layer_split.get_mean(grads)
+        result = self.bottom_layer_split.get_mean(
+            intermediate.squeeze(dim=0).mul_(alpha)
+        )
 
-        if isinstance(self.bottom_layer_split, SpatialSplit):
-            saliency = torch.matmul(avg_pooling_weight, features.view(N, H * W))
-            saliency = saliency.view(H, W)
-        elif isinstance(self.bottom_layer_split, ChannelSplit):
-            saliency = torch.matmul(
-                features.view(N, H * W), avg_pooling_weight.view(H * W)
-            )
-        elif isinstance(self.bottom_layer_split, NeuronSplit):
-            saliency = features.squeeze()
-        else:
-            raise ValueError("not a valid split class for bottom_layer_split")
-
-        sal_map = torch.max(
-            saliency, torch.zeros_like(saliency).to(get_device())
-        ).detach()
-
-        return sal_map
+        return relu(result).detach()

@@ -7,6 +7,9 @@ from torch import Size
 from torch.nn import Dropout2d
 from torch.nn import Module
 
+from vinsight.visualization import GuidedBackpropagation
+from vinsight.visualization import LayerSplit
+from vinsight.visualization import LossTerm
 from vinsight.visualization import NeuronSelector
 from vinsight.visualization import PixelActivation
 from vinsight.visualization import TransformStep
@@ -141,3 +144,43 @@ def test_pixel_act_optimize(mocker):
     loss_call_args = reg.loss.call_args_list
     assert_that(loss_call_args[0][0][0].size()).is_equal_to(Size([3, 4, 4]))
     assert_that(loss_call_args[1][0][0].size()).is_equal_to(Size([3, 4, 4]))
+
+
+def test_select_top_layer_score_3d(mocker):
+    """tests if the top-layer output score is correctly computed
+    for 3d top layer dimension."""
+
+    # 3 dimensional selection, example neuron split
+    top_layer_selector_3d = mocker.Mock(spec=NeuronSelector)
+    top_layer_selector_3d.get_mask = mocker.Mock(return_value=torch.ones((4, 3, 3)))
+
+    out = torch.ones((1, 4, 3, 3))
+
+    backprop = GuidedBackpropagation(
+        [mocker.Mock(spec=Module)], top_layer_selector_3d, mocker.Mock(spec=LayerSplit)
+    )
+
+    score = backprop.select_top_layer_score(out)
+
+    assert_that(score.size()).is_equal_to(Size([]))
+    assert_that(score).is_equal_to(1)
+
+
+def test_select_top_layer_score_1d(mocker):
+    """tests if the top-layer output score is correctly computed
+    for 1d top layer dimension."""
+
+    # 1 dimensional selection, example neuron split
+    top_layer_selector_1d = mocker.Mock(spec=NeuronSelector)
+    top_layer_selector_1d.get_mask = mocker.Mock(return_value=torch.ones((50,)))
+
+    out = torch.ones((50,))
+
+    backprop = GuidedBackpropagation(
+        [mocker.Mock(spec=Module)], top_layer_selector_1d, mocker.Mock(spec=LayerSplit)
+    )
+
+    score = backprop.select_top_layer_score(out)
+
+    assert_that(score.size()).is_equal_to(Size([]))
+    assert_that(score).is_equal_to(1)

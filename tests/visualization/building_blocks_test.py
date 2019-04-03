@@ -96,24 +96,34 @@ def test_neuron_mean():
     assert_that(mean.size()).is_equal_to(input_.size())
 
 
-def test_spatial_mean():
+def test_channel_mean():
     """tests if the spatial split mean is computed correctly and output has correct dimensions.
     spatial mean output dimensions are the number of channels"""
     input_ = torch.tensor(
         [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[9.0, 7.0], [2.0, 3.0]]]
     )
-    mean = SpatialSplit().get_mean(input_)
+    mean = ChannelSplit().get_mean(input_)
     assert_array_equal(mean.numpy(), [2.5, 6.5, 5.25])
     # output dim = number of channels
     assert_that(mean.numpy().shape).is_equal_to((3,))
 
 
-def test_channel_mean():
+def test_spatial_mean():
     """tests if the channel split mean is computed correctly and output has correct dimensions.
     channel mean output dimension are the spatial dimensions."""
     input_ = torch.tensor(
         [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[9.0, 7.0], [2.0, 3.0]]]
     )
-    mean = ChannelSplit().get_mean(input_)
+    mean = SpatialSplit().get_mean(input_)
     assert_array_equal(mean.numpy(), [[5.0, 5.0], [4.0, 5.0]])
     assert_that(mean.numpy().shape).is_equal_to(input_[0].numpy().shape)
+
+
+def test_invert_spatial():
+    split = SpatialSplit().invert()
+    assert_that(split).is_instance_of(ChannelSplit)
+
+
+def test_invert_channel():
+    split = ChannelSplit().invert()
+    assert_that(split).is_instance_of(SpatialSplit)

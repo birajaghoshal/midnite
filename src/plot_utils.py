@@ -78,8 +78,8 @@ def plot_saliency(
             "saliency has to have 2 dimensions with more than one element, got: ",
             len(saliency.size()),
         )
-    sal_map = Image.fromarray(saliency.numpy())
-    sal_map = sal_map.resize(img.size, resample=Image.LINEAR)
+    sal_img = Image.fromarray(saliency.numpy())
+    sal_img = sal_img.resize(img.size, resample=Image.LINEAR)
 
     plt.title(
         "Activation map for layer: {} "
@@ -88,7 +88,7 @@ def plot_saliency(
 
     if plot_with_image:
         plt.imshow(img)
-    plt.imshow(np.array(sal_map), alpha=0.5, cmap="jet")
+    plt.imshow(np.array(sal_img), alpha=0.5, cmap="jet")
 
     plt.show()
 
@@ -108,7 +108,7 @@ def plot_guided_backprop(saliency: Tensor, img):
         )
 
     saliency = saliency.mean(0)
-    sal_map = Image.fromarray(saliency.numpy())
-    sal_map = sal_map.resize(img.size, resample=Image.LINEAR)
-    plt.imshow(sal_map)
+    sal_img = Image.fromarray(saliency.numpy())
+    sal_img = sal_img.resize(img.size, resample=Image.LINEAR)
+    plt.imshow(sal_img)
     plt.show()
