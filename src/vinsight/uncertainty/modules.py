@@ -13,11 +13,12 @@ from torch.nn import functional
 from torch.nn import Module
 
 import vinsight.uncertainty.functional as func
+from vinsight import get_device
 
 log = logging.getLogger(__name__)
 
 
-class PredDropout(Dropout):
+class PredictionDropout(Dropout):
     """Layer for dropout at prediction time."""
 
     def forward(self, input_: Tensor) -> Tensor:
@@ -59,6 +60,8 @@ class _Ensemble(Module):
 
         """
         super(_Ensemble, self).__init__()
+        self.to(get_device())
+        inner.to(get_device())
 
         if sample_size < 2:
             raise ValueError("At least two samples are necessary")
@@ -105,6 +108,7 @@ class MeanEnsemble(_Ensemble):
             the mean of the inner network's foward pass for sample_size samples
 
         """
+        input_.to(get_device())
         pred = self.inner.forward(input_)
 
         if self.training:
@@ -129,6 +133,7 @@ class PredictionEnsemble(_Ensemble):
             all prediction samples stacked in dim 0
 
         """
+        input_.to(get_device())
         # Calculate first prediction
         pred = self.inner.forward(input_)
         pred_shape = pred.size()
@@ -141,7 +146,9 @@ class PredictionEnsemble(_Ensemble):
                 input_.requires_grad = False
                 # Allocate result tensor
                 result = torch.zeros(
-                    (*pred_shape, self.sample_size), requires_grad=False
+                    (*pred_shape, self.sample_size),
+                    requires_grad=False,
+                    device=get_device(),
                 )
                 # Store results in their slice
                 result.select(len(pred_shape), 0).copy_(pred)
@@ -225,6 +232,7 @@ class PredictionAndUncertainties(Module):
             mean prediction, predictive entropy, mutual information
 
         """
+        input_.to(get_device())
         return (
             input_.mean(dim=(input_.dim() - 1,)),
             func.predictive_entropy(input_),

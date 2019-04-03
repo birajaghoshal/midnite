@@ -12,15 +12,13 @@ get_ipython().run_line_magic('cd', '../src')
 import torch
 from torch.nn import Sequential
 from torch.nn import Softmax
-import matplotlib.pyplot as plt
 from pytorch_fcn.fcn32s import FCN32s
 import data_utils
 from data_utils import DataConfig
+from plot_utils import show, show_normalized
 
+import vinsight
 from vinsight.uncertainty import modules
-
-if torch.cuda.is_available and torch.cuda.device_count() > 0:
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 # # vinsight - Uncertainty Tutorial 2
@@ -49,7 +47,7 @@ fully_conf_net.load_state_dict(torch.load(FCN32s.download()))
 ensemble = Sequential(
     modules.PredictionEnsemble(
         Sequential(fully_conf_net, Softmax(dim=1)),
-        sample_size=80
+        sample_size=10 # Set higher if you have the computing resources!
     ),
     modules.PredictionAndUncertainties()
 )
@@ -64,30 +62,25 @@ ensemble.eval();
 
 img = data_utils.get_example_from_path("../data/fcn_example.jpg", DataConfig.FCN32)
 
-norm_img = torch.sub(img, img.min())
-norm_img = torch.div(norm_img, norm_img.max())
-
-plt.imshow(norm_img.squeeze(dim=0).permute(1, 2, 0).cpu())
-plt.show()
+show_normalized(img)
 
 
 # ### Step 4: Calculate Uncertainty
+# Create a device context in order to have calculations inside this context take place on a GPU.
 
 # In[5]:
 
 
-pred, pred_entropy, mutual_info = ensemble(img)
-print("Prediction:")
-plt.imshow(pred.argmax(dim=1).squeeze(dim=0).cpu())
-plt.show()
+with vinsight.device("cpu"): # GPU device if available, e.g. "cuda:0"!
+    pred, pred_entropy, mutual_info = ensemble(img)
+    print("Prediction:")
+    show(pred.argmax(dim=1))
 
-print("Predictive entropy (total uncertainty):")
-plt.imshow(pred_entropy.sum(dim=1).squeeze(dim=0).cpu())
-plt.show()
+    print("Predictive entropy (total uncertainty):")
+    show(pred_entropy.sum(dim=1))
 
-print("Mutual information (model uncertainty):")
-plt.imshow(mutual_info.sum(dim=1).squeeze(dim=0).cpu())
-plt.show()
+    print("Mutual information (model uncertainty):")
+    show(mutual_info.sum(dim=1))
 
 
 # ## Interpretation of results 

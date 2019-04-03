@@ -17,16 +17,14 @@ from torch.nn import Sequential
 import matplotlib.pyplot as plt
 import data_utils
 from data_utils import DataConfig
+from plot_utils import show_normalized
 
 from vinsight.uncertainty import modules
-
-if torch.cuda.is_available and torch.cuda.device_count() > 0:
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 # # vinsight - Uncertainty Tutorial 1
 # 
-# in this notebook you will learn the intuition behind the features of the interpretability framework and how to use them.
+# in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 
 # ## Classification Example with AlexNet
 # 
@@ -65,6 +63,7 @@ ensemble.eval();
 # #### in-distribution and out-of-distribution examples 
 # 
 # *In order to interpret the results, we want to compare the uncertainties of an in-distribution and an out-of-distribution example.* 
+# 
 # As AlexNet was trained with ImageNet data, we pick an ImageNet example as an in-distribution target, for which predictions should be very confident. An out-of-distribution target is an image, which depicts something, which is not a class label of ImageNet. We use Cholitas for this example.
 
 # In[4]:
@@ -73,14 +72,8 @@ ensemble.eval();
 id_example = data_utils.get_example_from_path("../data/imagenet_example_283.jpg", DataConfig.ALEX_NET)
 ood_example = data_utils.get_example_from_path("../data/ood_example.jpg", DataConfig.ALEX_NET)
 
-id_norm = torch.sub(id_example, id_example.min())
-id_norm = torch.div(id_norm, id_norm.max())
-plt.imshow(id_norm.squeeze(dim=0).permute(1, 2, 0).cpu())
-plt.show()
-ood_norm = torch.sub(ood_example, ood_example.min())
-ood_norm = torch.div(ood_norm, ood_norm.max())
-plt.imshow(ood_norm.squeeze(dim=0).permute(1, 2, 0).cpu())
-plt.show()
+show_normalized(id_example)
+show_normalized(ood_example)
 
 
 # #### Random example
@@ -88,22 +81,19 @@ plt.show()
 # Retrieve a random example normalized with the distribution mean and standard deviation, which can also be seen as an out-of-distribution sample.
 # 
 
-# In[5]:
+# In[6]:
 
 
 random_example = data_utils.get_random_example(DataConfig.ALEX_NET)
 
-random_norm = torch.sub(random_example, random_example.min())
-random_norm = torch.div(random_norm, random_norm.max())
-plt.imshow(random_norm.squeeze(dim=0).permute(1, 2, 0).cpu())
-plt.show()
+show_normalized(random_example)
 
 
 # ### Step 6: Calculate uncertainties
 # 
 # #### In-distribuiton example (correct label: 283)
 
-# In[6]:
+# In[7]:
 
 
 pred, pred_entropy, mutual_info = ensemble(id_example)
@@ -115,7 +105,7 @@ print(f"total mutual information: {mutual_info.sum()}")
 
 # #### Out of distribution example
 
-# In[7]:
+# In[8]:
 
 
 pred, pred_entropy, mutual_info = ensemble(ood_example)
@@ -127,7 +117,7 @@ print(f"total mutual information: {mutual_info.sum()}")
 
 # #### Random example
 
-# In[8]:
+# In[9]:
 
 
 pred, pred_entropy, mutual_info = ensemble(random_example)
