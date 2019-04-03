@@ -79,11 +79,14 @@ class LayerSplit(ABC):
 
 
 class Identity(LayerSplit):
-    """"""
+    """Identity selector that implements LayerSplit interface."""
 
     def fill_dimensions(self, input_):
-        # TODO Update
-        return input_
+        if not len(input_.size()) == 0:
+            raise ValueError(
+                f"Cannot specify element for identity. Got: {input_.size()}"
+            )
+        return torch.ones((1, 1, 1), device=get_device())
 
     def invert(self) -> LayerSplit:
         return NeuronSplit()
@@ -105,7 +108,7 @@ class NeuronSplit(LayerSplit):
 
     def fill_dimensions(self, input_):
         if not len(input_.size()) == 3:
-            raise (ValueError)
+            raise ValueError(f"Input must have three dimensions. Got: {input_.size()}")
         return input_
 
     def invert(self) -> LayerSplit:
@@ -130,9 +133,7 @@ class SpatialSplit(LayerSplit):
     def fill_dimensions(self, input_):
         if not len(input_.size()) == 2:
             raise ValueError(
-                "Input needs to have 2 spatial dimensions: (h, w). Got: {}".format(
-                    len(input_.size())
-                )
+                f"Input needs to have 2 spatial dimensions: (h, w). Got: {input_.size()}"
             )
         return input_.unsqueeze(dim=0)
 
@@ -153,9 +154,7 @@ class SpatialSplit(LayerSplit):
     def get_mean(self, input_: Tensor) -> Tensor:
         if not len(input_.size()) == 3:
             raise ValueError(
-                "Input needs to have 3 dimensions: (c, h, w). Got: {}".format(
-                    len(input_.size())
-                )
+                f"Input needs to have 3 dimensions: (c, h, w). Got: {input_.size()}"
             )
         # mean over channel dimension, so that there is one mean value for each spatial
         return input_.mean(0)
@@ -181,7 +180,7 @@ class ChannelSplit(LayerSplit):
 
     def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
         if not len(index) == 1:
-            raise ValueError("Channel index needs one dimension. Got: {}".format(index))
+            raise ValueError(f"Channel index needs one dimension. Got: {index}")
         mask = torch.zeros(*size, device=get_device())
         mask[index[0]] = 1
         return mask

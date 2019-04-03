@@ -1,13 +1,29 @@
 """Test for the building blocks"""
+import pytest
 import torch
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
-from torch import Size
 
 from vinsight.visualization import ChannelSplit
+from vinsight.visualization import Identity
 from vinsight.visualization import NeuronSelector
 from vinsight.visualization import NeuronSplit
 from vinsight.visualization import SpatialSplit
+
+
+def test_identity_mask():
+    """Test identity masking."""
+    mask = Identity().get_mask([], (1, 2, 3)).numpy()
+
+    assert_array_equal(mask, [[[1, 1, 1], [1, 1, 1]]])
+
+
+def test_identity_split():
+    """Check all identity masks."""
+    masks = Identity().get_split((1, 2, 3))
+
+    assert_that(masks).is_length(1)
+    assert_array_equal(masks[0], [[[1, 1, 1], [1, 1, 1]]])
 
 
 def test_neuron_mask():
@@ -120,29 +136,34 @@ def test_spatial_mean():
     assert_that(mean.numpy().shape).is_equal_to(input_[0].numpy().shape)
 
 
-def test_invert_spatial():
-    split = SpatialSplit().invert()
-    assert_that(split).is_instance_of(ChannelSplit)
+@pytest.mark.parametrize(
+    "class_,inverse",
+    [
+        (NeuronSplit, Identity),
+        (Identity, NeuronSplit),
+        (SpatialSplit, ChannelSplit),
+        (ChannelSplit, SpatialSplit),
+    ],
+)
+def test_invert_neuron(class_, inverse):
+    """Check that split inverses are properly configured."""
+    split = class_().invert()
+
+    assert_that(split).is_instance_of(inverse)
 
 
-def test_invert_channel():
-    split = ChannelSplit().invert()
-    assert_that(split).is_instance_of(SpatialSplit)
+@pytest.mark.parametrize(
+    "in_dim,split,out_dim",
+    [
+        ((4, 4), SpatialSplit, (1, 4, 4)),
+        (4, ChannelSplit, (4, 1, 1)),
+        ((3, 4, 4), NeuronSplit, (3, 4, 4)),
+        ((), Identity, (1, 1, 1)),
+    ],
+)
+def test_fill_dimension(in_dim, split, out_dim):
+    """Check that splits properly fill the cube dimensions."""
+    input_ = torch.ones(in_dim)
+    filled = split().fill_dimensions(input_)
 
-
-def test_fill_dimensions_spatial():
-    input_ = torch.ones((4, 4))
-    filled = SpatialSplit().fill_dimensions(input_)
-    assert_that(filled.size()).is_equal_to(Size([1, 4, 4]))
-
-
-def test_fill_dimensions_channel():
-    input_ = torch.ones((4))
-    filled = ChannelSplit().fill_dimensions(input_)
-    assert_that(filled.size()).is_equal_to(Size([4, 1, 1]))
-
-
-def test_fill_dimensions_neuron():
-    input_ = torch.ones((3, 4, 4))
-    filled = NeuronSplit().fill_dimensions(input_)
-    assert_that(filled.size()).is_equal_to(Size([3, 4, 4]))
+    assert_that(tuple(filled.size())).is_equal_to(out_dim)

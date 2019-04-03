@@ -320,8 +320,7 @@ class SaliencyMap(Attribution):
         """
         # Move all layers to current device
         for layer in self.layers + self.base_layers:
-            layer.to(get_device())
-            layer.eval()
+            layer.to(get_device()).eval()
 
         input_tensor.to(get_device())
 
