@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import torch
 import torchvision
-import torchvision.transforms as transforms
 from PIL import Image
 from torch import Tensor
 from torchvision.transforms import Normalize
@@ -68,9 +67,6 @@ def get_example_from_path(path_to_img: str, config: DataConfig) -> Tensor:
     with Image.open(abs_path_to_img) as img:
         if config is DataConfig.ALEX_NET:
             img.convert("RGB")
-            img = transforms.Compose(
-                [transforms.Resize(227), transforms.CenterCrop(227)]
-            )(img)
             img = torch.from_numpy(np.array(img)).float().to(get_device())
             img = img.sub_(255 * alexnet_mean).div_(255 * alexnet_var)
         elif config is DataConfig.FCN32:
