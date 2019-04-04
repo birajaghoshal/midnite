@@ -256,7 +256,7 @@ class GuidedBackpropagation(Attribution):
 
     def visualize(self, input_tensor: Tensor) -> Tensor:
         # Prepare layers/input
-        input_tensor.detach().to(get_device()).retain_grad_(True)
+        input_tensor.detach().to(get_device()).retain_grad()
         self.net.to(get_device()).eval()
 
         # forward pass
