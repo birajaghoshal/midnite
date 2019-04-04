@@ -8,12 +8,12 @@ from torch.nn import Dropout2d
 from torch.nn import Module
 
 from midnite.visualization import ChannelSplit
+from midnite.visualization import GradCAM
 from midnite.visualization import GuidedBackpropagation
 from midnite.visualization import Identity
 from midnite.visualization import LayerSplit
 from midnite.visualization import NeuronSelector
 from midnite.visualization import NeuronSplit
-from midnite.visualization import SaliencyMap
 from midnite.visualization import SpatialSplit
 
 
@@ -126,7 +126,7 @@ def test_gradcam_basics(mocker, gradcam_mock_setup):
         "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones(3),
     )
-    SaliencyMap(
+    GradCAM(
         [mocker.Mock(spec=Module)],
         mocker.Mock(spec=NeuronSelector),
         base_layers,
@@ -147,7 +147,7 @@ def test_saliency_visualize_spatial(mocker, gradcam_mock_setup):
         "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones(3),
     )
-    sal_map = SaliencyMap(
+    sal_map = GradCAM(
         [mocker.Mock(spec=Module)],
         mocker.Mock(spec=NeuronSelector),
         base_layers,
@@ -166,7 +166,7 @@ def test_saliency_visualize_channel(mocker, gradcam_mock_setup):
         "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones((4, 4)),
     )
-    sal_map = SaliencyMap(
+    sal_map = GradCAM(
         [mocker.Mock(spec=Module)],
         mocker.Mock(spec=NeuronSelector),
         base_layers,
@@ -185,7 +185,7 @@ def test_saliency_visualize_neuron(mocker, gradcam_mock_setup):
         "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones(()),
     )
-    sal_map = SaliencyMap(
+    sal_map = GradCAM(
         [mocker.Mock(spec=Module)],
         mocker.Mock(spec=NeuronSelector),
         base_layers,
