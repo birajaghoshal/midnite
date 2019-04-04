@@ -13139,7 +13139,7 @@ div#notebook {
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="k">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span> <span class="nn">midnite</span> <span class="k">import</span> <span class="n">get_device</span>
-<span class="kn">from</span> <span class="nn">midnite.visualization</span> <span class="k">import</span> <span class="n">SaliencyMap</span>
+<span class="kn">from</span> <span class="nn">midnite.visualization</span> <span class="k">import</span> <span class="n">GradCAM</span>
 <span class="kn">from</span> <span class="nn">midnite.visualization</span> <span class="k">import</span> <span class="n">GuidedBackpropagation</span>
 <span class="kn">from</span> <span class="nn">midnite.visualization</span> <span class="k">import</span> <span class="n">SpatialSplit</span>
 <span class="kn">from</span> <span class="nn">midnite.visualization</span> <span class="k">import</span> <span class="n">ChannelSplit</span>
@@ -13347,7 +13347,7 @@ source: <a href="https://distill.pub/2018/building-blocks/">https://distill.pub/
 <div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">SaliencyMap</span><span class="p">(</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">GradCAM</span><span class="p">(</span>
     <span class="n">inspection_layers</span><span class="p">,</span> 
     <span class="n">top_layer_selector</span><span class="p">,</span> 
     <span class="n">base_layers</span><span class="p">,</span> 
@@ -13468,7 +13468,7 @@ source: <a href="https://distill.pub/2018/building-blocks/">https://distill.pub/
 <div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">SaliencyMap</span><span class="p">(</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">GradCAM</span><span class="p">(</span>
     <span class="n">inspection_layers</span><span class="p">,</span> 
     <span class="n">top_layer_selector</span><span class="p">,</span> 
     <span class="n">base_layers</span><span class="p">,</span> 
@@ -13533,7 +13533,7 @@ Channel number: 346 with channel value: 4.3539242255974386e-07
 <div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">SaliencyMap</span><span class="p">(</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">saliency</span> <span class="o">=</span> <span class="n">GradCAM</span><span class="p">(</span>
     <span class="n">inspection_layers</span><span class="p">,</span> 
     <span class="n">top_layer_selector</span><span class="p">,</span> 
     <span class="n">base_layers</span><span class="p">,</span> 

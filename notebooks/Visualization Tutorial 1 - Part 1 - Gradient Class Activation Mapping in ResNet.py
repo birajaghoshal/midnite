@@ -25,7 +25,7 @@ import plot_utils
 from PIL import Image
 
 from midnite import get_device
-from midnite.visualization import SaliencyMap
+from midnite.visualization import GradCAM
 from midnite.visualization import GuidedBackpropagation
 from midnite.visualization import SpatialSplit
 from midnite.visualization import ChannelSplit
@@ -133,7 +133,7 @@ inspection_layers = (
 # In[7]:
 
 
-saliency = SaliencyMap(
+saliency = GradCAM(
     inspection_layers, 
     top_layer_selector, 
     base_layers, 
@@ -179,7 +179,7 @@ bottom_layer_split = ChannelSplit()
 # In[10]:
 
 
-saliency = SaliencyMap(
+saliency = GradCAM(
     inspection_layers, 
     top_layer_selector, 
     base_layers, 
@@ -204,7 +204,7 @@ bottom_layer_split = NeuronSplit()
 # In[12]:
 
 
-saliency = SaliencyMap(
+saliency = GradCAM(
     inspection_layers, 
     top_layer_selector, 
     base_layers, 

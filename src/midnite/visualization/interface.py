@@ -9,6 +9,7 @@ from typing import Tuple
 import torch
 from torch import Tensor
 from torch.nn import Module
+from torch.nn.modules import Sequential
 
 from midnite import get_device
 
@@ -243,7 +244,7 @@ class Attribution(ABC):
         """
         if len(layers) == 0:
             raise ValueError("Must specify at least one layer")
-        self.layers = layers
+        self.net = Sequential(*layers)
         self.top_layer_selector = top_layer_selector
         self.bottom_layer_split = bottom_layer_split
 
@@ -278,9 +279,7 @@ class Activation(ABC):
         """
         if len(layers) == 0:
             raise ValueError("Must specify at least one layer")
-        self.layers = layers
-        for layer in self.layers:
-            layer.to(get_device())
+        self.net = Sequential(*layers)
 
         self.top_layer_selector = top_layer_selector
 

@@ -23,7 +23,7 @@ from model_utils import Flatten
 import plot_utils
 from PIL import Image
 from midnite import get_device
-from midnite.visualization import SaliencyMap
+from midnite.visualization import GradCAM
 from midnite.visualization import GuidedBackpropagation
 from midnite.visualization import SpatialSplit
 from midnite.visualization import ChannelSplit
@@ -121,7 +121,7 @@ bottom_layer_split = SpatialSplit()
 # In[32]:
 
 
-saliency_map = SaliencyMap(
+saliency_map = GradCAM(
     inspection_layers,
     top_layer_selector,
     base_layers,
@@ -162,7 +162,7 @@ inspection_layers = list(model.features.children())[3: 13] #slice indexing is [i
 
 
 # init saliency map object
-saliency_map = SaliencyMap(
+saliency_map = GradCAM(
     inspection_layers, 
     top_layer_selector, 
     base_layers, 
@@ -205,7 +205,7 @@ bottom_layer_split = ChannelSplit()
 # In[151]:
 
 
-saliency_map = SaliencyMap(
+saliency_map = GradCAM(
     inspection_layers, 
     top_layer_selector, 
     base_layers, 
@@ -233,7 +233,7 @@ bottom_layer_split = NeuronSplit()
 # In[161]:
 
 
-saliency = SaliencyMap(
+saliency = GradCAM(
     inspection_layers, 
     top_layer_selector, 
     base_layers, 
