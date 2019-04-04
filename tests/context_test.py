@@ -2,8 +2,8 @@ import pytest
 import torch
 from assertpy import assert_that
 
-from vinsight import device
-from vinsight import get_device
+from midnite import device
+from midnite import get_device
 
 
 def test_context_stack(mocker):

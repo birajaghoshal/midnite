@@ -10,7 +10,7 @@ from PIL import Image
 from torch import Tensor
 from torchvision.transforms import Normalize
 
-from vinsight import get_device
+from midnite import get_device
 
 
 class DataConfig(Enum):

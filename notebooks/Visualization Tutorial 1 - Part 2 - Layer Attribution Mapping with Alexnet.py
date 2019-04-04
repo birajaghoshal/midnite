@@ -22,13 +22,13 @@ from data_utils import DataConfig
 from model_utils import Flatten
 import plot_utils
 from PIL import Image
-from vinsight import get_device
-from vinsight.visualization import SaliencyMap
-from vinsight.visualization import GuidedBackpropagation
-from vinsight.visualization import SpatialSplit
-from vinsight.visualization import ChannelSplit
-from vinsight.visualization import NeuronSplit
-from vinsight.visualization import NeuronSelector
+from midnite import get_device
+from midnite.visualization import SaliencyMap
+from midnite.visualization import GuidedBackpropagation
+from midnite.visualization import SpatialSplit
+from midnite.visualization import ChannelSplit
+from midnite.visualization import NeuronSplit
+from midnite.visualization import NeuronSelector
 
 import torch
 from torch import Tensor

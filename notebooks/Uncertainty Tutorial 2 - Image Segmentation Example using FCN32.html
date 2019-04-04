@@ -13131,8 +13131,8 @@ div#notebook {
 <span class="kn">from</span> <span class="nn">data_utils</span> <span class="k">import</span> <span class="n">DataConfig</span>
 <span class="kn">from</span> <span class="nn">plot_utils</span> <span class="k">import</span> <span class="n">show</span><span class="p">,</span> <span class="n">show_normalized</span>
 
-<span class="kn">import</span> <span class="nn">vinsight</span>
-<span class="kn">from</span> <span class="nn">vinsight.uncertainty</span> <span class="k">import</span> <span class="n">modules</span>
+<span class="kn">import</span> <span class="nn">midnite</span>
+<span class="kn">from</span> <span class="nn">midnite.uncertainty</span> <span class="k">import</span> <span class="n">modules</span>
 </pre></div>
 
     </div>
@@ -13161,7 +13161,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="vinsight---Uncertainty-Tutorial-2">vinsight - Uncertainty Tutorial 2<a class="anchor-link" href="#vinsight---Uncertainty-Tutorial-2">&#182;</a></h1><p>in this notebook you will learn how to use the interpretability framework in an image segmentation example and how to interpret the results.</p>
+<h1 id="midnite---Uncertainty-Tutorial-2">midnite - Uncertainty Tutorial 2<a class="anchor-link" href="#midnite---Uncertainty-Tutorial-2">&#182;</a></h1><p>in this notebook you will learn how to use the interpretability framework in an image segmentation example and how to interpret the results.</p>
 <h2 id="Segmentation-example-with-FCN32s">Segmentation example with FCN32s<a class="anchor-link" href="#Segmentation-example-with-FCN32s">&#182;</a></h2><p>Demonstration of uncertainty measurement and visualization in an segmentation example.</p>
 <h3 id="Step-1:-Load-pre-trained-FCN32-model">Step 1: Load pre-trained FCN32 model<a class="anchor-link" href="#Step-1:-Load-pre-trained-FCN32-model">&#182;</a></h3><p><strong>Note: Monte Carlo Dropout ensembles only achieve proper results when used on a net which was trained with dropout. So check if the model you would like to use has dropout layers active in training.</strong></p>
 
@@ -13304,7 +13304,7 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">with</span> <span class="n">vinsight</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span> <span class="c1"># GPU device if available, e.g. &quot;cuda:0&quot;!</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">with</span> <span class="n">midnite</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span> <span class="c1"># GPU device if available, e.g. &quot;cuda:0&quot;!</span>
     <span class="n">pred</span><span class="p">,</span> <span class="n">pred_entropy</span><span class="p">,</span> <span class="n">mutual_info</span> <span class="o">=</span> <span class="n">ensemble</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Prediction:&quot;</span><span class="p">)</span>
     <span class="n">show</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>

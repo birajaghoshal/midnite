@@ -4,11 +4,11 @@ import torch
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
 
-from vinsight.visualization import ChannelSplit
-from vinsight.visualization import Identity
-from vinsight.visualization import NeuronSelector
-from vinsight.visualization import NeuronSplit
-from vinsight.visualization import SpatialSplit
+from midnite.visualization import ChannelSplit
+from midnite.visualization import Identity
+from midnite.visualization import NeuronSelector
+from midnite.visualization import NeuronSplit
+from midnite.visualization import SpatialSplit
 
 
 def test_identity_mask():

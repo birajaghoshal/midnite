@@ -16,8 +16,8 @@ import numpy as np
 import torch
 from plot_utils import show
 
-import vinsight
-from vinsight.visualization import *
+import midnite
+from midnite.visualization import *
 
 
 # In[2]:

@@ -1,4 +1,4 @@
-# vinsight
+# midnite
 
 This is a framework for visualization and uncertainty in CNNs.
 

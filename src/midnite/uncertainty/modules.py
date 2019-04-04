@@ -13,8 +13,8 @@ from torch.nn import functional
 from torch.nn import Module
 from tqdm import tqdm
 
-import vinsight.uncertainty.functional as func
-from vinsight import get_device
+import midnite.uncertainty.functional as func
+from midnite import get_device
 
 log = logging.getLogger(__name__)
 

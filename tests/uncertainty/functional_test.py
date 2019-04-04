@@ -5,7 +5,7 @@ from assertpy import assert_that
 from numpy.testing import assert_array_almost_equal
 from numpy.testing import assert_array_equal
 
-from vinsight.uncertainty import functional
+from midnite.uncertainty import functional
 
 
 def test_sample_mean():

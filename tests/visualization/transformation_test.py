@@ -4,12 +4,12 @@ import numpy as np
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
 
-from vinsight.visualization.transforms import BilateralTransform
-from vinsight.visualization.transforms import BlurTransform
-from vinsight.visualization.transforms import RandomTransform
-from vinsight.visualization.transforms import ResizeTransform
-from vinsight.visualization.transforms import TransformSequence
-from vinsight.visualization.transforms import TransformStep
+from midnite.visualization.transforms import BilateralTransform
+from midnite.visualization.transforms import BlurTransform
+from midnite.visualization.transforms import RandomTransform
+from midnite.visualization.transforms import ResizeTransform
+from midnite.visualization.transforms import TransformSequence
+from midnite.visualization.transforms import TransformStep
 
 
 def test_transform_step_add():

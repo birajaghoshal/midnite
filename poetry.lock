@@ -634,7 +634,7 @@ python-versions = "*"
 version = "1.5.0"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Python 2 and 3 compatibility utilities"
 name = "six"
 optional = false
@@ -671,7 +671,7 @@ python-versions = "*"
 version = "1.0.1.post2"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "image and video datasets and models for torch deep learning"
 name = "torchvision"
 optional = false
@@ -749,7 +749,7 @@ version = "3.4.2"
 notebook = ">=4.4.1"
 
 [metadata]
-content-hash = "1e19022d384beb0ccd8e9295e353e777e1e7b506e3deddaa4e1184490fb00e32"
+content-hash = "78a91182318735d64e84c8bb8b2c80e4f660bcd3eec5d99fcff89467ee576c28"
 python-versions = "^3.6"
 
 [metadata.hashes]

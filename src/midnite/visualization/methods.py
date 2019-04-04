@@ -14,12 +14,12 @@ from torch.nn import Sequential
 from torch.nn.functional import relu
 from tqdm import trange
 
-from vinsight import get_device
-from vinsight.visualization import Activation
-from vinsight.visualization import Attribution
-from vinsight.visualization import LayerSplit
-from vinsight.visualization import NeuronSelector
-from vinsight.visualization.transforms import TransformStep
+from midnite import get_device
+from midnite.visualization import Activation
+from midnite.visualization import Attribution
+from midnite.visualization import LayerSplit
+from midnite.visualization import NeuronSelector
+from midnite.visualization.transforms import TransformStep
 
 
 class OutputRegularization(ABC):

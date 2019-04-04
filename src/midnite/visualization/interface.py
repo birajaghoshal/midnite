@@ -10,7 +10,7 @@ import torch
 from torch import Tensor
 from torch.nn import Module
 
-from vinsight import get_device
+from midnite import get_device
 
 
 class LayerSplit(ABC):

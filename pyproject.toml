@@ -1,14 +1,13 @@
 [tool.poetry]
-name = "vinsight"
+name = "midnite"
 version = "0.1.0"
 description = "This is a framework for visualization and uncertainty in CNNs."
 authors = ["Christina Aigner <christina@luminovo.ai >, Fabian Huch <fabian@luminovo.ai >"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
-torch = "^1.0"
+torch = "^1.0.1"
 numpy = "^1.16"
-torchvision = "^0.2.2"
 pillow = "^5.4"
 opencv-python = "^4.0"
 tqdm = "^4.31"
@@ -20,6 +19,7 @@ jupyter = "^1.0"
 matplotlib = "^3.0"
 assertpy = "^0.14.0"
 pytest-mock = "^1.10"
+torchvision = "^0.2.2"
 
 [build-system]
 requires = ["poetry>=0.12"]

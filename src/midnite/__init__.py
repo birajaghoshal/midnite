@@ -8,7 +8,7 @@ _context_stack = [torch.device("cpu")]
 
 @contextmanager
 def device(name: str):
-    """Creates a device context for vinsight to run in.
+    """Creates a device context for midnite to run in.
 
     Args:
         name: pytorch name of the device, e.g. "cpu" or "cuda:0"

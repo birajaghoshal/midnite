@@ -19,10 +19,10 @@ import data_utils
 from data_utils import DataConfig
 from plot_utils import show_normalized
 
-from vinsight.uncertainty import modules
+from midnite.uncertainty import modules
 
 
-# # vinsight - Uncertainty Tutorial 1
+# # midnite - Uncertainty Tutorial 1
 # 
 # in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 

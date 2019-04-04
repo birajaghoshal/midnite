@@ -7,14 +7,14 @@ from torch import Size
 from torch.nn import Dropout2d
 from torch.nn import Module
 
-from vinsight.visualization import ChannelSplit
-from vinsight.visualization import GuidedBackpropagation
-from vinsight.visualization import Identity
-from vinsight.visualization import LayerSplit
-from vinsight.visualization import NeuronSelector
-from vinsight.visualization import NeuronSplit
-from vinsight.visualization import SaliencyMap
-from vinsight.visualization import SpatialSplit
+from midnite.visualization import ChannelSplit
+from midnite.visualization import GuidedBackpropagation
+from midnite.visualization import Identity
+from midnite.visualization import LayerSplit
+from midnite.visualization import NeuronSelector
+from midnite.visualization import NeuronSplit
+from midnite.visualization import SaliencyMap
+from midnite.visualization import SpatialSplit
 
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def test_gradcam_basics(mocker, gradcam_mock_setup):
     img, base_layers = gradcam_mock_setup
 
     mocker.patch(
-        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
+        "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones(3),
     )
     SaliencyMap(
@@ -144,7 +144,7 @@ def test_saliency_visualize_spatial(mocker, gradcam_mock_setup):
     img, base_layers = gradcam_mock_setup
 
     mocker.patch(
-        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
+        "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones(3),
     )
     sal_map = SaliencyMap(
@@ -163,7 +163,7 @@ def test_saliency_visualize_channel(mocker, gradcam_mock_setup):
     img, base_layers = gradcam_mock_setup
 
     mocker.patch(
-        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
+        "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones((4, 4)),
     )
     sal_map = SaliencyMap(
@@ -182,7 +182,7 @@ def test_saliency_visualize_neuron(mocker, gradcam_mock_setup):
     img, base_layers = gradcam_mock_setup
 
     mocker.patch(
-        "vinsight.visualization.methods.GuidedBackpropagation.visualize",
+        "midnite.visualization.methods.GuidedBackpropagation.visualize",
         return_value=torch.ones(()),
     )
     sal_map = SaliencyMap(

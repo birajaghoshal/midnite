@@ -11,7 +11,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional
 
-from vinsight import get_device
+from midnite import get_device
 
 log = logging.getLogger(__name__)
 

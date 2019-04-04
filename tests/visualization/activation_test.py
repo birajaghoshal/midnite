@@ -7,11 +7,11 @@ from torch import Size
 from torch.nn import Dropout2d
 from torch.nn import Module
 
-from vinsight.visualization import NeuronSelector
-from vinsight.visualization import PixelActivation
-from vinsight.visualization import TransformStep
-from vinsight.visualization import TVRegularization
-from vinsight.visualization import WeightDecay
+from midnite.visualization import NeuronSelector
+from midnite.visualization import PixelActivation
+from midnite.visualization import TransformStep
+from midnite.visualization import TVRegularization
+from midnite.visualization import WeightDecay
 
 
 def test_tv_reg_all_same():
@@ -75,7 +75,7 @@ def test_pixel_activation_visualize(mocker):
 
     # Setup mocks
     mocker.patch(
-        "vinsight.visualization.methods.PixelActivation._opt_step", return_value=img
+        "midnite.visualization.methods.PixelActivation._opt_step", return_value=img
     )
     tran_step = mocker.Mock(spec=TransformStep)
     tran_step.transform = mocker.Mock(return_value=np_img)

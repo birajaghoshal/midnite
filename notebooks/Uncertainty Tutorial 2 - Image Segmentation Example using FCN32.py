@@ -17,11 +17,11 @@ import data_utils
 from data_utils import DataConfig
 from plot_utils import show, show_normalized
 
-import vinsight
-from vinsight.uncertainty import modules
+import midnite
+from midnite.uncertainty import modules
 
 
-# # vinsight - Uncertainty Tutorial 2
+# # midnite - Uncertainty Tutorial 2
 # in this notebook you will learn how to use the interpretability framework in an image segmentation example and how to interpret the results.
 # 
 # ## Segmentation example with FCN32s
@@ -71,7 +71,7 @@ show_normalized(img)
 # In[5]:
 
 
-with vinsight.device("cpu"): # GPU device if available, e.g. "cuda:0"!
+with midnite.device("cpu"): # GPU device if available, e.g. "cuda:0"!
     pred, pred_entropy, mutual_info = ensemble(img)
     print("Prediction:")
     show(pred.argmax(dim=1))

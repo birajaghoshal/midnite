@@ -3,8 +3,8 @@ import torch
 from assertpy import assert_that
 from numpy.testing import assert_array_almost_equal
 
-from vinsight.uncertainty import functional
-from vinsight.uncertainty import modules
+from midnite.uncertainty import functional
+from midnite.uncertainty import modules
 
 # For consistent tests, seed has to be fixed
 torch.manual_seed(123456)
@@ -90,7 +90,7 @@ def test_ensembles_autograd(mocker):
 def test_pred_entropy(mocker):
     """Predictive entropy layer test"""
     # Patch out functional
-    mocker.patch("vinsight.uncertainty.functional.predictive_entropy")
+    mocker.patch("midnite.uncertainty.functional.predictive_entropy")
 
     input_ = torch.ones((1, 20, 2))
     modules.PredictiveEntropy()(input_)
@@ -100,7 +100,7 @@ def test_pred_entropy(mocker):
 
 def test_mutual_information(mocker):
     """Mutual information layer test."""
-    mocker.patch("vinsight.uncertainty.functional.mutual_information")
+    mocker.patch("midnite.uncertainty.functional.mutual_information")
 
     input_ = torch.ones(1, 20, 2)
     modules.MutualInformation()(input_)
@@ -110,7 +110,7 @@ def test_mutual_information(mocker):
 
 def test_variation_ratio(mocker):
     """Variation ratio layer test."""
-    mocker.patch("vinsight.uncertainty.functional.variation_ratio")
+    mocker.patch("midnite.uncertainty.functional.variation_ratio")
 
     input_ = torch.ones(1, 20, 2)
     modules.VariationRatio()(input_)
@@ -120,8 +120,8 @@ def test_variation_ratio(mocker):
 
 def test_prediction_and_uncertainties(mocker):
     """Combined output layer test."""
-    mocker.patch("vinsight.uncertainty.functional.predictive_entropy")
-    mocker.patch("vinsight.uncertainty.functional.mutual_information")
+    mocker.patch("midnite.uncertainty.functional.predictive_entropy")
+    mocker.patch("midnite.uncertainty.functional.mutual_information")
 
     input_ = torch.tensor([[1.0, 0.5, 0.3]])
     output, _, _ = modules.PredictionAndUncertainties()(input_)
