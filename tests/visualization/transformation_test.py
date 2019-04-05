@@ -4,12 +4,12 @@ import numpy as np
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
 
-from midnite.visualization.transforms import BilateralTransform
-from midnite.visualization.transforms import BlurTransform
-from midnite.visualization.transforms import RandomTransform
-from midnite.visualization.transforms import ResizeTransform
-from midnite.visualization.transforms import TransformSequence
-from midnite.visualization.transforms import TransformStep
+from midnite.visualization.base.transforms import BilateralTransform
+from midnite.visualization.base.transforms import BlurTransform
+from midnite.visualization.base.transforms import RandomTransform
+from midnite.visualization.base.transforms import ResizeTransform
+from midnite.visualization.base.transforms import TransformSequence
+from midnite.visualization.base.transforms import TransformStep
 
 
 def test_transform_step_add():

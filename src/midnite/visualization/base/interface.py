@@ -55,7 +55,6 @@ class LayerSplit(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def get_mean(self, input_):
         """Returns the mean of an input along the split dimension.
 
@@ -65,7 +64,11 @@ class LayerSplit(ABC):
             a tensor of mean values.
 
         """
-        raise NotImplementedError()
+        output = torch.zeros_like(input_, device=get_device())
+        for mask in self.get_split(input_.size()):
+            norm = mask.sum()
+            output.add_(mask.mul_(input_).div_(norm))
+        return output
 
     @abstractmethod
     def fill_dimensions(self, input_):
@@ -191,11 +194,71 @@ class ChannelSplit(LayerSplit):
         return input_.mean(-1).mean(-1)
 
 
-# TODO group split with matrix factorization
-# class GroupSplit(LayerSplit):
+class GroupSplit(LayerSplit):
+    """Splits a layer by a decomposition, usually factorized by (spatials, channels)."""
+
+    def __init__(self, decomposition: Tuple[Tensor, Tensor]):
+        if not decomposition[0].size(-1) == decomposition[1].size(0):
+            raise ValueError(
+                f"Not a valid decomposition. Group dimensions must be exqual. Got: "
+                + f" {decomposition[0].size(-1)}, {decomposition[1].size(0)}"
+            )
+        self.num_groups = decomposition[0].size(-1)
+        self.decomposition = decomposition
+
+    def invert(self):
+        return GroupSplit(
+            (
+                self.decomposition[1].transpose(0, -1),
+                self.decomposition[0].transpose(0, -1),
+            )
+        )
+
+    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
+        indexes = range(self.num_groups)
+        return list(map(lambda i: self.get_mask([i], size), indexes))
+
+    def get_mask(self, index: List[int], _: Tuple[int, int, int]) -> Tensor:
+        if not len(index) == 1:
+            raise ValueError("Need to provide exactly one index for a group")
+        idx = index[0]
+        return self.decomposition[0].select(-1, idx) * self.decomposition[1].select(
+            0, idx
+        )
+
+    def fill_dimensions(self, input_):
+        return input_
 
 
-class NeuronSelector:
+class NeuronSelector(ABC):
+    @abstractmethod
+    def get_mask(self, size: Tuple[int, int, int]):
+        """Get the mask for the specified neurons
+
+        Args:
+            size: size of the layer
+
+        Returns:
+            a mask of the selected neurons
+
+        """
+        raise NotImplementedError()
+
+
+class SimpleSelector(NeuronSelector):
+    """Simply selects neurons based on a pre-defined mask."""
+
+    def __init__(self, mask: Tensor):
+        self.mask = mask
+
+    def get_mask(self, size: Tuple[int, int, int]):
+        mask_size = self.mask.size()
+        if not tuple(mask_size) == size:
+            raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")
+        return self.mask
+
+
+class SplitSelector(NeuronSelector):
     """Selects a number of neurons according to a specific split"""
 
     def __init__(self, layer_split: LayerSplit, element: List[int]):
@@ -209,15 +272,6 @@ class NeuronSelector:
         self.element = element
 
     def get_mask(self, size: Tuple[int, int, int]) -> Tensor:
-        """Get the mask for the specified neurons
-
-        Args:
-            size: size of the layer
-
-        Returns:
-            a mask of the selected neurons
-
-        """
         return self.layer_split.get_mask(self.element, size)
 
 

@@ -4,11 +4,12 @@ import torch
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
 
-from midnite.visualization import ChannelSplit
-from midnite.visualization import Identity
-from midnite.visualization import NeuronSelector
-from midnite.visualization import NeuronSplit
-from midnite.visualization import SpatialSplit
+from midnite.visualization.base import ChannelSplit
+from midnite.visualization.base import Identity
+from midnite.visualization.base import NeuronSplit
+from midnite.visualization.base import SimpleSelector
+from midnite.visualization.base import SpatialSplit
+from midnite.visualization.base import SplitSelector
 
 
 def test_identity_mask():
@@ -97,11 +98,18 @@ def test_channel_split_dims():
     assert_array_equal(masks[2].numpy(), [[[0], [0]], [[0], [0]], [[1], [1]]])
 
 
-def test_neuron_selector():
+def test_split_selector():
     """Test if the neuron selector correctly selects its neurons."""
-    selection = NeuronSelector(SpatialSplit(), [0, 1]).get_mask((2, 2, 2)).numpy()
+    selection = SplitSelector(SpatialSplit(), [0, 1]).get_mask((2, 2, 2)).numpy()
 
     assert_array_equal(selection, [[[0, 1], [0, 0]], [[0, 1], [0, 0]]])
+
+
+def test_simple_selector():
+    """Simple test for simple selectors."""
+    mask = torch.ones((10, 10))
+    selection = SimpleSelector(mask).get_mask((10, 10))
+    assert_that(mask).is_same_as(selection)
 
 
 def test_neuron_mean():

@@ -15,11 +15,11 @@ from torch.nn.functional import relu
 from tqdm import trange
 
 from midnite import get_device
-from midnite.visualization import Activation
-from midnite.visualization import Attribution
-from midnite.visualization import LayerSplit
-from midnite.visualization import NeuronSelector
-from midnite.visualization.transforms import TransformStep
+from midnite.visualization.base import Activation
+from midnite.visualization.base import Attribution
+from midnite.visualization.base import LayerSplit
+from midnite.visualization.base import NeuronSelector
+from midnite.visualization.base.transforms import TransformStep
 
 
 class OutputRegularization(ABC):
@@ -256,7 +256,7 @@ class GuidedBackpropagation(Attribution):
 
     def visualize(self, input_tensor: Tensor) -> Tensor:
         # Prepare layers/input
-        input_tensor.to(get_device()).requires_grad_(True)
+        input_tensor.detach().to(get_device()).retain_grad()
         self.net.to(get_device()).eval()
 
         # forward pass
@@ -275,9 +275,10 @@ class GuidedBackpropagation(Attribution):
         return self.bottom_layer_split.get_mean(positive_grads.squeeze(dim=0))
 
 
-class GradCAM(Attribution):
-    """Scales the propagated input with the gradient of its inverse split.
+class GradAM(Attribution):
+    """Gradient attribution mapping.
 
+    Scales the propagated input with the gradient of its inverse split.
     Interpretation: How much does neuron x of layer X (bottom layer selection)
     contribute to neuron y of layer Y (top layer selection)?
 
