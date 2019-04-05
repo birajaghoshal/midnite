@@ -82,7 +82,7 @@ class RandomTransform(TransformStep):
     """Applies translation, rotation, and scale in a random direction"""
 
     def __init__(
-        self, pixel_shift: int = 1, rot_deg: float = 0.3, scale_fac: float = 1.1
+        self, pixel_shift: int = 1, rot_deg: float = 0.3, scale_fac: float = 0.1
     ):
         self.px = pixel_shift
         self.deg = rot_deg
@@ -98,7 +98,7 @@ class RandomTransform(TransformStep):
         rot = cv2.getRotationMatrix2D(
             (img.shape[0] / 2, img.shape[1] / 2), rand.uniform(-self.deg, self.deg), 1
         )
-        scale = rand.uniform(1.0 / self.fac, self.fac)
+        scale = 1 + rand.uniform(-self.fac, self.fac)
 
         img = cv2.warpAffine(img, shift, (0, 0))
         img = cv2.warpAffine(img, rot, (0, 0))
