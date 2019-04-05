@@ -33,7 +33,7 @@ check:
 
 build:
   script:
-    - poetry install
+    - poetry install --no-dev
 
 test:
   script:
