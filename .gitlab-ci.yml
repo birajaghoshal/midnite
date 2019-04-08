@@ -25,17 +25,20 @@ before_script:
 stages:
   - check
   - build
-  - test
+  - unit-test
 
 check:
     script:
     - make -s check
 
 build:
-  script:
-    - poetry install --no-dev
-
-test:
+  artifacts:
+    untracked: true
   script:
     - poetry install
+
+unit-test:
+  dependencies:
+    - build
+  script:
     - poetry run pytest tests
