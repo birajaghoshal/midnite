@@ -4,7 +4,13 @@ from assertpy import assert_that
 from numpy.testing import assert_array_almost_equal
 
 from midnite.uncertainty import functional
-from midnite.uncertainty import modules
+from midnite.uncertainty.modules import MeanEnsemble
+from midnite.uncertainty.modules import MutualInformation
+from midnite.uncertainty.modules import PredictionAndUncertainties
+from midnite.uncertainty.modules import PredictionDropout
+from midnite.uncertainty.modules import PredictionEnsemble
+from midnite.uncertainty.modules import PredictiveEntropy
+from midnite.uncertainty.modules import VariationRatio
 
 # For consistent tests, seed has to be fixed
 torch.manual_seed(123456)
@@ -17,7 +23,7 @@ def test_dropout_layer():
 
     """
     # Set dropout layer to evaluation mode
-    dropout_layer = modules.PredictionDropout()
+    dropout_layer = PredictionDropout()
     dropout_layer.eval()
 
     # Check that dropout still is applied
@@ -35,9 +41,9 @@ def test_mean_ensemble_layer(mocker):
     Checks if the layer correctly calculates an ensemble mean.
 
     """
-    inner = modules.PredictionDropout()
+    inner = PredictionDropout()
     mocker.spy(inner, "forward")
-    ensemble = modules.MeanEnsemble(inner, 30)
+    ensemble = MeanEnsemble(inner, 30)
     ensemble.eval()
 
     input_ = torch.ones((1, 10))
@@ -54,9 +60,9 @@ def test_ensemble_layer(mocker):
     Checks if the ensemble layer does the sampling correctly.
 
     """
-    inner = modules.PredictionDropout()
+    inner = PredictionDropout()
     mocker.spy(inner, "forward")
-    ensemble = modules.PredictionEnsemble(inner, 25)
+    ensemble = PredictionEnsemble(inner, 25)
     ensemble.eval()
 
     input_ = torch.ones((1, 10))
@@ -69,8 +75,8 @@ def test_ensemble_layer(mocker):
 
 def test_ensembles_autograd(mocker):
     """Test if autograd is disabled in mean ensemble"""
-    inner = modules.PredictionDropout()
-    ensemble = modules.PredictionEnsemble(inner)
+    inner = PredictionDropout()
+    ensemble = PredictionEnsemble(inner)
     out = ensemble(torch.zeros(1, requires_grad=True))
     assert_that(out.requires_grad).is_true()
 
@@ -78,7 +84,7 @@ def test_ensembles_autograd(mocker):
     out = ensemble(torch.zeros(1, requires_grad=True))
     assert_that(out.requires_grad).is_false()
 
-    ensemble = modules.MeanEnsemble(inner)
+    ensemble = MeanEnsemble(inner)
     out = ensemble(torch.zeros(1, requires_grad=True))
     assert_that(out.requires_grad).is_true()
 
@@ -93,7 +99,7 @@ def test_pred_entropy(mocker):
     mocker.patch("midnite.uncertainty.functional.predictive_entropy")
 
     input_ = torch.ones((1, 20, 2))
-    modules.PredictiveEntropy()(input_)
+    PredictiveEntropy()(input_)
 
     functional.predictive_entropy.assert_called_once_with(input_)
 
@@ -103,7 +109,7 @@ def test_mutual_information(mocker):
     mocker.patch("midnite.uncertainty.functional.mutual_information")
 
     input_ = torch.ones(1, 20, 2)
-    modules.MutualInformation()(input_)
+    MutualInformation()(input_)
 
     functional.mutual_information.assert_called_once_with(input_)
 
@@ -113,7 +119,7 @@ def test_variation_ratio(mocker):
     mocker.patch("midnite.uncertainty.functional.variation_ratio")
 
     input_ = torch.ones(1, 20, 2)
-    modules.VariationRatio()(input_)
+    VariationRatio()(input_)
 
     functional.variation_ratio.assert_called_once_with(input_)
 
@@ -124,7 +130,7 @@ def test_prediction_and_uncertainties(mocker):
     mocker.patch("midnite.uncertainty.functional.mutual_information")
 
     input_ = torch.tensor([[1.0, 0.5, 0.3]])
-    output, _, _ = modules.PredictionAndUncertainties()(input_)
+    output, _, _ = PredictionAndUncertainties()(input_)
 
     assert_array_almost_equal(output, [0.6])
 
@@ -136,9 +142,9 @@ def test_prediction_ensemble_layer_modes():
     """tests the prediction ensemble, if dropout layers are kept in train mode
      while other layers switch to test mode after eval()"""
 
-    model = torch.nn.Sequential(modules.PredictionDropout(), torch.nn.Conv2d(1, 20, 5))
+    model = torch.nn.Sequential(PredictionDropout(), torch.nn.Conv2d(1, 20, 5))
 
-    ensemble = modules.PredictionEnsemble(model)
+    ensemble = PredictionEnsemble(model)
     assert_that(ensemble.training).is_true()
     assert_that(ensemble.inner[0].training).is_true()
     assert_that(ensemble.inner[1].training).is_true()
@@ -152,9 +158,9 @@ def test_mean_ensemble_layer_modes():
     """tests the mean ensemble, if dropout layers are kept in train mode
      while other layers switch to test mode after eval()"""
 
-    model = torch.nn.Sequential(modules.PredictionDropout(), torch.nn.Conv2d(1, 20, 5))
+    model = torch.nn.Sequential(PredictionDropout(), torch.nn.Conv2d(1, 20, 5))
 
-    mean_ensemble = modules.MeanEnsemble(model)
+    mean_ensemble = MeanEnsemble(model)
     assert_that(mean_ensemble.training).is_true()
     assert_that(mean_ensemble.inner[0].training).is_true()
     assert_that(mean_ensemble.inner[1].training).is_true()

@@ -1,17 +1,16 @@
-"""General interface of the visualization building blocks"""
 from abc import ABC
 from abc import abstractmethod
-from itertools import product
 from typing import List
 from typing import Optional
 from typing import Tuple
 
 import torch
+from numpy import ndarray
 from torch import Tensor
 from torch.nn import Module
-from torch.nn.modules import Sequential
+from torch.nn import Sequential
 
-from midnite import get_device
+import midnite
 
 
 class LayerSplit(ABC):
@@ -64,7 +63,7 @@ class LayerSplit(ABC):
             a tensor of mean values.
 
         """
-        output = torch.zeros_like(input_, device=get_device())
+        output = torch.zeros_like(input_, device=midnite.get_device())
         for mask in self.get_split(input_.size()):
             norm = mask.sum()
             output.add_(mask.mul_(input_).div_(norm))
@@ -82,154 +81,6 @@ class LayerSplit(ABC):
         raise NotImplementedError()
 
 
-class Identity(LayerSplit):
-    """Identity selector that implements LayerSplit interface."""
-
-    def fill_dimensions(self, input_):
-        if not len(input_.size()) == 0:
-            raise ValueError(
-                f"Cannot specify element for identity. Got: {input_.size()}"
-            )
-        return torch.ones((1, 1, 1), device=get_device())
-
-    def invert(self) -> LayerSplit:
-        return NeuronSplit()
-
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
-        return [self.get_mask([], size)]
-
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
-        if len(index) > 0:
-            raise ValueError("No index required for identity split")
-        return torch.ones(size)
-
-    def get_mean(self, input_):
-        return input_.mean()
-
-
-class NeuronSplit(LayerSplit):
-    """Split a layer neuron-wise, i.e. per single value."""
-
-    def fill_dimensions(self, input_):
-        if not len(input_.size()) == 3:
-            raise ValueError(f"Input must have three dimensions. Got: {input_.size()}")
-        return input_
-
-    def invert(self) -> LayerSplit:
-        return Identity()
-
-    def get_split(self, size: List[int]) -> List[Tensor]:
-        indexes = product(*map(range, size))
-        return list(map(lambda idx: self.get_mask(idx, size), indexes))
-
-    def get_mask(self, index: List[int], size: List[int]) -> Tensor:
-        mask = torch.zeros(tuple(size), device=get_device())
-        mask[tuple(index)] = 1
-        return mask
-
-    def get_mean(self, input_: Tensor) -> Tensor:
-        return input_
-
-
-class SpatialSplit(LayerSplit):
-    """Split a layer by spatial positions."""
-
-    def fill_dimensions(self, input_):
-        if not len(input_.size()) == 2:
-            raise ValueError(
-                f"Input needs to have 2 spatial dimensions: (h, w). Got: {input_.size()}"
-            )
-        return input_.unsqueeze(dim=0)
-
-    def invert(self) -> LayerSplit:
-        return ChannelSplit()
-
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
-        indexes = product(*map(range, size[1:]))
-        return list(map(lambda idx: self.get_mask(idx, size), indexes))
-
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
-        if not len(index) == 2:
-            raise ValueError("Spatial index need two dimensions. Got: ", index)
-        mask = torch.zeros(*size, device=get_device())
-        mask[:, index[0], index[1]] = 1
-        return mask
-
-    def get_mean(self, input_: Tensor) -> Tensor:
-        if not len(input_.size()) == 3:
-            raise ValueError(
-                f"Input needs to have 3 dimensions: (c, h, w). Got: {input_.size()}"
-            )
-        # mean over channel dimension, so that there is one mean value for each spatial
-        return input_.mean(0)
-
-
-class ChannelSplit(LayerSplit):
-    """Split a layer by its channels."""
-
-    def fill_dimensions(self, input_):
-        if not len(input_.size()) == 1:
-            raise ValueError(
-                "Input needs to have 1 channel dimensions: (c,). Got: ",
-                len(input_.size()),
-            )
-        return input_.unsqueeze(dim=1).unsqueeze(dim=2)
-
-    def invert(self) -> LayerSplit:
-        return SpatialSplit()
-
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
-        indexes = map(lambda idx: [idx], range(size[0]))
-        return list(map(lambda idx: self.get_mask(idx, size), indexes))
-
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
-        if not len(index) == 1:
-            raise ValueError(f"Channel index needs one dimension. Got: {index}")
-        mask = torch.zeros(*size, device=get_device())
-        mask[index[0]] = 1
-        return mask
-
-    def get_mean(self, input_: Tensor) -> Tensor:
-        # mean over spatials, s.t. there is one mean value for each channel
-        return input_.mean(-1).mean(-1)
-
-
-class GroupSplit(LayerSplit):
-    """Splits a layer by a decomposition, usually factorized by (spatials, channels)."""
-
-    def __init__(self, decomposition: Tuple[Tensor, Tensor]):
-        if not decomposition[0].size(-1) == decomposition[1].size(0):
-            raise ValueError(
-                f"Not a valid decomposition. Group dimensions must be exqual. Got: "
-                + f" {decomposition[0].size(-1)}, {decomposition[1].size(0)}"
-            )
-        self.num_groups = decomposition[0].size(-1)
-        self.decomposition = decomposition
-
-    def invert(self):
-        return GroupSplit(
-            (
-                self.decomposition[1].transpose(0, -1),
-                self.decomposition[0].transpose(0, -1),
-            )
-        )
-
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
-        indexes = range(self.num_groups)
-        return list(map(lambda i: self.get_mask([i], size), indexes))
-
-    def get_mask(self, index: List[int], _: Tuple[int, int, int]) -> Tensor:
-        if not len(index) == 1:
-            raise ValueError("Need to provide exactly one index for a group")
-        idx = index[0]
-        return self.decomposition[0].select(-1, idx) * self.decomposition[1].select(
-            0, idx
-        )
-
-    def fill_dimensions(self, input_):
-        return input_
-
-
 class NeuronSelector(ABC):
     @abstractmethod
     def get_mask(self, size: Tuple[int, int, int]):
@@ -243,36 +94,6 @@ class NeuronSelector(ABC):
 
         """
         raise NotImplementedError()
-
-
-class SimpleSelector(NeuronSelector):
-    """Simply selects neurons based on a pre-defined mask."""
-
-    def __init__(self, mask: Tensor):
-        self.mask = mask
-
-    def get_mask(self, size: Tuple[int, int, int]):
-        mask_size = self.mask.size()
-        if not tuple(mask_size) == size:
-            raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")
-        return self.mask
-
-
-class SplitSelector(NeuronSelector):
-    """Selects a number of neurons according to a specific split"""
-
-    def __init__(self, layer_split: LayerSplit, element: List[int]):
-        """
-        Args:
-            layer_split: the split to use
-            element: the element in the split
-
-        """
-        self.layer_split = layer_split
-        self.element = element
-
-    def get_mask(self, size: Tuple[int, int, int]) -> Tensor:
-        return self.layer_split.get_mask(self.element, size)
 
 
 class Attribution(ABC):
@@ -350,3 +171,75 @@ class Activation(ABC):
 
         """
         raise NotImplementedError()
+
+
+class OutputRegularization(ABC):
+    """Base class for regularizations on an output term."""
+
+    def __init__(self, coefficient: float = 0.1):
+        """
+
+        Args:
+            coefficient: how much regularization to apply
+
+        """
+        self.coefficient = coefficient
+
+    @abstractmethod
+    def loss(self, out: Tensor) -> Tensor:
+        """Calculates the loss for an output.
+
+         Args:
+             out: the tensor to calculate the loss for, of shape
+              (channels, height,width)
+
+         Returns:
+             a tensor representing the loss
+
+         """
+        raise NotImplementedError()
+
+
+class TransformStep(ABC):
+    """Abstract base class for an image transformation step"""
+
+    @abstractmethod
+    def transform(self, img: ndarray) -> ndarray:
+        """Transforms the image.
+
+        Args:
+            img: the image to transform
+
+        Returns:
+            the transformed image
+
+        """
+        raise NotImplementedError()
+
+    def __add__(self, other):
+        """Method to easily concatenate two transformations.
+
+        Args:
+            other: the second transformation to apply
+
+        Returns:
+            a TransformSequence containing self and other
+
+        """
+        return TransformSequence(self, other)
+
+
+class TransformSequence(TransformStep):
+    """Concatenates a number of transform steps as a sequence."""
+
+    def __init__(self, *steps: TransformStep):
+        self.steps = steps
+
+    def transform(self, img: ndarray) -> ndarray:
+        for step in self.steps:
+            img = step.transform(img)
+        return img
+
+    def __add__(self, other: TransformStep) -> TransformStep:
+        self.steps += (other,)
+        return self

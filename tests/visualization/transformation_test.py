@@ -4,12 +4,12 @@ import numpy as np
 from assertpy import assert_that
 from numpy.testing import assert_array_equal
 
-from midnite.visualization.base.transforms import BilateralTransform
-from midnite.visualization.base.transforms import BlurTransform
-from midnite.visualization.base.transforms import RandomTransform
-from midnite.visualization.base.transforms import ResizeTransform
-from midnite.visualization.base.transforms import TransformSequence
-from midnite.visualization.base.transforms import TransformStep
+from midnite.visualization.base import BilateralTransform
+from midnite.visualization.base import BlurTransform
+from midnite.visualization.base import RandomTransform
+from midnite.visualization.base import ResizeTransform
+from midnite.visualization.base import TransformSequence
+from midnite.visualization.base import TransformStep
 
 
 def test_transform_step_add():
@@ -71,7 +71,9 @@ def test_resize_trans(mocker):
     step = ResizeTransform(scale_fac=2.0)
     res = step.transform(img0)
 
-    cv2.resize.assert_called_once_with(img0, (0, 0), fx=2.0, fy=2.0)
+    cv2.resize.assert_called_once_with(
+        img0, (0, 0), fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC
+    )
     assert_that(res).is_equal_to(img1)
 
 

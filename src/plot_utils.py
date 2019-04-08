@@ -91,16 +91,3 @@ def plot_saliency(
     plt.imshow(np.array(sal_img), alpha=0.5, cmap="jet")
 
     plt.show()
-
-
-def plot_guided_backprop(saliency: Tensor, img):
-    """plots the guided gradients in the input image dimensions.
-    Args:
-        saliency: tensor of class activations with dimensions mini-batch x channels x height x width
-        img: input image
-    """
-
-    sal_img = Image.fromarray(saliency.numpy())
-    sal_img = sal_img.resize(img.size, resample=Image.LINEAR)
-    plt.imshow(sal_img)
-    plt.show()

@@ -1,52 +1,25 @@
 """Concrete implementations of visualization methods."""
-from abc import ABC
-from abc import abstractmethod
 from typing import List
 from typing import Optional
 from typing import Union
 
 import numpy as np
 import torch
+import tqdm
 from numpy import random
 from torch import Tensor
+from torch.nn import functional
 from torch.nn import Module
 from torch.nn import Sequential
-from torch.nn.functional import relu
-from tqdm import trange
+from torch.optim import Adam
 
 from midnite import get_device
-from midnite.visualization.base import Activation
-from midnite.visualization.base import Attribution
-from midnite.visualization.base import LayerSplit
-from midnite.visualization.base import NeuronSelector
+from midnite.visualization.base.interface import Activation
+from midnite.visualization.base.interface import Attribution
+from midnite.visualization.base.interface import LayerSplit
+from midnite.visualization.base.interface import NeuronSelector
+from midnite.visualization.base.interface import OutputRegularization
 from midnite.visualization.base.transforms import TransformStep
-
-
-class OutputRegularization(ABC):
-    """Base class for regularizations on an output term."""
-
-    def __init__(self, coefficient: float = 0.1):
-        """
-
-        Args:
-            coefficient: how much regularization to apply
-
-        """
-        self.coefficient = coefficient
-
-    @abstractmethod
-    def loss(self, out: Tensor) -> Tensor:
-        """Calculates the loss for an output.
-
-         Args:
-             out: the tensor to calculate the loss for, of shape
-              (channels, height,width)
-
-         Returns:
-             a tensor representing the loss
-
-         """
-        raise NotImplementedError()
 
 
 class TVRegularization(OutputRegularization):
@@ -168,9 +141,7 @@ class PixelActivation(Activation):
         opt_img = opt_img.unsqueeze(dim=0).detach()
 
         # Optimizer for image
-        optimizer = torch.optim.Adam(
-            [opt_img], lr=self.lr, weight_decay=self.weight_decay
-        )
+        optimizer = Adam([opt_img], lr=self.lr, weight_decay=self.weight_decay)
 
         for _ in range(self.opt_n):
             opt_img.requires_grad_(True)
@@ -211,7 +182,7 @@ class PixelActivation(Activation):
             input_ = input_.clone().detach()
         opt_img = input_.permute((2, 0, 1)).to(get_device())
 
-        for n in trange(self.iter_n):
+        for n in tqdm.trange(self.iter_n):
             # Optimization step
             opt_img = self._opt_step(opt_img).detach()
 
@@ -269,7 +240,7 @@ class GuidedBackpropagation(Attribution):
         gradients = torch.autograd.grad(score, input_tensor)[0]
 
         # get only positive gradients
-        positive_grads = relu(gradients.detach())
+        positive_grads = functional.relu(gradients.detach())
 
         # mean over bottom layer split dimension
         return self.bottom_layer_split.get_mean(positive_grads.squeeze(dim=0))
@@ -303,7 +274,7 @@ class GradAM(Attribution):
         super().__init__(inspection_layers, top_layer_selector, bottom_layer_split)
         self.base_net = Sequential(*base_layers)
         self.backpropagator = GuidedBackpropagation(
-            self.net, self.top_layer_selector, self.bottom_layer_split.invert()
+            inspection_layers, self.top_layer_selector, self.bottom_layer_split.invert()
         )
 
     def visualize(self, input_tensor: Tensor) -> Tensor:
@@ -318,12 +289,12 @@ class GradAM(Attribution):
         # retrieve the alpha weight
         intermediate_back = self.backpropagator.visualize(intermediate)
         # get rid of batch dimension
-        alpha = intermediate_back.squeeze(dim=0)
+        alpha = intermediate_back.detach().squeeze(dim=0)
         # fill dimensions s.t. each split has dim (c, h, w)
         alpha = self.bottom_layer_split.invert().fill_dimensions(alpha)
 
         result = self.bottom_layer_split.get_mean(
-            intermediate.squeeze(dim=0).mul_(alpha)
+            intermediate.detach().squeeze(dim=0).mul_(alpha)
         )
 
-        return relu(result)
+        return functional.relu(result)

@@ -1,56 +1,11 @@
 """Different image transformations, used for regularization in visualization."""
 import random as rand
-from abc import ABC
-from abc import abstractmethod
 
 import cv2
 import numpy as np
 from numpy import ndarray
 
-
-class TransformStep(ABC):
-    """Abstract base class for an image transformation step"""
-
-    @abstractmethod
-    def transform(self, img: ndarray) -> ndarray:
-        """Transforms the image.
-
-        Args:
-            img: the image to transform
-
-        Returns:
-            the transformed image
-
-        """
-        raise NotImplementedError()
-
-    def __add__(self, other):
-        """Method to easily concatenate two transformations.
-
-        Args:
-            other: the second transformation to apply
-
-        Returns:
-            a TransformSequence containing self and other
-
-        """
-        return TransformSequence(self, other)
-
-
-class TransformSequence(TransformStep):
-    """Concatenates a number of transform steps as a sequence."""
-
-    def __init__(self, *steps: TransformStep):
-        self.steps = steps
-
-    def transform(self, img: ndarray) -> ndarray:
-        for step in self.steps:
-            img = step.transform(img)
-        return img
-
-    def __add__(self, other: TransformStep) -> TransformStep:
-        self.steps += (other,)
-        return self
+from midnite.visualization.base.interface import TransformStep
 
 
 class BlurTransform(TransformStep):
@@ -75,7 +30,13 @@ class ResizeTransform(TransformStep):
         self.scale_fac = scale_fac
 
     def transform(self, img: ndarray) -> ndarray:
-        return cv2.resize(img, (0, 0), fx=self.scale_fac, fy=self.scale_fac)
+        return cv2.resize(
+            img,
+            (0, 0),
+            fx=self.scale_fac,
+            fy=self.scale_fac,
+            interpolation=cv2.INTER_CUBIC,
+        )
 
 
 class RandomTransform(TransformStep):
@@ -102,7 +63,9 @@ class RandomTransform(TransformStep):
 
         img = cv2.warpAffine(img, shift, (0, 0))
         img = cv2.warpAffine(img, rot, (0, 0))
-        return cv2.resize(img, (0, 0), fx=scale, fy=scale)
+        return cv2.resize(
+            img, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC
+        )
 
 
 class BilateralTransform(TransformStep):
