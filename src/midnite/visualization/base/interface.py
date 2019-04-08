@@ -2,7 +2,6 @@ from abc import ABC
 from abc import abstractmethod
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 import torch
 from numpy import ndarray
@@ -28,11 +27,11 @@ class LayerSplit(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
+    def get_split(self, size: List[int]) -> List[Tensor]:
         """Returns a split, i.e. all masks.
 
         Args:
-            size: the size of the layer to split as (c, h, w) tuple
+            size: the size of the layer to split, usually as [c, h, w]
 
         Returns:
             a list of masks containing a mask for each split
@@ -41,12 +40,12 @@ class LayerSplit(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
+    def get_mask(self, index: List[int], size: List[int]) -> Tensor:
         """Returns a single mask for the indexed split.
 
         Args:
             index: the index of the mask to get from the split
-            size: the size of the layer to split as (c, h, w) tuple
+            size: the size of the layer to split, usually as [c, h, w]
 
         Returns:
             a single split mask
@@ -71,19 +70,20 @@ class LayerSplit(ABC):
 
     @abstractmethod
     def fill_dimensions(self, input_):
-        """Fills up the dimensions with unsqueeze(), so that output is (c, h, w)
+        """Fills up the dimensions with unsqueeze(), so that output is (c, h, w).
+
         Args:
             input_: tensor which needs to be unsqueezed.
         Returns:
             the input_ with dimension (c, h, w)
 
-            """
+        """
         raise NotImplementedError()
 
 
 class NeuronSelector(ABC):
     @abstractmethod
-    def get_mask(self, size: Tuple[int, int, int]):
+    def get_mask(self, size: List[int]):
         """Get the mask for the specified neurons
 
         Args:
@@ -178,7 +178,6 @@ class OutputRegularization(ABC):
 
     def __init__(self, coefficient: float = 0.1):
         """
-
         Args:
             coefficient: how much regularization to apply
 
@@ -233,6 +232,11 @@ class TransformSequence(TransformStep):
     """Concatenates a number of transform steps as a sequence."""
 
     def __init__(self, *steps: TransformStep):
+        """
+        Args:
+            *steps: transformation steps to apply after each other
+
+        """
         self.steps = steps
 
     def transform(self, img: ndarray) -> ndarray:

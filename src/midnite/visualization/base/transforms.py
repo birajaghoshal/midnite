@@ -12,6 +12,11 @@ class BlurTransform(TransformStep):
     """Blur transformation step."""
 
     def __init__(self, blur_size: int = 5):
+        """
+        Args:
+            blur_size: how many pixels to blur
+
+        """
         self.blur_size = blur_size
 
     def transform(self, img: ndarray) -> ndarray:
@@ -27,6 +32,12 @@ class ResizeTransform(TransformStep):
     """
 
     def __init__(self, scale_fac: float = 1.2):
+        """
+        Args:
+            scale_fac: resizing factor of each step. Keep in mind that large factors
+             and/or many iterations will create huge memory requirements!
+
+        """
         self.scale_fac = scale_fac
 
     def transform(self, img: ndarray) -> ndarray:
@@ -45,6 +56,13 @@ class RandomTransform(TransformStep):
     def __init__(
         self, pixel_shift: int = 1, rot_deg: float = 0.3, scale_fac: float = 0.1
     ):
+        """
+        Args:
+            pixel_shift: maximum amount of pixels to shift
+            rot_deg: maximum degree of rotation
+            scale_fac: maximum relative scale factor to resize
+
+        """
         self.px = pixel_shift
         self.deg = rot_deg
         self.fac = scale_fac

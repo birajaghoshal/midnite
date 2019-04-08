@@ -1,7 +1,6 @@
 """General interface of the visualization building blocks"""
-from itertools import product
+import itertools
 from typing import List
-from typing import Tuple
 
 import torch
 from torch import Tensor
@@ -24,10 +23,10 @@ class Identity(LayerSplit):
     def invert(self) -> LayerSplit:
         return NeuronSplit()
 
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
+    def get_split(self, size: List[int]) -> List[Tensor]:
         return [self.get_mask([], size)]
 
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
+    def get_mask(self, index: List[int], size: List[int]) -> Tensor:
         if len(index) > 0:
             raise ValueError("No index required for identity split")
         return torch.ones(size)
@@ -48,7 +47,7 @@ class NeuronSplit(LayerSplit):
         return Identity()
 
     def get_split(self, size: List[int]) -> List[Tensor]:
-        indexes = product(*map(range, size))
+        indexes = itertools.product(*map(range, size))
         return list(map(lambda idx: self.get_mask(idx, size), indexes))
 
     def get_mask(self, index: List[int], size: List[int]) -> Tensor:
@@ -73,11 +72,11 @@ class SpatialSplit(LayerSplit):
     def invert(self) -> LayerSplit:
         return ChannelSplit()
 
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
-        indexes = product(*map(range, size[1:]))
+    def get_split(self, size: List[int]) -> List[Tensor]:
+        indexes = itertools.product(*map(range, size[1:]))
         return list(map(lambda idx: self.get_mask(idx, size), indexes))
 
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
+    def get_mask(self, index: List[int], size: List[int]) -> Tensor:
         if not len(index) == 2:
             raise ValueError("Spatial index need two dimensions. Got: ", index)
         mask = torch.zeros(*size, device=midnite.get_device())
@@ -107,11 +106,11 @@ class ChannelSplit(LayerSplit):
     def invert(self) -> LayerSplit:
         return SpatialSplit()
 
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
+    def get_split(self, size: List[int]) -> List[Tensor]:
         indexes = map(lambda idx: [idx], range(size[0]))
         return list(map(lambda idx: self.get_mask(idx, size), indexes))
 
-    def get_mask(self, index: List[int], size: Tuple[int, int, int]) -> Tensor:
+    def get_mask(self, index: List[int], size: List[int]) -> Tensor:
         if not len(index) == 1:
             raise ValueError(f"Channel index needs one dimension. Got: {index}")
         mask = torch.zeros(*size, device=midnite.get_device())
@@ -126,36 +125,45 @@ class ChannelSplit(LayerSplit):
 class GroupSplit(LayerSplit):
     """Splits a layer by a decomposition, usually factorized by (spatials, channels)."""
 
-    def __init__(self, decomposition: Tuple[Tensor, Tensor]):
-        if not decomposition[0].size(-1) == decomposition[1].size(0):
+    def __init__(self, left: Tensor, right: Tensor):
+        """
+
+        Args:
+            left: the left decomposition matrix. Of shape (..., N) where N is the number
+             of groups in the decomposition
+            right: the right decomposition matrix. Of shape (N, ...)
+
+        """
+        if not left.size(-1) == right.size(0):
             raise ValueError(
                 f"Not a valid decomposition. Group dimensions must be exqual. Got: "
-                + f" {decomposition[0].size(-1)}, {decomposition[1].size(0)}"
+                f" {left.size(-1)}, {right.size(0)}"
             )
-        self.num_groups = decomposition[0].size(-1)
-        self.decomposition = decomposition
+        self.num_groups = left.size(-1)
+        self.left = left
+        self.right = right
 
     def invert(self):
-        return GroupSplit(
-            (
-                self.decomposition[1].transpose(0, -1),
-                self.decomposition[0].transpose(0, -1),
-            )
-        )
+        # TODO complex group split
+        raise NotImplementedError()
 
-    def get_split(self, size: Tuple[int, int, int]) -> List[Tensor]:
+    def get_split(self, size: List[int]) -> List[Tensor]:
         indexes = range(self.num_groups)
         return list(map(lambda i: self.get_mask([i], size), indexes))
 
-    def get_mask(self, index: List[int], _: Tuple[int, int, int]) -> Tensor:
+    def get_mask(self, index: List[int], _: List[int]) -> Tensor:
         if not len(index) == 1:
             raise ValueError("Need to provide exactly one index for a group")
         idx = index[0]
-        return self.decomposition[0].select(-1, idx) * self.decomposition[1].select(
-            0, idx
-        )
+        return self.left.select(-1, idx) * self.right.select(0, idx)
 
     def fill_dimensions(self, input_):
+        size = tuple(self.left.size()[:-1] + self.right.size()[1:])
+        if not size == input_.size():
+            raise ValueError(
+                f"Input must of incorrect size. Expected: {size},"
+                f" got: {tuple(input.size())}"
+            )
         return input_
 
 
@@ -163,9 +171,15 @@ class SimpleSelector(NeuronSelector):
     """Simply selects neurons based on a pre-defined mask."""
 
     def __init__(self, mask: Tensor):
+        """
+
+        Args:
+            mask: the pre-defined mask for this selector
+
+        """
         self.mask = mask
 
-    def get_mask(self, size: Tuple[int, int, int]):
+    def get_mask(self, size: List[int]):
         mask_size = self.mask.size()
         if not tuple(mask_size) == size:
             raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")
@@ -185,5 +199,5 @@ class SplitSelector(NeuronSelector):
         self.layer_split = layer_split
         self.element = element
 
-    def get_mask(self, size: Tuple[int, int, int]) -> Tensor:
+    def get_mask(self, size: List[int]) -> Tensor:
         return self.layer_split.get_mask(self.element, size)

@@ -10,13 +10,36 @@ from midnite.visualization.base import NeuronSplit
 from midnite.visualization.base import SimpleSelector
 from midnite.visualization.base import SpatialSplit
 from midnite.visualization.base import SplitSelector
+from midnite.visualization.base.splits import GroupSplit
 
 
-def test_identity_mask():
-    """Test identity masking."""
-    mask = Identity().get_mask([], (1, 2, 3)).numpy()
+@pytest.mark.parametrize(
+    "split,index,size,mask",
+    [
+        (Identity(), [], (1, 2, 3), [[[1, 1, 1], [1, 1, 1]]]),
+        (NeuronSplit(), [0, 1, 2], [1, 2, 3], [[[0, 0, 0], [0, 0, 1]]]),
+        (SpatialSplit(), [0, 1], (2, 2, 2), [[[0, 1], [0, 0]], [[0, 1], [0, 0]]]),
+        (
+            ChannelSplit(),
+            [1],
+            (3, 2, 2),
+            [[[0, 0], [0, 0]], [[1, 1], [1, 1]], [[0, 0], [0, 0]]],
+        ),
+        (
+            GroupSplit(
+                torch.tensor([1, 1]), torch.tensor([[0, 0, 1, 1, 0], [1, 1, 0, 0, 1]])
+            ),
+            [0],
+            (5, 1),
+            [0, 0, 1, 1, 0],
+        ),
+    ],
+)
+def test_mask(split, index, size, mask):
+    """Test masking of all splits"""
+    mask = split.get_mask(index, size).numpy()
 
-    assert_array_equal(mask, [[[1, 1, 1], [1, 1, 1]]])
+    assert_array_equal(mask, mask)
 
 
 def test_identity_split():
@@ -27,13 +50,6 @@ def test_identity_split():
     assert_array_equal(masks[0], [[[1, 1, 1], [1, 1, 1]]])
 
 
-def test_neuron_mask():
-    """Test neuron masking"""
-    mask = NeuronSplit().get_mask([0, 1, 2], [1, 2, 3]).numpy()
-
-    assert_array_equal(mask, [[[0, 0, 0], [0, 0, 1]]])
-
-
 def test_neuron_split():
     """Check all neuron masks"""
     masks = NeuronSplit().get_split([1, 1, 2])
@@ -41,15 +57,6 @@ def test_neuron_split():
     assert_that(masks).is_length(2)
     assert_array_equal(masks[0].numpy(), [[[1, 0]]])
     assert_array_equal(masks[1].numpy(), [[[0, 1]]])
-
-
-def test_spatial_mask():
-    """Test spatial masking"""
-    mask = SpatialSplit().get_mask([0, 1], (2, 2, 2)).numpy()
-
-    expected_xy = [[0, 1], [0, 0]]
-    assert_array_equal(mask[0], expected_xy)
-    assert_array_equal(mask[1], expected_xy)
 
 
 def test_spatial_split():
@@ -70,13 +77,6 @@ def test_spatial_split_dims():
     assert_that(masks).is_length(2)
     assert_array_equal(masks[0].numpy(), [[[1], [0]], [[1], [0]], [[1], [0]]])
     assert_array_equal(masks[1].numpy(), [[[0], [1]], [[0], [1]], [[0], [1]]])
-
-
-def test_channel_mask():
-    """Test channel masking"""
-    mask = ChannelSplit().get_mask([1], (3, 2, 2)).numpy()
-
-    assert_array_equal(mask, [[[0, 0], [0, 0]], [[1, 1], [1, 1]], [[0, 0], [0, 0]]])
 
 
 def test_channel_split():
@@ -163,15 +163,18 @@ def test_invert_neuron(class_, inverse):
 @pytest.mark.parametrize(
     "in_dim,split,out_dim",
     [
-        ((4, 4), SpatialSplit, (1, 4, 4)),
-        (4, ChannelSplit, (4, 1, 1)),
-        ((3, 4, 4), NeuronSplit, (3, 4, 4)),
-        ((), Identity, (1, 1, 1)),
+        ((4, 5), SpatialSplit(), (1, 4, 5)),
+        (4, ChannelSplit(), (4, 1, 1)),
+        ((3, 4, 5), NeuronSplit(), (3, 4, 5)),
+        ((), Identity(), (1, 1, 1)),
+        ((3, 4, 5), GroupSplit(torch.ones(3, 2), torch.ones(2, 4, 5)), (3, 4, 5)),
     ],
 )
 def test_fill_dimension(in_dim, split, out_dim):
     """Check that splits properly fill the cube dimensions."""
     input_ = torch.ones(in_dim)
-    filled = split().fill_dimensions(input_)
+    filled = split.fill_dimensions(input_)
 
     assert_that(tuple(filled.size())).is_equal_to(out_dim)
+    # Checksum
+    assert_that(filled.sum()).is_equal_to(input_.sum())

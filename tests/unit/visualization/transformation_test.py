@@ -1,7 +1,9 @@
 """Tests for the image transforms."""
 import cv2
 import numpy as np
+import pytest
 from assertpy import assert_that
+from numpy.testing import assert_array_almost_equal
 from numpy.testing import assert_array_equal
 
 from midnite.visualization.base import BilateralTransform
@@ -103,3 +105,42 @@ def test_random_trans(mocker):
     assert_that(cv2.warpAffine.call_count).is_equal_to(2)
     cv2.resize.assert_called_once()
     assert_array_equal(res, img1)
+
+
+@pytest.mark.parametrize(
+    "transforms,tolerance", [((1, 0.0, 0.0), 1), ((0, 0.3, 0.0), 3)]
+)
+def test_random_trans_location_rotation_neutral(mocker, transforms, tolerance):
+    """Check if trandom location/rotation changes are uniformly distributed."""
+    img0 = np.zeros((3, 3, 3))
+    mocker.patch("cv2.warpAffine")
+    mocker.patch("cv2.resize")
+
+    step = RandomTransform(*transforms)
+
+    # Take average location changes over 1000 steps
+    for _ in range(1000):
+        step.transform(img0)
+    call_args = cv2.warpAffine.call_args_list
+    all_trans = sum(map(lambda arg: arg[0][1][:, 2], call_args)) / 1000
+
+    # Approximately (0, 0)
+    assert_array_almost_equal(all_trans, np.zeros(2), tolerance)
+
+
+def test_random_trans_scale_neutral(mocker):
+    """Check if random scale changes are uniformly distributed."""
+    img0 = np.zeros((3, 3, 3))
+    mocker.patch("cv2.warpAffine")
+    mocker.patch("cv2.resize")
+
+    step = RandomTransform(0, 0.0, 0.1)
+
+    # Take average rotation changes over 1000 steps
+    for _ in range(1000):
+        step.transform(img0)
+    call_args = cv2.resize.call_args_list
+    all_trans = sum(map(lambda arg: arg[1]["fx"] + arg[1]["fy"], call_args)) / 2000
+
+    # Approximately 1
+    assert_that(all_trans).is_close_to(1.0, tolerance=0.01)

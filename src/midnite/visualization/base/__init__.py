@@ -11,7 +11,6 @@ from midnite.visualization.base.methods import PixelActivation
 from midnite.visualization.base.methods import TVRegularization
 from midnite.visualization.base.methods import WeightDecay
 from midnite.visualization.base.splits import ChannelSplit
-from midnite.visualization.base.splits import GroupSplit
 from midnite.visualization.base.splits import Identity
 from midnite.visualization.base.splits import NeuronSplit
 from midnite.visualization.base.splits import SimpleSelector
@@ -34,7 +33,6 @@ __all__ = [
     "NeuronSplit",
     "SpatialSplit",
     "ChannelSplit",
-    "GroupSplit",
     "SimpleSelector",
     "SplitSelector",
     "TVRegularization",

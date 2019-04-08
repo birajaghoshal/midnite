@@ -10,8 +10,8 @@ from torch.nn import Module
 from midnite.visualization.base import ChannelSplit
 from midnite.visualization.base import GradAM
 from midnite.visualization.base import GuidedBackpropagation
-from midnite.visualization.base import Identity
 from midnite.visualization.base import LayerSplit
+from midnite.visualization.base import methods
 from midnite.visualization.base import NeuronSelector
 from midnite.visualization.base import NeuronSplit
 from midnite.visualization.base import SpatialSplit
@@ -21,16 +21,42 @@ from midnite.visualization.base import SpatialSplit
 def backprop_mock_setup(mocker):
     """Setup img, layers, and selectors."""
     img = torch.zeros((1, 3, 4, 4))
-    layers = [Dropout2d(), Dropout2d()]
 
-    mocker.spy(layers[0], "forward")
-    mocker.spy(layers[1], "forward")
-    mocker.patch("torch.autograd.grad", return_value=torch.randn(1, 3, 4, 4))
+    # We want to have the exact same img after these operations because that makes
+    # testing for equality in assert_called_with easy
+    img.clone = mocker.Mock(return_value=img)
+    img.detach = mocker.Mock(return_value=img)
+    img.to = mocker.Mock(return_value=img)
+    img.requires_grad_ = mocker.Mock(return_value=img)
+
+    out = torch.ones((1, 3, 4, 4))
+    out1 = torch.ones((1, 3, 4, 4))
+    out2 = torch.ones((1, 3, 4, 4))
+    out2.detach = mocker.Mock(return_value=out2)
+    out3 = torch.ones((1, 3, 4, 4))
+    out3.squeeze = mocker.Mock(return_value=out3)
+    out4 = torch.ones((1, 4, 4))
+
+    layers = [
+        mocker.MagicMock(spec=Module, return_value=img),
+        mocker.MagicMock(spec=Module, return_value=out),
+    ]
+
+    for layer in layers:
+        layer.to = mocker.Mock(return_value=layers)
+
+    mocker.patch(
+        "midnite.visualization.base.methods.get_single_mean", return_value=out1
+    )
+    mocker.patch("torch.autograd.grad", return_value=[out2])
+    mocker.patch("torch.nn.functional.relu", return_value=out3)
 
     top_layer_sel = mocker.Mock(spec=NeuronSelector)
-    top_layer_sel.get_mask = mocker.Mock(return_value=torch.ones((3, 4, 4)))
 
-    return img, layers, top_layer_sel
+    bottom_split = mocker.Mock(spec=LayerSplit)
+    bottom_split.get_mean = mocker.Mock(return_value=out4)
+
+    return img, layers, top_layer_sel, (out, out1, out2, out3, out4), bottom_split
 
 
 @pytest.fixture
@@ -44,79 +70,38 @@ def gradcam_mock_setup(mocker):
     return img, base_layers
 
 
-def test_guided_backprop_basics(backprop_mock_setup):
-    """Check that layers are in correct mode and forward passes are made."""
-    img, layers, top_layer_sel = backprop_mock_setup
-    backprop_spatial = GuidedBackpropagation(layers, top_layer_sel, SpatialSplit())
+def test_guided_backpropagation(backprop_mock_setup):
+    """Check that layers are in correct mode and the gradient is calculated properly."""
+    img, layers, top_layer_sel, out, bottom_split = backprop_mock_setup
+    sut = GuidedBackpropagation(layers, top_layer_sel, bottom_split)
 
-    assert_that(layers[0].training).is_true()
-    assert_that(layers[1].training).is_true()
+    result = sut.visualize(img)
 
-    backprop_spatial.visualize(img)
+    # Check preprocessing
+    img.clone.assert_called_once()
+    img.detach.assert_called_once()
+    img.to.assert_called_once()
+    img.requires_grad_.assert_called_once()
 
-    assert_that(layers[0].training).is_false()
-    assert_that(layers[1].training).is_false()
+    layers[0].train.assert_called_once_with(False)
+    layers[1].train.assert_called_once_with(False)
+
     # Check forward pass
-    layers[0].forward.assert_called()
-    layers[1].forward.assert_called()
+    layers[0].assert_called()
+    layers[1].assert_called()
 
-
-def test_guided_backprop_splits(mocker, backprop_mock_setup):
-    """tests the correct computation of guided gradients for the different splits"""
-    img, layers, top_layer_sel = backprop_mock_setup
-
-    grad = GuidedBackpropagation(layers, top_layer_sel, SpatialSplit()).visualize(img)
-    assert_that(np.all(grad.numpy() >= 0)).is_true()
-    assert_that(grad.size()).is_equal_to(Size([4, 4]))
-
-    grad = GuidedBackpropagation(layers, top_layer_sel, ChannelSplit()).visualize(img)
-    assert_that(np.all(grad.numpy() >= 0)).is_true()
-    assert_that(grad.size()).is_equal_to(Size([3]))
-
-    grad = GuidedBackpropagation(layers, top_layer_sel, NeuronSplit()).visualize(img)
-    assert_that(np.all(grad.numpy() >= 0)).is_true()
-    assert_that(grad.size()).is_equal_to(Size([3, 4, 4]))
-
-    grad = GuidedBackpropagation(layers, top_layer_sel, Identity()).visualize(img)
-    assert_that(grad.size()).is_equal_to(Size([]))
-
-
-def test_guided_backprop_scores_1d(mocker):
-    """Check that the output score is correctly computed for 1d top layer dimension."""
-    # 1 dimensional selection, example neuron split
-    top_layer_selector_1d = mocker.Mock(spec=NeuronSelector)
-    top_layer_selector_1d.get_mask = mocker.Mock(return_value=torch.ones((50,)))
-
-    out = torch.ones((50,))
-
-    backprop = GuidedBackpropagation(
-        [mocker.Mock(spec=Module)], top_layer_selector_1d, mocker.Mock(spec=LayerSplit)
-    )
-
-    score = backprop.select_top_layer_score(out)
-
-    assert_that(score.size()).is_equal_to(Size([]))
-    assert_that(score).is_equal_to(1)
-
-
-def test_guided_backprop_scores_3d(mocker):
-    """tests if the top-layer output score is correctly computed
-    for 3d top layer dimension."""
-
-    # 3 dimensional selection, example neuron split
-    top_layer_selector_3d = mocker.Mock(spec=NeuronSelector)
-    top_layer_selector_3d.get_mask = mocker.Mock(return_value=torch.ones((4, 3, 3)))
-
-    out = torch.ones((1, 4, 3, 3))
-
-    backprop = GuidedBackpropagation(
-        [mocker.Mock(spec=Module)], top_layer_selector_3d, mocker.Mock(spec=LayerSplit)
-    )
-
-    score = backprop.select_top_layer_score(out)
-
-    assert_that(score.size()).is_equal_to(Size([]))
-    assert_that(score).is_equal_to(1)
+    # Check gradient calculation
+    # 1. Output mean
+    methods.get_single_mean.assert_called_with(out[0], top_layer_sel)
+    # 2. Take gradient
+    torch.autograd.grad.assert_called_once_with(out[1], img)
+    out[2].detach.assert_called_once()
+    # 3. Relu
+    torch.nn.functional.relu.assert_called_once_with(out[2])
+    # 4. Split mean
+    bottom_split.get_mean.assert_called_once_with(out[3])
+    # 5. Check result
+    assert_that(result).is_same_as(out[4])
 
 
 def test_gradcam_basics(mocker, gradcam_mock_setup):
