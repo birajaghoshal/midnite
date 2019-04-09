@@ -1,26 +1,10 @@
 variables:
-  PYENV_INSTALL_VERSION: "b646a0105b6612ff5781b064c9e644795edfa06f"
-  POETRY_INSTALL_VERSION: "e2ca0611ac485f460ab4ef3dab357cfdc6df0fd2"
-  PYTHON_INSTALL_VERSION: "3.7.0"
-  PRE_COMMIT_INSTALL_VERSION: "1.15.1"
+  PRE_COMMIT_VERSION: "1.15.1"
 
+image: jonatkinson/python-poetry:3.7
 
 before_script:
-  - apt-get -q update -y
-  - apt-get -q install python3-pip make -y
-  - curl -L https://github.com/pyenv/pyenv-installer/raw/$PYENV_INSTALL_VERSION/bin/pyenv-installer | bash
-    # Pyenv is not in path automatically
-  - export PATH="/root/.pyenv/bin:$PATH"
-  - eval "$(pyenv init -)"
-    # Newer python versions are not in stable debian repo, so use pyenv
-  - pyenv install $PYTHON_INSTALL_VERSION
-  - pyenv global $PYTHON_INSTALL_VERSION
-  - pip3 install pre-commit==$PRE_COMMIT_INSTALL_VERSION
-  - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/$POETRY_INSTALL_VERSION/get-poetry.py | python
-  - source ~/.poetry/env
-    # Configuration so that poetry does not fail to create venv in first run
-  - poetry config settings.virtualenvs.create true
-  - poetry config settings.virtualenvs.in-project true
+  - pip install pre-commit==$PRE_COMMIT_VERSION
 
 stages:
   - check
@@ -35,7 +19,8 @@ check:
 build:
   stage: build
   artifacts:
-    untracked: true
+    paths:
+      - ~/.cache/pypoetry/virtualenvs/
   script:
     - poetry install
 
