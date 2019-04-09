@@ -3,6 +3,14 @@ variables:
 
 image: jonatkinson/python-poetry:3.7
 
+before_script:
+  - poetry config settings.virtualenvs.create true
+  - poetry config settings.virtualenvs.in-project true
+
+# Find out poetry in-project dir
+after_script:
+  - ls -al
+
 stages:
   - check
   - build
@@ -19,7 +27,7 @@ build:
   stage: build
   artifacts:
     paths:
-      - ~/.cache/pypoetry/virtualenvs
+      - .venv/
   script:
     - poetry install
 
