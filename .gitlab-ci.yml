@@ -31,4 +31,9 @@ build:
 unit-test:
   stage: test
   script:
-    - poetry run pytest tests
+    - poetry run pytest tests/unit
+
+integration-test:
+  stage: test
+  script:
+    - poetry run pytest tests/torch_integration

@@ -67,7 +67,7 @@ class WeightDecay:
 Regularization = Union[OutputRegularization, WeightDecay]
 
 
-def get_single_mean(out, select: NeuronSelector) -> Tensor:
+def _calculate_single_mean(out, select: NeuronSelector) -> Tensor:
     """Calculates the selected mean for a minibatch with one element, retaining grads.
 
     Args:
@@ -108,10 +108,10 @@ class GuidedBackpropagation(Attribution):
         self.net.to(midnite.get_device()).eval()
 
         # forward pass
-        out = self.net.forward(input_)
+        out = self.net(input_)
 
         # retrieve mean score of top layer selector
-        score = get_single_mean(out, self.top_layer_selector)
+        score = _calculate_single_mean(out, self.top_layer_selector)
 
         # gradients of input w.r.t the top level score yields partial derivatives
         gradients = torch.autograd.grad(score, input_)[0]
@@ -262,7 +262,7 @@ class PixelActivation(Activation):
             out = self.net(opt_img).squeeze(0)
 
             # Calculate loss (mean of output of the last layer w.r.t to our mask)
-            loss = -get_single_mean(out, self.top_layer_selector).unsqueeze(0)
+            loss = -_calculate_single_mean(out, self.top_layer_selector).unsqueeze(0)
 
             for reg in self.output_regularizers:
                 loss += reg.loss(opt_img.squeeze(0))

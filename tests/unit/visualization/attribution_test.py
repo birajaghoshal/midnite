@@ -1,10 +1,7 @@
 """Unit tests for the attribution methods."""
-import numpy as np
 import pytest
 import torch
 from assertpy import assert_that
-from torch import Size
-from torch.nn import Dropout2d
 from torch.nn import Module
 
 from midnite.visualization.base import ChannelSplit
@@ -15,11 +12,12 @@ from midnite.visualization.base import methods
 from midnite.visualization.base import NeuronSelector
 from midnite.visualization.base import NeuronSplit
 from midnite.visualization.base import SpatialSplit
+from midnite.visualization.base import SplitSelector
 
 
 @pytest.fixture
-def backprop_mock_setup(mocker):
-    """Setup img, layers, and selectors."""
+def id_img(mocker):
+    """Setup an image where .clone/.detach etc return id."""
     img = torch.zeros((1, 3, 4, 4))
 
     # We want to have the exact same img after these operations because that makes
@@ -29,153 +27,178 @@ def backprop_mock_setup(mocker):
     img.to = mocker.Mock(return_value=img)
     img.requires_grad_ = mocker.Mock(return_value=img)
 
-    out = torch.ones((1, 3, 4, 4))
-    out1 = torch.ones((1, 3, 4, 4))
-    out2 = torch.ones((1, 3, 4, 4))
-    out2.detach = mocker.Mock(return_value=out2)
-    out3 = torch.ones((1, 3, 4, 4))
-    out3.squeeze = mocker.Mock(return_value=out3)
-    out4 = torch.ones((1, 4, 4))
+    return img
+
+
+@pytest.fixture
+def layer_mock_setup(mocker):
+    out = (
+        torch.zeros((1, 3, 4, 4)),
+        torch.ones((1, 3, 4, 4)),
+        torch.ones((1, 1, 4, 4)),
+    )
 
     layers = [
-        mocker.MagicMock(spec=Module, return_value=img),
-        mocker.MagicMock(spec=Module, return_value=out),
+        mocker.MagicMock(spec=Module, return_value=out[0]),
+        mocker.MagicMock(spec=Module, return_value=out[1]),
     ]
 
+    out[1].detach = mocker.Mock(return_value=out[1])
+    out[1].squeeze = mocker.Mock(return_value=out[1])
+    out[1].mul_ = mocker.Mock(return_value=out[2])
+
     for layer in layers:
-        layer.to = mocker.Mock(return_value=layers)
+        layer.to = mocker.Mock(return_value=layer)
 
-    mocker.patch(
-        "midnite.visualization.base.methods.get_single_mean", return_value=out1
+    return layers, out
+
+
+@pytest.fixture
+def backprop_mock_setup(mocker):
+    """Setup layers, selectors, and (intermediate) outputs."""
+    # All intermediate outputs
+    out = (
+        torch.ones((1, 3, 4, 4)),
+        torch.ones((1, 3, 4, 4)),
+        torch.ones((1, 3, 4, 4)),
+        torch.ones((1, 4, 4)),
     )
-    mocker.patch("torch.autograd.grad", return_value=[out2])
-    mocker.patch("torch.nn.functional.relu", return_value=out3)
 
-    top_layer_sel = mocker.Mock(spec=NeuronSelector)
+    out[1].detach = mocker.Mock(return_value=out[1])
+    out[2].squeeze = mocker.Mock(return_value=out[2])
+
+    # Wire mocks/outputs together
+    mocker.patch(
+        "midnite.visualization.base.methods._calculate_single_mean", return_value=out[0]
+    )
+    mocker.patch("torch.autograd.grad", return_value=[out[1]])
+    mocker.patch("torch.nn.functional.relu", return_value=out[2])
 
     bottom_split = mocker.Mock(spec=LayerSplit)
-    bottom_split.get_mean = mocker.Mock(return_value=out4)
+    bottom_split.get_mean = mocker.Mock(return_value=out[3])
 
-    return img, layers, top_layer_sel, (out, out1, out2, out3, out4), bottom_split
+    return out, bottom_split
 
 
 @pytest.fixture
 def gradcam_mock_setup(mocker):
     """Patch splits and setup img and base layers"""
-    img = torch.zeros((1, 3, 4, 4))
-    base_layers = [Dropout2d(), Dropout2d()]
-    mocker.spy(base_layers[0], "forward")
-    mocker.spy(base_layers[1], "forward")
+    out = (
+        torch.ones((1, 3)),
+        torch.ones((1, 3, 1, 1)),
+        torch.ones((1, 1, 4, 4)),
+        torch.ones((1, 1, 4, 4)),
+    )
+    out[0].detach = mocker.Mock(return_value=out[0])
+    out[0].squeeze = mocker.Mock(return_value=out[0])
 
-    return img, base_layers
+    # Wire mocks together
+    mocker.patch(
+        "midnite.visualization.base.methods.GuidedBackpropagation.visualize",
+        return_value=out[0],
+    )
+    mocker.patch("torch.nn.functional.relu", return_value=out[3])
+
+    bottom_split = mocker.Mock(spec=LayerSplit)
+    bottom_split2 = mocker.Mock(spec=LayerSplit)
+
+    bottom_split.get_mean = mocker.Mock(return_value=out[2])
+    bottom_split.invert = mocker.Mock(return_value=bottom_split2)
+    bottom_split2.fill_dimensions = mocker.Mock(return_value=out[1])
+
+    return (bottom_split, bottom_split2), out
 
 
-def test_guided_backpropagation(backprop_mock_setup):
+@pytest.mark.parametrize(
+    "split,index,mean",
+    [
+        (ChannelSplit(), [1], 4.5),
+        (NeuronSplit(), [0, 1, 1], 4),
+        (SpatialSplit(), [1, 1], 5),
+    ],
+)
+def test_calculate_single_mean(split, index, mean):
+    input_ = torch.tensor(
+        [[[2, 3], [0, 4]], [[1, 1], [7, 9]], [[0, 1], [0, 2]]]
+    ).float()
+    select = SplitSelector(split, index)
+
+    result = methods._calculate_single_mean(input_, select)
+    assert_that(result.item()).is_close_to(mean, tolerance=1e-40)
+
+
+def test_guided_backpropagation(mocker, backprop_mock_setup, layer_mock_setup, id_img):
     """Check that layers are in correct mode and the gradient is calculated properly."""
-    img, layers, top_layer_sel, out, bottom_split = backprop_mock_setup
+    out, bottom_split = backprop_mock_setup
+    layers, layer_out = layer_mock_setup
+    top_layer_sel = mocker.Mock(spec=NeuronSelector)
     sut = GuidedBackpropagation(layers, top_layer_sel, bottom_split)
 
-    result = sut.visualize(img)
+    result = sut.visualize(id_img)
 
     # Check preprocessing
-    img.clone.assert_called_once()
-    img.detach.assert_called_once()
-    img.to.assert_called_once()
-    img.requires_grad_.assert_called_once()
+    id_img.clone.assert_called_once()
+    id_img.detach.assert_called_once()
+    id_img.to.assert_called_once()
+    id_img.requires_grad_.assert_called_once()
 
     layers[0].train.assert_called_once_with(False)
     layers[1].train.assert_called_once_with(False)
 
     # Check forward pass
-    layers[0].assert_called()
-    layers[1].assert_called()
+    layers[0].assert_called_once()
+    layers[1].assert_called_once()
 
     # Check gradient calculation
     # 1. Output mean
-    methods.get_single_mean.assert_called_with(out[0], top_layer_sel)
+    methods._calculate_single_mean.assert_called_with(layer_out[1], top_layer_sel)
     # 2. Take gradient
-    torch.autograd.grad.assert_called_once_with(out[1], img)
-    out[2].detach.assert_called_once()
+    torch.autograd.grad.assert_called_once_with(out[0], id_img)
+    out[1].detach.assert_called_once()
     # 3. Relu
-    torch.nn.functional.relu.assert_called_once_with(out[2])
+    torch.nn.functional.relu.assert_called_once_with(out[1])
     # 4. Split mean
-    bottom_split.get_mean.assert_called_once_with(out[3])
+    bottom_split.get_mean.assert_called_once_with(out[2])
     # 5. Check result
-    assert_that(result).is_same_as(out[4])
+    assert_that(result).is_same_as(out[3])
 
 
-def test_gradcam_basics(mocker, gradcam_mock_setup):
-    img, base_layers = gradcam_mock_setup
+def test_gradcam(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
+    """Check gradam calculation."""
+    layers, layer_out = layer_mock_setup
+    split, out = gradcam_mock_setup
 
-    mocker.patch(
-        "midnite.visualization.base.methods.GuidedBackpropagation.visualize",
-        return_value=torch.ones(3),
-    )
-    GradAM(
-        [mocker.Mock(spec=Module)],
+    sut = GradAM(
+        [mocker.Mock(spec=torch.nn.Module)],
         mocker.Mock(spec=NeuronSelector),
-        base_layers,
-        SpatialSplit(),
-    ).visualize(img)
-
-    base_layers[0].forward.assert_called()
-    base_layers[1].forward.assert_called()
-    assert_that(base_layers[0].training).is_false()
-    assert_that(base_layers[1].training).is_false()
-
-
-def test_saliency_visualize_spatial(mocker, gradcam_mock_setup):
-    """test the correct computation and dimensions of the saliency for a spatial split"""
-    img, base_layers = gradcam_mock_setup
-
-    mocker.patch(
-        "midnite.visualization.base.methods.GuidedBackpropagation.visualize",
-        return_value=torch.ones(3),
+        layers,
+        split[0],
     )
-    sal_map = GradAM(
-        [mocker.Mock(spec=Module)],
-        mocker.Mock(spec=NeuronSelector),
-        base_layers,
-        SpatialSplit(),
-    ).visualize(img)
 
-    assert_that(np.all(sal_map.numpy() >= 0)).is_true()
-    assert_that(sal_map.size()).is_equal_to(Size([4, 4]))
+    result = sut.visualize(id_img)
 
+    # Check preprocessing
+    id_img.clone.assert_called_once()
+    id_img.detach.assert_called_once()
+    id_img.to.assert_called_once()
 
-def test_saliency_visualize_channel(mocker, gradcam_mock_setup):
-    """test the correct computation and dimensions of the saliency for a channel split"""
-    img, base_layers = gradcam_mock_setup
+    layers[0].train.assert_called_once_with(False)
+    layers[1].train.assert_called_once_with(False)
 
-    mocker.patch(
-        "midnite.visualization.base.methods.GuidedBackpropagation.visualize",
-        return_value=torch.ones((4, 4)),
-    )
-    sal_map = GradAM(
-        [mocker.Mock(spec=Module)],
-        mocker.Mock(spec=NeuronSelector),
-        base_layers,
-        ChannelSplit(),
-    ).visualize(img)
-
-    assert_that(np.all(sal_map.numpy() >= 0)).is_true()
-    assert_that(sal_map.size()).is_equal_to(Size([3]))
-
-
-def test_saliency_visualize_neuron(mocker, gradcam_mock_setup):
-    """test the correct computation and dimensions of the saliency for a neuron split"""
-    img, base_layers = gradcam_mock_setup
-
-    mocker.patch(
-        "midnite.visualization.base.methods.GuidedBackpropagation.visualize",
-        return_value=torch.ones(()),
-    )
-    sal_map = GradAM(
-        [mocker.Mock(spec=Module)],
-        mocker.Mock(spec=NeuronSelector),
-        base_layers,
-        NeuronSplit(),
-    ).visualize(img)
-
-    assert_that(np.all(sal_map.numpy() >= 0)).is_true()
-    assert_that(sal_map.size()).is_equal_to(Size([3, 4, 4]))
+    # Check Calculation
+    # 1. forward pass
+    layers[0].assert_called_once()
+    layers[1].assert_called_once()
+    # 2. backpropagation
+    methods.GuidedBackpropagation.visualize.assert_called_with(layer_out[1])
+    # 3. Split invert and fill dimensions
+    split[0].invert.assert_called()
+    split[1].fill_dimensions(out)  # -> out[1]
+    # 4. Multiply together
+    layer_out[1].mul_.assert_called_once_with(out[1])  # -> layer_out[2]
+    # 5. Calculate mean
+    split[0].get_mean.assert_called_with(layer_out[2])
+    # 6. Relu
+    torch.nn.functional.relu.assert_called_once_with(out[2])
+    # Check result
+    assert_that(result).is_same_as(out[3])
