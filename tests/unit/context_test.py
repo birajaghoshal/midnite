@@ -28,7 +28,7 @@ def test_context_stack(mocker):
     assert_that(midnite.get_device()).is_not_equal_to(mock_device)
 
 
-def test_context_fail_early(mocker):
+def test_context_fail_early():
     """Checks that creating a context with invalid device immediately fails"""
     with pytest.raises(TypeError):
         with midnite.device("does not exist"):

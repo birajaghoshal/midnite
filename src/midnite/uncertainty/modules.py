@@ -1,8 +1,10 @@
 """Custom modules for MC dropout ensembles and uncertainty."""
 import logging
+from abc import ABC
 from typing import Tuple
 
 import torch
+import tqdm
 from torch import Tensor
 from torch.nn import AlphaDropout
 from torch.nn import Dropout
@@ -11,10 +13,9 @@ from torch.nn import Dropout3d
 from torch.nn import FeatureAlphaDropout
 from torch.nn import functional
 from torch.nn import Module
-from tqdm import tqdm
 
+import midnite
 import midnite.uncertainty.functional as func
-from midnite import get_device
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ def _is_dropout(layer: Module) -> bool:
     )
 
 
-class _Ensemble(Module):
+class _Ensemble(Module, ABC):
     """Module for ensemble models."""
 
     def __init__(
@@ -61,8 +62,8 @@ class _Ensemble(Module):
 
         """
         super(_Ensemble, self).__init__()
-        self.to(get_device())
-        inner.to(get_device())
+        self.to(midnite.get_device())
+        inner.to(midnite.get_device())
 
         if sample_size < 2:
             raise ValueError("At least two samples are necessary")
@@ -109,14 +110,14 @@ class MeanEnsemble(_Ensemble):
             the mean of the inner network's foward pass for sample_size samples
 
         """
-        input_.to(get_device())
+        input_.to(midnite.get_device())
 
         if self.training:
             return self.inner.forward(input_)
         else:
             with torch.no_grad():
-                with tqdm(
-                    range(self.sample_size - 1), total=self.sample_size
+                with tqdm.trange(
+                    self.sample_size - 1, total=self.sample_size
                 ) as sample_range:
                     sample_range.update()
                     pred = self.inner.forward(input_)
@@ -140,7 +141,7 @@ class PredictionEnsemble(_Ensemble):
             all prediction samples stacked in dim 0
 
         """
-        input_.to(get_device())
+        input_.to(midnite.get_device())
 
         # In eval mode, stack ensemble predictions
         if self.training:
@@ -152,9 +153,9 @@ class PredictionEnsemble(_Ensemble):
                     param.requires_grad = False
                 input_.requires_grad = False
 
-                # Track progress
-                with tqdm(
-                    range(self.sample_size - 1), total=self.sample_size
+                # Track progres
+                with tqdm.trange(
+                    self.sample_size - 1, total=self.sample_size
                 ) as sample_range:
                     sample_range.update()
 
@@ -163,7 +164,7 @@ class PredictionEnsemble(_Ensemble):
 
                     # Allocate result tensor
                     result = torch.zeros(
-                        (*pred_shape, self.sample_size), device=get_device()
+                        (*pred_shape, self.sample_size), device=midnite.get_device()
                     )
                     # Store results in their slice
                     result.select(len(pred_shape), 0).copy_(pred)
@@ -183,8 +184,8 @@ class PredictiveEntropy(Module):
          to measure total uncertainty.
 
         Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
+            input_: concatenated predictions for K classes and T samples
+             (minibatch size N), of shape (N, K, ..., T)
 
         Returns:
             pred_entropy: the predictive entropy per class
@@ -203,8 +204,8 @@ class MutualInformation(Module):
         Also called Bayesian Active Learning by Disagreement (BALD)
 
         Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
+            input_: concatenated predictions for K classes and T samples
+             (minibatch size N), of shape (N, K, ..., T)
 
         Returns:
             the mutual information per class
@@ -221,8 +222,8 @@ class VariationRatio(Module):
          of total predictive uncertainty.
 
         Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
+            input_: concatenated predictions for K classes and T samples
+             (minibatch size N), of shape (N, K, ..., T)
 
         Returns:
             the total variation ratio
@@ -238,14 +239,14 @@ class PredictionAndUncertainties(Module):
         """Forward pass to calculate sampled mean and different uncertainties.
 
         Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
+            input_: concatenated predictions for K classes and T samples
+             (minibatch size N), of shape (N, K, ..., T)
 
         Returns:
             mean prediction, predictive entropy, mutual information
 
         """
-        input_.to(get_device())
+        input_.to(midnite.get_device())
         return (
             input_.mean(dim=(input_.dim() - 1,)),
             func.predictive_entropy(input_),

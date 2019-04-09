@@ -73,7 +73,7 @@ def test_ensemble_layer(mocker):
     assert_that(inner.forward.call_count).is_equal_to(25)
 
 
-def test_ensembles_autograd(mocker):
+def test_ensembles_autograd():
     """Test if autograd is disabled in mean ensemble"""
     inner = PredictionDropout()
     ensemble = PredictionEnsemble(inner)

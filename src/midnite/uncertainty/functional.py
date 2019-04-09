@@ -1,4 +1,4 @@
-"""Acquisition functions and helpers
+"""Acquisition functions and helpers.
 
 Definitions from https://arxiv.org/pdf/1703.02910.pdf.
 See Also https://arxiv.org/pdf/1802.10501.pdf, Appendix C for derivations
@@ -11,7 +11,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional
 
-from midnite import get_device
+import midnite
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def mean_prediction(input_: Tensor) -> Tensor:
         the mean prediction for all samples, i.e. p(y|x,D), of shape (N, K, ...)
 
     """
-    input_.to(get_device())
+    input_.to(midnite.get_device())
     return torch.mean(input_, dim=(-1,))
 
 
@@ -48,7 +48,7 @@ def predictive_entropy(input_: Tensor, mean_min_clamp=1e-40) -> Tensor:
      i.e. H[y|x,D] = - sum_y p(y|x,D) * log p(y|x,D), of shape (N, K, ...)
 
     """
-    input_.to(get_device())
+    input_.to(midnite.get_device())
     # Min clamp necessary in case of log(0)
     _ensemble_mean = mean_prediction(input_).clamp_(mean_min_clamp)
 
@@ -71,7 +71,7 @@ def mutual_information(input_: Tensor, input_mean_clamp=1e-40) -> Tensor:
      of shape (N, K, ...)
 
     """
-    input_.to(get_device())
+    input_.to(midnite.get_device())
     pred_entropy = predictive_entropy(input_)
 
     num_samples = input_.size(dim=input_.dim() - 1)
@@ -96,7 +96,7 @@ def variation_ratio(input_: Tensor) -> Tensor:
 
     """
     # shape (N, K, ...)
-    input_.to(get_device())
+    input_.to(midnite.get_device())
     mean = mean_prediction(input_)
 
     prob_sum = mean.sum(dim=(1,))

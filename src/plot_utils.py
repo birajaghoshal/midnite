@@ -1,8 +1,31 @@
+"""Utils for plotting in notebooks."""
+from typing import Optional
+
 import matplotlib.pyplot as plt
-import numpy as np
-from PIL import Image
-from torch import squeeze
 from torch import Tensor
+
+
+def _fix_dims(img: Tensor):
+    # Detach from gradient
+    img = img.detach()
+    # Fix minibatch dimension if necessary
+    if img.size(dim=0) == 1:
+        img = img.squeeze(dim=0)
+
+    # Image with color channels
+    if len(img.size()) == 3:
+        if not img.size(dim=2) == 3:
+            # Permute or squeeze if necessary
+            if img.size(dim=0) == 3:
+                img = img.permute((1, 2, 0))
+            elif img.size(dim=2) == 1:
+                img = img.squeeze(dim=2)
+            else:
+                raise ValueError("Invalid number of channels for image")
+    # Also not image without channels
+    elif not len(img.size()) == 2:
+        raise ValueError("Invalid dimensions for image")
+    return img.cpu()
 
 
 def show(img: Tensor, scale: float = 1.0):
@@ -15,30 +38,11 @@ def show(img: Tensor, scale: float = 1.0):
         scale: the scale of the plot to show
 
     """
-    # Detach from gradient
-    img = img.detach()
-    # Fix minibatch dimension if necessary
-    if img.size(dim=0) == 1:
-        img = img.squeeze(dim=0)
-
-    # Image with color channels
-    if len(img.size()) == 3:
-        if not img.size(dim=2) == 3:
-            # Permute or squeeze if necessary
-            if img.size(dim=0) == 3:
-                img = img.permute(1, 2, 0)
-            elif img.size(dim=2) == 1:
-                img = img.squeeze(dim=2)
-            else:
-                raise ValueError("Invalid number of channels for image")
-    # Also not image without channels
-    elif not len(img.size()) == 2:
-        raise ValueError("Invalid dimensions for image")
-
+    img = _fix_dims(img)
     # Transfer to cpu and plot
     fix, ax = plt.subplots(figsize=(8 * scale, 6 * scale))
     ax.grid(False)
-    ax.imshow(img.cpu())
+    ax.imshow(img)
     plt.show()
 
 
@@ -57,37 +61,24 @@ def show_normalized(img: Tensor, scale: float = 1.0):
     show(img, scale)
 
 
-def plot_saliency(
-    saliency: Tensor, img: Image, sel_layer: int, output_layer, plot_with_image=True
-):
-    """Plots the saliency map.
+def show_heatmap(heatmap: Tensor, scale: float = 1.0, img: Optional[Tensor] = None):
+    """Shows a heatmap.
 
-     Args:
-        saliency: tensor of class activations with dimensions mini-batch x channels x height x width
-        img: input image
-        sel_layer: layer number of selected layer
-        output_layer: layer number of target layer
-        plot_with_image: plot saliency together with image (True) or alone (False)
+    Args:
+        heatmap: the heatmap to show
+        scale: the scale of the image
+        img: optional image to overlay
 
     """
-    if not len(saliency.size()) == 4:
-        raise ValueError("saliency has to be 4 dimensions, got: ", len(saliency.size()))
-    saliency = squeeze(saliency)
-    if not len(saliency.size()) == 2:
-        raise ValueError(
-            "saliency has to have 2 dimensions with more than one element, got: ",
-            len(saliency.size()),
-        )
-    sal_img = Image.fromarray(saliency.numpy())
-    sal_img = sal_img.resize(img.size, resample=Image.LINEAR)
-
-    plt.title(
-        "Activation map for layer: {} "
-        "with respect to layer: {}".format(sel_layer, output_layer)
-    )
-
-    if plot_with_image:
-        plt.imshow(img)
-    plt.imshow(np.array(sal_img), alpha=0.5, cmap="jet")
-
+    heatmap = _fix_dims(heatmap)
+    fig, ax = plt.subplots(figsize=(8 * scale, 6 * scale))
+    ax.grid(False)
+    if img is not None:
+        img = _fix_dims(img)
+        if not img.size()[-2:] == heatmap.size()[-2:]:
+            raise ValueError("Image and heatmap need same spatial dimensions!")
+        ax.imshow(img, alpha=0.5)
+        ax.imshow(heatmap, alpha=0.5, cmap="jet")
+    else:
+        ax.imshow(heatmap, cmap="jet")
     plt.show()

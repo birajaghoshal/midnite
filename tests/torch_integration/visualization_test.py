@@ -9,13 +9,13 @@ from torchvision import models
 
 import data_utils
 from data_utils import DataConfig
+from midnite.common import Flatten
 from midnite.visualization.base import ChannelSplit
 from midnite.visualization.base import GradAM
 from midnite.visualization.base import GuidedBackpropagation
 from midnite.visualization.base import NeuronSplit
 from midnite.visualization.base import SpatialSplit
 from midnite.visualization.base import SplitSelector
-from model_utils import Flatten
 
 
 @pytest.fixture(scope="module")

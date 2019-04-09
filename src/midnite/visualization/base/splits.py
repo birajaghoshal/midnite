@@ -29,7 +29,7 @@ class Identity(LayerSplit):
     def get_mask(self, index: List[int], size: List[int]) -> Tensor:
         if len(index) > 0:
             raise ValueError("No index required for identity split")
-        return torch.ones(size)
+        return torch.ones(tuple(size))
 
     def get_mean(self, input_):
         return input_.mean()
@@ -65,7 +65,8 @@ class SpatialSplit(LayerSplit):
     def fill_dimensions(self, input_):
         if not len(input_.size()) == 2:
             raise ValueError(
-                f"Input needs to have 2 spatial dimensions: (h, w). Got: {input_.size()}"
+                f"Input needs to have 2 spatial dimensions: (h, w)."
+                f" Got: {input_.size()}"
             )
         return input_.unsqueeze(dim=0)
 
@@ -162,7 +163,7 @@ class GroupSplit(LayerSplit):
         if not size == input_.size():
             raise ValueError(
                 f"Input must of incorrect size. Expected: {size},"
-                f" got: {tuple(input.size())}"
+                f" got: {tuple(input_.size())}"
             )
         return input_
 
@@ -181,7 +182,7 @@ class SimpleSelector(NeuronSelector):
 
     def get_mask(self, size: List[int]):
         mask_size = self.mask.size()
-        if not tuple(mask_size) == size:
+        if not list(mask_size) == size:
             raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")
         return self.mask
 

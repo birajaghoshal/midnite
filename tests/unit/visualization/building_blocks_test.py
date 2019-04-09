@@ -1,4 +1,4 @@
-"""Test for the building blocks"""
+"""Test for the building blocks."""
 import pytest
 import torch
 from assertpy import assert_that
@@ -36,7 +36,7 @@ from midnite.visualization.base.splits import GroupSplit
     ],
 )
 def test_mask(split, index, size, mask):
-    """Test masking of all splits"""
+    """Test masking of all splits."""
     mask = split.get_mask(index, size).numpy()
 
     assert_array_equal(mask, mask)
@@ -44,14 +44,14 @@ def test_mask(split, index, size, mask):
 
 def test_identity_split():
     """Check all identity masks."""
-    masks = Identity().get_split((1, 2, 3))
+    masks = Identity().get_split([1, 2, 3])
 
     assert_that(masks).is_length(1)
-    assert_array_equal(masks[0], [[[1, 1, 1], [1, 1, 1]]])
+    assert_array_equal(masks[0].numpy(), [[[1, 1, 1], [1, 1, 1]]])
 
 
 def test_neuron_split():
-    """Check all neuron masks"""
+    """Check all neuron masks."""
     masks = NeuronSplit().get_split([1, 1, 2])
 
     assert_that(masks).is_length(2)
@@ -60,8 +60,8 @@ def test_neuron_split():
 
 
 def test_spatial_split():
-    """Check all spatial masks"""
-    masks = SpatialSplit().get_split((2, 2, 2))
+    """Check all spatial masks."""
+    masks = SpatialSplit().get_split([2, 2, 2])
 
     assert_that(masks).is_length(4)
     assert_array_equal(masks[0].numpy(), [[[1, 0], [0, 0]], [[1, 0], [0, 0]]])
@@ -71,8 +71,8 @@ def test_spatial_split():
 
 
 def test_spatial_split_dims():
-    """Check all spatial masks for all different dimensions"""
-    masks = SpatialSplit().get_split((3, 2, 1))
+    """Check all spatial masks for all different dimensions."""
+    masks = SpatialSplit().get_split([3, 2, 1])
 
     assert_that(masks).is_length(2)
     assert_array_equal(masks[0].numpy(), [[[1], [0]], [[1], [0]], [[1], [0]]])
@@ -80,8 +80,8 @@ def test_spatial_split_dims():
 
 
 def test_channel_split():
-    """Check all channel masks"""
-    masks = ChannelSplit().get_split((2, 2, 2))
+    """Check all channel masks."""
+    masks = ChannelSplit().get_split([2, 2, 2])
 
     assert_that(masks).is_length(2)
     assert_array_equal(masks[0].numpy(), [[[1, 1], [1, 1]], [[0, 0], [0, 0]]])
@@ -89,8 +89,8 @@ def test_channel_split():
 
 
 def test_channel_split_dims():
-    """Check all channel masks for all different dimensions"""
-    masks = ChannelSplit().get_split((3, 2, 1))
+    """Check all channel masks for all different dimensions."""
+    masks = ChannelSplit().get_split([3, 2, 1])
 
     assert_that(masks).is_length(3)
     assert_array_equal(masks[0].numpy(), [[[1], [1]], [[0], [0]], [[0], [0]]])
@@ -100,7 +100,7 @@ def test_channel_split_dims():
 
 def test_split_selector():
     """Test if the neuron selector correctly selects its neurons."""
-    selection = SplitSelector(SpatialSplit(), [0, 1]).get_mask((2, 2, 2)).numpy()
+    selection = SplitSelector(SpatialSplit(), [0, 1]).get_mask([2, 2, 2]).numpy()
 
     assert_array_equal(selection, [[[0, 1], [0, 0]], [[0, 1], [0, 0]]])
 
@@ -108,22 +108,20 @@ def test_split_selector():
 def test_simple_selector():
     """Simple test for simple selectors."""
     mask = torch.ones((10, 10))
-    selection = SimpleSelector(mask).get_mask((10, 10))
+    selection = SimpleSelector(mask).get_mask([10, 10])
     assert_that(mask).is_same_as(selection)
 
 
 def test_neuron_mean():
-    """tests if the neuron split mean is computed correctly and output has correct dimensions.
-    neuron mean is the identity function."""
+    """Check the correct computation of neuron split mean."""
     input_ = torch.tensor([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]])
     mean = NeuronSplit().get_mean(input_)
-    assert_array_equal(mean, input_)
+    assert_array_equal(mean.numpy(), input_)
     assert_that(mean.size()).is_equal_to(input_.size())
 
 
 def test_channel_mean():
-    """tests if the spatial split mean is computed correctly and output has correct dimensions.
-    spatial mean output dimensions are the number of channels"""
+    """Check the correct computation of the channel mean."""
     input_ = torch.tensor(
         [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[9.0, 7.0], [2.0, 3.0]]]
     )
@@ -134,14 +132,22 @@ def test_channel_mean():
 
 
 def test_spatial_mean():
-    """tests if the channel split mean is computed correctly and output has correct dimensions.
-    channel mean output dimension are the spatial dimensions."""
+    """Check the correct computation of spatial mean."""
     input_ = torch.tensor(
         [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[9.0, 7.0], [2.0, 3.0]]]
     )
     mean = SpatialSplit().get_mean(input_)
     assert_array_equal(mean.numpy(), [[5.0, 5.0], [4.0, 5.0]])
     assert_that(mean.numpy().shape).is_equal_to(input_[0].numpy().shape)
+
+
+def test_identity_mean():
+    """Check the correct mean computation for the identity split."""
+    input_ = torch.tensor(
+        [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[9.0, 7.0], [2.0, 3.0]]]
+    )
+    mean = Identity().get_mean(input_)
+    assert_array_equal(mean.numpy(), input_.mean().numpy())
 
 
 @pytest.mark.parametrize(

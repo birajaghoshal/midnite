@@ -19,7 +19,7 @@ get_ipython().run_line_magic('cd', '../src')
 
 import data_utils
 from data_utils import DataConfig
-from model_utils import Flatten
+from midnite.common import Flatten
 import plot_utils
 from PIL import Image
 from midnite import get_device
