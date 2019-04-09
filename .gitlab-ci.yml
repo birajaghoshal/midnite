@@ -4,12 +4,8 @@ variables:
 image: jonatkinson/python-poetry:3.7
 
 before_script:
-  - poetry config settings.virtualenvs.create true
+  - # gitlab cannot pickup absolute path, hence use a local virtualenv
   - poetry config settings.virtualenvs.in-project true
-
-# Find out poetry in-project dir
-after_script:
-  - ls -al
 
 stages:
   - check
@@ -26,6 +22,7 @@ check:
 build:
   stage: build
   artifacts:
+    expire_in: 1 hour
     paths:
       - .venv/
   script:
