@@ -3,9 +3,6 @@ variables:
 
 image: jonatkinson/python-poetry:3.7
 
-before_script:
-  - pip install pre-commit==$PRE_COMMIT_VERSION
-
 stages:
   - check
   - build
@@ -13,6 +10,8 @@ stages:
 
 check:
   stage: check
+  before_script:
+    - pip install pre-commit==$PRE_COMMIT_VERSION
   script:
     - make -s check
 
@@ -20,7 +19,7 @@ build:
   stage: build
   artifacts:
     paths:
-      - ~/.cache/pypoetry/virtualenvs/
+      - ~/.cache/pypoetry/virtualenvs
   script:
     - poetry install
 
