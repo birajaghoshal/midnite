@@ -12,6 +12,7 @@ from midnite.visualization.base import BilateralTransform
 from midnite.visualization.base import GradAM
 from midnite.visualization.base import GuidedBackpropagation
 from midnite.visualization.base import NeuronSelector
+from midnite.visualization.base import NeuronSplit
 from midnite.visualization.base import PixelActivation
 from midnite.visualization.base import RandomTransform
 from midnite.visualization.base import ResizeTransform
@@ -23,12 +24,17 @@ from midnite.visualization.base import WeightDecay
 
 
 def _prepare_input(img: Tensor) -> Tensor:
+    if not len(img.size()) == 3 or not img.size(0) == 3:
+        raise ValueError(f"Not an image. Size: {img.size()}")
     return img.clone().detach().to(midnite.get_device())
 
 
 def _top_k_selector(out: Tensor, k: int = 3) -> NeuronSelector:
+    if not len(out.size()) == 2 or not out.size(0) == 1:
+        raise ValueError(f"Not a valid output for one input. Size: {out.size()}")
     if k < 1:
         raise ValueError(f"At least one class required. Got: {k}")
+    out = out.squeeze(0)
     mask = torch.zeros_like(out, device=midnite.get_device())
     classes = out.topk(dim=0, k=k)[1]
     for i in range(k):
@@ -50,8 +56,8 @@ def saliency_map(model: Module, input_image: Tensor, n_top_classes: int = 3):
 
     """
     # Find classes to analyze
-    input_image = _prepare_input(input_image)
-    res = model.to(midnite.get_device)(input_image.unsqueeze(dim=0))
+    input_image = _prepare_input(input_image).unsqueeze(dim=0)
+    res = (model.to(midnite.get_device()))(input_image)
     selector = _top_k_selector(res, n_top_classes)
 
     # Apply guided backpropagation
@@ -85,14 +91,14 @@ def gradcam(
     model.to(midnite.get_device()).eval()
     input_image = _prepare_input(input_image)
 
-    out = model(input_image.unsqueeze(0)).squeeze(0)
+    out = model(input_image.unsqueeze(0))
 
     # Get top N classes
     selector = _top_k_selector(out, n_top_classes)
 
     # Apply GradAM on Classes
-    gradcam = GradAM(classifier, selector, features, SpatialSplit())
-    result = gradcam.visualize(input_image)
+    gradam = GradAM(classifier, selector, features, SpatialSplit())
+    result = gradam.visualize(input_image.unsqueeze(0))
 
     return (
         functional.interpolate(
@@ -114,22 +120,24 @@ def class_visualization(model: Module, class_index: int):
         class_index: the index of the class to visualize
 
     """
+    if class_index < 0:
+        raise ValueError(f"Invalid class: {class_index}")
 
     img = PixelActivation(
         [model],
-        SplitSelector(SpatialSplit(), [class_index]),
+        SplitSelector(NeuronSplit(), [class_index]),
         opt_n=500,
         iter_n=20,
         init_size=50,
         transform=RandomTransform(scale_fac=0)
-        + BilateralTransform(1.1)
-        + ResizeTransform(),
+        + BilateralTransform()
+        + ResizeTransform(1.1),
         regularization=[TVRegularization(0.05), WeightDecay(1e-12)],
     ).visualize()
 
     return PixelActivation(
         [model],
-        SplitSelector(SpatialSplit(), [class_index]),
+        SplitSelector(NeuronSplit(), [class_index]),
         opt_n=100,
         iter_n=int(50),
         transform=RandomTransform() + BilateralTransform(),

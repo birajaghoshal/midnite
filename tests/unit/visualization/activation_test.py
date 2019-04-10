@@ -96,7 +96,7 @@ def test_pixel_activation_visualize(mocker):
     assert_array_equal(tran_step[1][0][0], np_img)
 
     # Check opt step calls
-    assert_array_equal(out, np_img)
+    assert_array_equal(out, img)
     assert_that(PixelActivation._opt_step.call_count).is_equal_to(3)
     opt_step = PixelActivation._opt_step.call_args_list
     assert_that(opt_step[0][0][0].size()).contains_sequence(3, 4, 4)
@@ -132,7 +132,7 @@ def test_pixel_act_optimize(mocker):
     assert_that(layer_call_args[1][0][0].size()).is_equal_to(Size([1, 3, 4, 4]))
 
     # Check neuron selector
-    neuron_sel.get_mask.assert_called_with(Size([3, 4, 4]))
+    neuron_sel.get_mask.assert_called_with([3, 4, 4])
     assert_that(neuron_sel.get_mask.call_count).is_equal_to(2)
 
     # Check regularizer

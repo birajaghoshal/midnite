@@ -79,7 +79,7 @@ def _calculate_single_mean(out, select: NeuronSelector) -> Tensor:
 
     """
     out = out.squeeze(dim=0)
-    mask = select.get_mask(out.size())
+    mask = select.get_mask(list(out.size()))
     return (out * mask).sum() / mask.sum()
 
 
@@ -283,12 +283,12 @@ class PixelActivation(Activation):
         if input_ is None:
             # Create uniform random starting image
             input_ = torch.from_numpy(
-                np.uint8(random.uniform(150, 180, (self.init_size, self.init_size, 3)))
+                np.uint8(random.uniform(150, 180, (3, self.init_size, self.init_size)))
                 / float(255)
             ).float()
         else:
             input_ = input_.clone().detach()
-        opt_img = input_.permute((2, 0, 1)).to(midnite.get_device())
+        opt_img = input_.to(midnite.get_device())
 
         for n in tqdm.trange(self.iter_n):
             # Optimization step
@@ -302,4 +302,4 @@ class PixelActivation(Activation):
                     torch.from_numpy(img).permute(2, 0, 1).to(midnite.get_device())
                 )
 
-        return opt_img.permute((1, 2, 0))
+        return opt_img

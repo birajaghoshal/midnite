@@ -181,8 +181,8 @@ class SimpleSelector(NeuronSelector):
         self.mask = mask
 
     def get_mask(self, size: List[int]):
-        mask_size = self.mask.size()
-        if not list(mask_size) == size:
+        mask_size = list(self.mask.size())
+        if not mask_size == size:
             raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")
         return self.mask
 
