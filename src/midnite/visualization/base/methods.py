@@ -30,7 +30,7 @@ class TVRegularization(OutputRegularization):
 
     """
 
-    def __init__(self, coefficient: float = 0.1, beta: float = 2.0):
+    def __init__(self, coefficient: float = 1e2, beta: float = 2.0):
         """
 
         Args:
@@ -54,7 +54,7 @@ class TVRegularization(OutputRegularization):
 class WeightDecay:
     """Weight decay regularization."""
 
-    def __init__(self, decay_factor):
+    def __init__(self, decay_factor=1e-7):
         """
 
         Args:

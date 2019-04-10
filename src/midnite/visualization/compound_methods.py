@@ -132,7 +132,7 @@ def class_visualization(model: Module, class_index: int):
         transform=RandomTransform(scale_fac=0)
         + BilateralTransform()
         + ResizeTransform(1.1),
-        regularization=[TVRegularization(0.05), WeightDecay(1e-12)],
+        regularization=[TVRegularization(5e1), WeightDecay(1e-9)],
     ).visualize()
 
     return PixelActivation(
@@ -141,5 +141,5 @@ def class_visualization(model: Module, class_index: int):
         opt_n=100,
         iter_n=int(50),
         transform=RandomTransform() + BilateralTransform(),
-        regularization=[TVRegularization(0.1), WeightDecay(1e-10)],
+        regularization=[TVRegularization(), WeightDecay()],
     ).visualize(img)

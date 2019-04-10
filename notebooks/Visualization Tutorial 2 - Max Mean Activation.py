@@ -4,10 +4,10 @@
 # In[ ]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('cd', '../src')
+#%matplotlib inline  
+#%load_ext autoreload
+#%autoreload 2
+#%cd ../src
 
 from torchvision import models
 from torch.nn.modules import Softmax
@@ -17,7 +17,7 @@ import torch
 from plot_utils import show
 
 import midnite
-from midnite.visualization import *
+from midnite.visualization.base import *
 
 
 # In[2]:
@@ -35,7 +35,7 @@ alexnet = models.alexnet(pretrained=True)
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
+    SplitSelector(ChannelSplit(), [1]),
 ).visualize())
 
 
@@ -47,8 +47,9 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
-    regularization = [WeightDecay(5e-6)]
+    SplitSelector(ChannelSplit(), [1]),
+    regularization = [WeightDecay(1e-3)],
+    iter_n=12
 ).visualize())
 
 
@@ -60,7 +61,7 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
+    SplitSelector(ChannelSplit(), [1]),
     transform = BlurTransform()
 ).visualize())
 
@@ -73,7 +74,7 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
+    SplitSelector(ChannelSplit(), [1]),
     transform=BilateralTransform()
 ).visualize())
 
@@ -86,7 +87,7 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
+    SplitSelector(ChannelSplit(), [1]),
     transform=RandomTransform()
 ).visualize())
 
@@ -99,7 +100,7 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
+    SplitSelector(ChannelSplit(), [1]),
     transform=ResizeTransform(),
     init_size=50
 ).visualize())
@@ -113,8 +114,8 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
-    regularization=[TVRegularization(0.5)]
+    SplitSelector(ChannelSplit(), [1]),
+    regularization=[TVRegularization(5e2)]
 ).visualize())
 
 
@@ -130,9 +131,9 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:9],
-    NeuronSelector(ChannelSplit(), [1]),
+    SplitSelector(ChannelSplit(), [1]),
     transform=RandomTransform()+BlurTransform()+ResizeTransform(),
-    regularization=[TVRegularization(), WeightDecay(3e-7)],
+    regularization=[TVRegularization(), WeightDecay(3e-4)],
     init_size=50
 ).visualize())
 
@@ -146,22 +147,22 @@ show(PixelActivation(
 
 show(PixelActivation(
     alexnet.features[:6],
-    NeuronSelector(SpatialSplit(), [3, 3]),
+    SplitSelector(SpatialSplit(), [3, 3]),
     transform=BlurTransform(),
-    regularization=[WeightDecay(1e-6)]
+    regularization=[WeightDecay(1e-3)]
 ).visualize())
 
 
 # # 3.2 Individual Neurons
 
-# In[13]:
+# In[14]:
 
 
 show(PixelActivation(
     alexnet.features[:11],
-    NeuronSelector(NeuronSplit(), [0, 0, 0]),
+    SplitSelector(NeuronSplit(), [0, 0, 0]),
     transform=BlurTransform(),
-    regularization=[WeightDecay(1e-7)]
+    regularization=[WeightDecay(1e-2)]
 ).visualize())
 
 

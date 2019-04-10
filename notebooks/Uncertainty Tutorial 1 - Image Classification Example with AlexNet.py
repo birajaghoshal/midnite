@@ -81,7 +81,7 @@ show_normalized(ood_example)
 # Retrieve a random example normalized with the distribution mean and standard deviation, which can also be seen as an out-of-distribution sample.
 # 
 
-# In[6]:
+# In[5]:
 
 
 random_example = data_utils.get_random_example(DataConfig.ALEX_NET)
@@ -93,7 +93,7 @@ show_normalized(random_example)
 # 
 # #### In-distribuiton example (correct label: 283)
 
-# In[7]:
+# In[6]:
 
 
 pred, pred_entropy, mutual_info = ensemble(id_example)
@@ -105,7 +105,7 @@ print(f"total mutual information: {mutual_info.sum()}")
 
 # #### Out of distribution example
 
-# In[8]:
+# In[7]:
 
 
 pred, pred_entropy, mutual_info = ensemble(ood_example)
@@ -117,7 +117,7 @@ print(f"total mutual information: {mutual_info.sum()}")
 
 # #### Random example
 
-# In[9]:
+# In[8]:
 
 
 pred, pred_entropy, mutual_info = ensemble(random_example)
