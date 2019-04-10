@@ -3,7 +3,6 @@ from typing import List
 
 import torch
 from torch import Tensor
-from torch.nn import functional
 from torch.nn.modules import Module
 from torch.nn.modules import Sequential
 
@@ -43,7 +42,7 @@ def _top_k_selector(out: Tensor, k: int = 3) -> NeuronSelector:
     return SimpleSelector(mask)
 
 
-def saliency_map(model: Module, input_image: Tensor, n_top_classes: int = 3):
+def guided_backpropagation(model: Module, input_image: Tensor, n_top_classes: int = 3):
     """Calculates a simple saliency map of the pixel influence on the top n classes.
 
     Args:
@@ -79,7 +78,6 @@ def gradcam(
         features: the spatial feature layers of the model
         classifier: the classifier layers of the model
         input_image: image tensor of dimensions (c, h, w)
-        rescale: whether to upsample the result to input dimensions
         n_top_classes: the number of classes to calculate GradCAM for
 
     Returns:
@@ -99,17 +97,7 @@ def gradcam(
     # Apply GradAM on Classes
     gradam = GradAM(classifier, selector, features, SpatialSplit())
     result = gradam.visualize(input_image.unsqueeze(0))
-
-    return (
-        functional.interpolate(
-            result.unsqueeze(0).unsqueeze(0),
-            size=tuple(input_image.size()[1:]),
-            mode="bilinear",
-            align_corners=True,
-        )
-        .squeeze(0)
-        .squeeze(0)
-    )
+    return result
 
 
 def class_visualization(model: Module, class_index: int):

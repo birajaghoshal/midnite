@@ -9,7 +9,7 @@ from midnite.common import Flatten
 from midnite.visualization import gradcam
 from midnite.visualization.base import PixelActivation
 from midnite.visualization.compound_methods import class_visualization
-from midnite.visualization.compound_methods import saliency_map
+from midnite.visualization.compound_methods import guided_backpropagation
 
 
 @pytest.fixture(scope="module")
@@ -19,7 +19,7 @@ def single_img(img):
 
 
 def test_saliency_map(net, single_img):
-    result = saliency_map(net, single_img)
+    result = guided_backpropagation(net, single_img)
 
     assert_that(result.size()).is_equal_to(single_img.size()[1:])
     assert torch.all(result >= 0)
@@ -31,7 +31,7 @@ def test_gradcam(net, single_img):
         [net.features, net.avgpool], [Flatten(), net.classifier], single_img
     )
 
-    assert_that(result.size()).is_equal_to(single_img.size()[1:])
+    assert_that(result.size()).is_equal_to((6, 6))
     assert torch.all(result >= 0)
     assert_that(result.sum().item()).is_greater_than(0)
 
