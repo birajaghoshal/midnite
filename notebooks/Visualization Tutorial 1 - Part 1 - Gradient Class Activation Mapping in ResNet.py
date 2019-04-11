@@ -29,6 +29,7 @@ from midnite.common import Flatten
 import torch
 from torch import Tensor
 from torch.nn import Softmax
+from torch.nn.modules import Sequential
 from torch.nn.functional import interpolate
 
 from torchvision import models
@@ -102,8 +103,7 @@ base_layers = list(model.children())[:selected_layer]
 
 inspection_layers = (
     list(model.children())[selected_layer:-1]
-    + [Flatten()]
-    + list(model.children())[-1:]
+    + [Flatten(), list(model.children())[-1]]
 )
 
 
@@ -133,9 +133,9 @@ def upsample(img, target):
 
 
 heatmap = GradAM(
-    inspection_layers, 
+    Sequential(*inspection_layers), 
     top_layer_selector, 
-    base_layers, 
+    Sequential(*base_layers), 
     bottom_layer_split
 ).visualize(input_)
 
@@ -146,37 +146,51 @@ heatmap = upsample(heatmap, input_)
 show_heatmap(heatmap, 1.5, input_)
 
 
-# ## Guided Backpropagation
+# ## Backpropagation
 
 # In[9]:
 
 
-backprop = GuidedBackpropagation(
-    [model],
+backprop = torch.nn.functional.relu(Backpropagation(
+    Sequential(*base_layers+inspection_layers),
     top_layer_selector,
+    bottom_layer_split
+).visualize(input_))
+
+show_heatmap(backprop, 1.5)
+
+
+# # Guided Backpropagation
+
+# In[10]:
+
+
+backprop = GuidedBackpropagation(
+    base_layers+inspection_layers,
+    SplitSelector(NeuronSplit(), [283]),
     bottom_layer_split
 ).visualize(input_)
 
 # plot saliencies with the input image
-show_heatmap(backprop, 1.5, input_)
+show_heatmap(backprop, 1.5)
 
 
 # ### Example 2: Compute saliency map with bottom layer channel split.
 
-# In[10]:
+# In[11]:
 
 
 top_layer_selector = SplitSelector(NeuronSplit(), [283])
 bottom_layer_split = ChannelSplit()
 
 
-# In[11]:
+# In[12]:
 
 
 heatmap = GradAM(
-    inspection_layers, 
+    Sequential(*inspection_layers), 
     top_layer_selector, 
-    base_layers, 
+    Sequential(*base_layers), 
     bottom_layer_split
 ).visualize(input_)
 
@@ -189,19 +203,19 @@ for (value, idx) in zip(top_values, top_channels):
 # ### Example 3: Compute saliency map with neuron split
 # 
 
-# In[12]:
+# In[13]:
 
 
 bottom_layer_split = NeuronSplit()
 
 
-# In[13]:
+# In[14]:
 
 
 heatmap = GradAM(
-    inspection_layers, 
+    Sequential(*inspection_layers), 
     top_layer_selector, 
-    base_layers, 
+    Sequential(*base_layers), 
     bottom_layer_split
 ).visualize(input_)
 
@@ -212,4 +226,10 @@ heatmap = upsample(heatmap[39], input_)
 
 # plot saliencies neuron activations
 show_heatmap(heatmap, 1.5, input_)
+
+
+# In[ ]:
+
+
+
 

@@ -1,25 +1,27 @@
 """Compound methods created from building block, implementing common use cases."""
 from typing import List
+from typing import Tuple
 
 import torch
 from torch import Tensor
+from torch.nn import functional
 from torch.nn.modules import Module
 from torch.nn.modules import Sequential
 
 import midnite
-from midnite.visualization.base import BilateralTransform
-from midnite.visualization.base import GradAM
-from midnite.visualization.base import GuidedBackpropagation
-from midnite.visualization.base import NeuronSelector
-from midnite.visualization.base import NeuronSplit
-from midnite.visualization.base import PixelActivation
-from midnite.visualization.base import RandomTransform
-from midnite.visualization.base import ResizeTransform
-from midnite.visualization.base import SimpleSelector
-from midnite.visualization.base import SpatialSplit
-from midnite.visualization.base import SplitSelector
-from midnite.visualization.base import TVRegularization
-from midnite.visualization.base import WeightDecay
+from .base import BilateralTransform
+from .base import GradAM
+from .base import GuidedBackpropagation
+from .base import NeuronSelector
+from .base import NeuronSplit
+from .base import PixelActivation
+from .base import RandomTransform
+from .base import ResizeTransform
+from .base import SimpleSelector
+from .base import SpatialSplit
+from .base import SplitSelector
+from .base import TVRegularization
+from .base import WeightDecay
 
 
 def _prepare_input(img: Tensor) -> Tensor:
@@ -42,11 +44,26 @@ def _top_k_selector(out: Tensor, k: int = 3) -> NeuronSelector:
     return SimpleSelector(mask)
 
 
-def guided_backpropagation(model: Module, input_image: Tensor, n_top_classes: int = 3):
+def _upscale(img: Tensor, size: Tuple[int, int]) -> Tensor:
+    return (
+        functional.interpolate(
+            img.unsqueeze(dim=0).unsqueeze(dim=0),
+            size=size,
+            mode="bilinear",
+            align_corners=True,
+        )
+        .squeeze(0)
+        .squeeze(0)
+    )
+
+
+def guided_backpropagation(
+    layers: List[Module], input_image: Tensor, n_top_classes: int = 3
+) -> Tensor:
     """Calculates a simple saliency map of the pixel influence on the top n classes.
 
     Args:
-        model: the whole model
+        layers: the whole model in its layers
         input_image: image tensor of dimensions (c, h, w)
         n_top_classes: the number of classes to take into account
 
@@ -56,27 +73,25 @@ def guided_backpropagation(model: Module, input_image: Tensor, n_top_classes: in
     """
     # Find classes to analyze
     input_image = _prepare_input(input_image).unsqueeze(dim=0)
-    res = (model.to(midnite.get_device()))(input_image)
+    net = Sequential(*layers)
+    res = (net.to(midnite.get_device()))(input_image)
     selector = _top_k_selector(res, n_top_classes)
 
     # Apply guided backpropagation
-    backprop = GuidedBackpropagation([model], selector, SpatialSplit())
+    backprop = GuidedBackpropagation(layers, selector, SpatialSplit())
     return backprop.visualize(input_image)
 
 
 def gradcam(
-    features: List[Module],
-    classifier: List[Module],
-    input_image: Tensor,
-    n_top_classes: int = 3,
-):
+    features: Module, classifier: Module, input_image: Tensor, n_top_classes: int = 3
+) -> Tensor:
     """Performs GradCAM on an input image.
 
     For further explanations about GradCam, see https://arxiv.org/abs/1610.02391.
 
     Args:
-        features: the spatial feature layers of the model
-        classifier: the classifier layers of the model
+        features: the spatial feature part of the model, before classifier
+        classifier: the classifier part of the model, after spatial features
         input_image: image tensor of dimensions (c, h, w)
         n_top_classes: the number of classes to calculate GradCAM for
 
@@ -85,7 +100,7 @@ def gradcam(
 
     """
     # Prepare model and input
-    model = Sequential(*features, *classifier)
+    model = Sequential(features, classifier)
     model.to(midnite.get_device()).eval()
     input_image = _prepare_input(input_image)
 
@@ -100,7 +115,44 @@ def gradcam(
     return result
 
 
-def class_visualization(model: Module, class_index: int):
+def guided_gradcam(
+    feature_layers: List[Module],
+    classifier_layers: List[Module],
+    input_image: Tensor,
+    n_top_classes: int = 3,
+) -> Tensor:
+    """Performs Guided GradCAM on an input image.
+
+    For further explanations about Guided GradCam, see https://arxiv.org/abs/1610.02391.
+
+    Args:
+        features: the spatial feature layers of the model, before classifier
+        classifier: the classifier layers of the model, after spatial features
+        input_image: image tensor of dimensions (c, h, w)
+        n_top_classes: the number of classes to calculate GradCAM for
+
+    Returns:
+        a Guided GradCAM heatmap of dimensions (h, w)
+
+    """
+    # Create scaled up gradcam image
+    cam = gradcam(
+        Sequential(*feature_layers),
+        Sequential(*classifier_layers),
+        input_image,
+        n_top_classes,
+    )
+    cam_scaled = _upscale(cam, input_image.size()[1:])
+
+    # Create guided backprop image
+    guided_backprop = guided_backpropagation(
+        feature_layers + classifier_layers, input_image, n_top_classes
+    )
+    # Multiply
+    return cam_scaled.mul_(guided_backprop)
+
+
+def class_visualization(model: Module, class_index: int) -> Tensor:
     """Visualizes a class for a classification network.
 
     Args:
@@ -112,7 +164,7 @@ def class_visualization(model: Module, class_index: int):
         raise ValueError(f"Invalid class: {class_index}")
 
     img = PixelActivation(
-        [model],
+        model,
         SplitSelector(NeuronSplit(), [class_index]),
         opt_n=500,
         iter_n=20,
@@ -124,7 +176,7 @@ def class_visualization(model: Module, class_index: int):
     ).visualize()
 
     return PixelActivation(
-        [model],
+        model,
         SplitSelector(NeuronSplit(), [class_index]),
         opt_n=100,
         iter_n=int(50),

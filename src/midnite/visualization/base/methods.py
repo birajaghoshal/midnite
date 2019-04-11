@@ -1,4 +1,5 @@
 """Concrete implementations of visualization methods."""
+from contextlib import contextmanager
 from typing import List
 from typing import Optional
 from typing import Union
@@ -7,6 +8,7 @@ import numpy as np
 import torch
 import tqdm
 from numpy import random
+from torch import autograd
 from torch import Tensor
 from torch.nn import functional
 from torch.nn import Module
@@ -14,12 +16,12 @@ from torch.nn import Sequential
 from torch.optim import Adam
 
 import midnite
-from midnite.visualization.base.interface import Activation
-from midnite.visualization.base.interface import Attribution
-from midnite.visualization.base.interface import LayerSplit
-from midnite.visualization.base.interface import NeuronSelector
-from midnite.visualization.base.interface import OutputRegularization
-from midnite.visualization.base.transforms import TransformStep
+from ..base.interface import Activation
+from ..base.interface import Attribution
+from ..base.interface import LayerSplit
+from ..base.interface import NeuronSelector
+from ..base.interface import OutputRegularization
+from ..base.transforms import TransformStep
 
 
 class TVRegularization(OutputRegularization):
@@ -83,8 +85,44 @@ def _calculate_single_mean(out, select: NeuronSelector) -> Tensor:
     return (out * mask).sum() / mask.sum()
 
 
+class Backpropagation(Attribution):
+    """Propagates gradients back for a specific split."""
+
+    def __init__(
+        self,
+        net: Module,
+        top_layer_selector: NeuronSelector,
+        bottom_layer_split: LayerSplit,
+    ):
+        """
+        Args:
+            net: the (part of the) network to backpropagate over
+            top_layer_selector: relevant output neurons in the last layer
+            bottom_layer_split: neuron split of the bottom layer
+
+        """
+        super().__init__([], net, top_layer_selector, bottom_layer_split)
+
+    def visualize(self, input_: Tensor) -> Tensor:
+        # Prepare layers/input
+        input_ = input_.clone().detach().to(midnite.get_device()).requires_grad_()
+        self.black_box_net.to(midnite.get_device()).eval()
+
+        # forward pass
+        out = self.black_box_net(input_)
+
+        # retrieve mean score of top layer selector
+        score = _calculate_single_mean(out, self.top_layer_selector)
+
+        # backward pass
+        autograd.backward(score)
+
+        # mean over bottom layer split dimension
+        return self.bottom_layer_split.get_mean(input_.grad.detach().squeeze(dim=0))
+
+
 class GuidedBackpropagation(Attribution):
-    """Calculates (guided) gradients for a specific split."""
+    """Calculates guided gradients for a specific split."""
 
     def __init__(
         self,
@@ -93,34 +131,41 @@ class GuidedBackpropagation(Attribution):
         bottom_layer_split: LayerSplit,
     ):
         """
-
         Args:
-            layers: the list of layers to backpropagate over
+            layers: the adjacent layers to perform guided gradcam on
             top_layer_selector: relevant output neurons in the last layer
             bottom_layer_split: neuron split of the bottom layer
-
         """
-        super().__init__(layers, top_layer_selector, bottom_layer_split)
+        super().__init__(layers, None, top_layer_selector, bottom_layer_split)
+        self.backpropagator = Backpropagation(
+            Sequential(*layers), top_layer_selector, bottom_layer_split
+        )
+
+    @staticmethod
+    def _relu_grad(grad_iput: Optional[Tensor]):
+        return None if grad_iput is None else functional.relu(grad_iput)
+
+    @staticmethod
+    def _gradient_relu_hook(module, grad_input, grad_output: Tensor):
+        return tuple(map(GuidedBackpropagation._relu_grad, grad_input))
+
+    @contextmanager
+    def _gradient_hook_context(self):
+        hooks = list(
+            map(
+                lambda layer: layer.register_backward_hook(self._gradient_relu_hook),
+                self.white_box_layers,
+            )
+        )
+        yield
+        for hook in hooks:
+            hook.remove()
 
     def visualize(self, input_: Tensor) -> Tensor:
-        # Prepare layers/input
-        input_ = input_.clone().detach().to(midnite.get_device()).requires_grad_()
-        self.net.to(midnite.get_device()).eval()
-
-        # forward pass
-        out = self.net(input_)
-
-        # retrieve mean score of top layer selector
-        score = _calculate_single_mean(out, self.top_layer_selector)
-
-        # gradients of input w.r.t the top level score yields partial derivatives
-        gradients = torch.autograd.grad(score, input_)[0]
-
-        # get only positive gradients
-        positive_grads = functional.relu(gradients.detach())
-
-        # mean over bottom layer split dimension
-        return self.bottom_layer_split.get_mean(positive_grads.squeeze(dim=0))
+        with self._gradient_hook_context():
+            grad = self.backpropagator.visualize(input_)
+            # Since only grad_input can be rectified via hook, apply relu for last layer
+            return functional.relu(grad)
 
 
 class GradAM(Attribution):
@@ -134,29 +179,28 @@ class GradAM(Attribution):
 
     def __init__(
         self,
-        inspection_layers: List[Module],
+        inspection_net: Module,
         top_layer_selector: NeuronSelector,
-        base_layers: List[Module],
+        base_net: Module,
         bottom_layer_split: LayerSplit,
     ):
         """
 
         Args:
-            inspection_layers: the list of layers from selected layer until output layer
+            inspection_net: the list of layers from selected layer until output layer
             top_layer_selector: specifies the split of interest in the output layer
-            base_layers: list of layers from first layer of the model up to the selected
+            base_net: list of layers from first layer of the model up to the selected
             bottom_layer_split: specifies the split of interest in the selected layer
 
         """
-        super().__init__(inspection_layers, top_layer_selector, bottom_layer_split)
-        self.base_net = Sequential(*base_layers)
-        self.backpropagator = GuidedBackpropagation(
-            inspection_layers, self.top_layer_selector, self.bottom_layer_split.invert()
+        super().__init__([], inspection_net, top_layer_selector, bottom_layer_split)
+        self.base_net = base_net
+        self.backpropagator = Backpropagation(
+            inspection_net, self.top_layer_selector, self.bottom_layer_split.invert()
         )
 
     def visualize(self, input_: Tensor) -> Tensor:
         # Prepare layers/input
-        self.net.to(midnite.get_device()).eval()
         self.base_net.to(midnite.get_device()).eval()
         input_ = input_.clone().detach().to(midnite.get_device())
 
@@ -167,12 +211,13 @@ class GradAM(Attribution):
         intermediate_back = self.backpropagator.visualize(intermediate)
         # get rid of batch dimension
         alpha = intermediate_back.detach().squeeze(dim=0)
+        intermediate = intermediate.detach().squeeze(dim=0)
         # fill dimensions s.t. each split has dim (c, h, w)
-        alpha = self.bottom_layer_split.invert().fill_dimensions(alpha)
-
-        result = self.bottom_layer_split.get_mean(
-            intermediate.detach().squeeze(dim=0).mul_(alpha)
+        alpha = self.bottom_layer_split.invert().fill_dimensions(
+            alpha, len(intermediate.size())
         )
+
+        result = self.bottom_layer_split.get_mean(intermediate.mul_(alpha))
 
         return functional.relu(result)
 
@@ -182,7 +227,7 @@ class PixelActivation(Activation):
 
     def __init__(
         self,
-        layers: List[Module],
+        inspection_net: Module,
         top_layer_selector: NeuronSelector,
         lr: float = 1e-2,
         iter_n: int = 12,
@@ -194,7 +239,7 @@ class PixelActivation(Activation):
     ):
         """
         Args:
-            layers: the list of adjacent layers to account for
+            inspection_net: the list of adjacent layers to account for
             top_layer_selector: selector for the relevant activations
             lr: learning rate of ADAM optimizer
             iter_n: number of iterations
@@ -205,7 +250,7 @@ class PixelActivation(Activation):
             regularization: optional list of regularization terms
 
         """
-        super().__init__(layers, top_layer_selector)
+        super().__init__([], inspection_net, top_layer_selector)
         self.lr = lr
         if iter_n < 1:
             raise ValueError("Must have at least one iteration")
@@ -259,7 +304,7 @@ class PixelActivation(Activation):
             optimizer.zero_grad()
 
             # Do a forward pass
-            out = self.net(opt_img).squeeze(0)
+            out = self.black_box_net(opt_img).squeeze(0)
 
             # Calculate loss (mean of output of the last layer w.r.t to our mask)
             loss = -_calculate_single_mean(out, self.top_layer_selector).unsqueeze(0)
@@ -278,7 +323,7 @@ class PixelActivation(Activation):
 
     def visualize(self, input_: Optional[Tensor] = None) -> Tensor:
         # Prepare layers/input
-        self.net.to(midnite.get_device()).eval()
+        self.black_box_net.to(midnite.get_device()).eval()
 
         if input_ is None:
             # Create uniform random starting image

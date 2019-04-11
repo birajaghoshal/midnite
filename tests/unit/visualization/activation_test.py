@@ -41,7 +41,7 @@ def test_tv_reg():
 def test_activation_init(mocker):
     """Test the more complex init logic in the pixel activation"""
     sut = PixelActivation(
-        [mocker.Mock(spec=torch.nn.Module)], mocker.Mock(spec=NeuronSelector)
+        mocker.Mock(spec=torch.nn.Module), mocker.Mock(spec=NeuronSelector)
     )
 
     assert_that(sut.weight_decay).is_equal_to(0.0)
@@ -49,7 +49,7 @@ def test_activation_init(mocker):
     assert_that(sut.output_regularizers).is_empty()
 
     sut = PixelActivation(
-        [mocker.Mock(spec=torch.nn.Module)],
+        mocker.Mock(spec=torch.nn.Module),
         mocker.Mock(spec=NeuronSelector),
         regularization=[WeightDecay(0.5)],
     )
@@ -59,7 +59,7 @@ def test_activation_init(mocker):
 
     tv_reg = TVRegularization()
     sut = PixelActivation(
-        [mocker.Mock(spec=torch.nn.Module)],
+        mocker.Mock(spec=torch.nn.Module),
         mocker.Mock(spec=NeuronSelector),
         regularization=[tv_reg, WeightDecay(0.5)],
     )
@@ -81,7 +81,7 @@ def test_pixel_activation_visualize(mocker):
     tran_step.transform = mocker.Mock(return_value=np_img)
 
     visualizer = PixelActivation(
-        [mocker.Mock(spec=Module)],
+        mocker.Mock(spec=Module),
         mocker.Mock(spec=NeuronSelector),
         iter_n=3,
         init_size=4,
@@ -107,27 +107,24 @@ def test_pixel_activation_visualize(mocker):
 def test_pixel_act_optimize(mocker):
     """Test the optimization step of the activation visualization."""
     img = torch.zeros((3, 4, 4))
-    layers = [Dropout2d(), Dropout2d()]
+    net = Dropout2d()
 
-    mocker.spy(layers[0], "forward")
-    mocker.spy(layers[1], "forward")
+    mocker.spy(net, "forward")
     neuron_sel = mocker.Mock(spec=NeuronSelector)
     neuron_sel.get_mask = mocker.Mock(return_value=torch.ones((3, 4, 4)))
     reg = mocker.Mock(spec=TVRegularization)
     reg.loss = mocker.Mock(return_value=0.05)
 
     visualizer = PixelActivation(
-        layers, neuron_sel, lr=1e-4, opt_n=2, regularization=[WeightDecay(1e-5), reg]
+        net, neuron_sel, lr=1e-4, opt_n=2, regularization=[WeightDecay(1e-5), reg]
     )
 
     visualizer._opt_step(img)
 
     # Check layers
-    layers[0].forward.assert_called()
-    layers[1].forward.assert_called()
-    assert_that(layers[0].forward.call_count).is_equal_to(2)
-    assert_that(layers[1].forward.call_count).is_equal_to(2)
-    layer_call_args = layers[0].forward.call_args_list
+    net.forward.assert_called()
+    assert_that(net.forward.call_count).is_equal_to(2)
+    layer_call_args = net.forward.call_args_list
     assert_that(layer_call_args[0][0][0].size()).is_equal_to(Size([1, 3, 4, 4]))
     assert_that(layer_call_args[1][0][0].size()).is_equal_to(Size([1, 3, 4, 4]))
 

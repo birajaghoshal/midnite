@@ -7,7 +7,6 @@ import torch
 from numpy import ndarray
 from torch import Tensor
 from torch.nn import Module
-from torch.nn import Sequential
 
 import midnite
 
@@ -68,17 +67,23 @@ class LayerSplit(ABC):
             output.add_(mask.mul_(input_).div_(norm))
         return output
 
-    @abstractmethod
-    def fill_dimensions(self, input_):
-        """Fills up the dimensions with unsqueeze(), so that output is (c, h, w).
+    def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3) -> Tensor:
+        """Fills up the dimensions with unsqueeze() to the given number.
 
         Args:
             input_: tensor which needs to be unsqueezed.
+            num_dimensions: number of dimensions to fill up to
+
         Returns:
-            the input_ with dimension (c, h, w)
+            the input_ with num_dimensions
 
         """
-        raise NotImplementedError()
+        dims_to_fill = num_dimensions - len(input_.size())
+        if dims_to_fill < 0:
+            raise ValueError("Already larger than num_dimensions")
+        for i in range(dims_to_fill):
+            input_ = input_.unsqueeze(-1)
+        return input_
 
 
 class NeuronSelector(ABC):
@@ -106,20 +111,24 @@ class Attribution(ABC):
 
     def __init__(
         self,
-        layers: List[Module],
+        white_box_layers: List[Module],
+        black_box_net: Optional[Module],
         top_layer_selector: NeuronSelector,
         bottom_layer_split: LayerSplit,
     ):
         """
         Args:
+            white_box_layers: list of adjacent layers viewed as white box
+            black_box_net: part of the network that is viewed as black box
             layers: the list of ajacent layers to execute the method on
             top_layer_selector: the target split for analyzing attribution
             bottom_layer_split: split of the selected layer
 
         """
-        if len(layers) == 0:
+        if len(white_box_layers) == 0 and black_box_net is None:
             raise ValueError("Must specify at least one layer")
-        self.net = Sequential(*layers)
+        self.white_box_layers = white_box_layers
+        self.black_box_net = black_box_net
         self.top_layer_selector = top_layer_selector
         self.bottom_layer_split = bottom_layer_split
 
@@ -144,18 +153,25 @@ class Activation(ABC):
 
     """
 
-    def __init__(self, layers: List[Module], top_layer_selector: NeuronSelector):
+    def __init__(
+        self,
+        white_box_layers: List[Module],
+        black_box_net: Optional[Module],
+        top_layer_selector: NeuronSelector,
+    ):
         """
         Args:
+            white_box_layers: list of adjacent layers viewed as white box
+            black_box_net: part of the network that is viewed as black box
             layers: the list of adjacent layers to execute the method on
             top_layer_selector: the split on which the activation properties are
              extracted
 
         """
-        if len(layers) == 0:
+        if len(white_box_layers) == 0 and black_box_net is None:
             raise ValueError("Must specify at least one layer")
-        self.net = Sequential(*layers)
-
+        self.white_box_layers = white_box_layers
+        self.black_box_net = black_box_net
         self.top_layer_selector = top_layer_selector
 
     @abstractmethod

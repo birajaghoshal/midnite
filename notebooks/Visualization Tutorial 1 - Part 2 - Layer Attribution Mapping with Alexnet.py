@@ -28,6 +28,7 @@ from midnite.visualization.base import *
 import torch
 from torch import Tensor
 from torch.nn import Softmax
+from torch.nn.modules import Sequential
 from torch.nn.functional import interpolate
 from torchvision import models
 
@@ -120,9 +121,9 @@ def upsample(img, target):
 
 
 heatmap = GradAM(
-    inspection_layers,
+    Sequential(*inspection_layers),
     top_layer_selector,
-    base_layers,
+    Sequential(*base_layers),
     bottom_layer_split
 ).visualize(input_)
 
@@ -150,9 +151,9 @@ inspection_layers = list(model.features.children())[3: 13] #slice indexing is [i
 
 # init saliency map object
 heatmap = GradAM(
-    inspection_layers, 
+    Sequential(*inspection_layers), 
     top_layer_selector, 
-    base_layers, 
+    Sequential(*base_layers), 
     bottom_layer_split
 ).visualize(input_)
 
@@ -183,9 +184,9 @@ bottom_layer_split = ChannelSplit()
 
 
 saliency_map = GradAM(
-    inspection_layers, 
+    Sequential(*inspection_layers), 
     top_layer_selector, 
-    base_layers, 
+    Sequential(*base_layers), 
     bottom_layer_split
 )
 
@@ -211,9 +212,9 @@ bottom_layer_split = NeuronSplit()
 
 
 heatmap = GradAM(
-    inspection_layers, 
+    Sequential(*inspection_layers), 
     top_layer_selector, 
-    base_layers, 
+    Sequential(*base_layers), 
     bottom_layer_split
 ).visualize(input_)
 
@@ -228,7 +229,7 @@ show_heatmap(heatmap, 1.5, input_)
 
 
 heatmap = GuidedBackpropagation(
-    [model], 
+    list(model.features.children()) + [model.avgpool, Flatten()] + list(model.classifier.children()),
     SplitSelector(NeuronSplit(), [283]), 
     SpatialSplit()
 ).visualize(input_)

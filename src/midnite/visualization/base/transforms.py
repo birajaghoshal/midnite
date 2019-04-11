@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from numpy import ndarray
 
-from midnite.visualization.base.interface import TransformStep
+from ..base.interface import TransformStep
 
 
 class BlurTransform(TransformStep):

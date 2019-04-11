@@ -1,25 +1,26 @@
-from midnite.visualization.base.interface import Activation
-from midnite.visualization.base.interface import Attribution
-from midnite.visualization.base.interface import LayerSplit
-from midnite.visualization.base.interface import NeuronSelector
-from midnite.visualization.base.interface import OutputRegularization
-from midnite.visualization.base.interface import TransformSequence
-from midnite.visualization.base.interface import TransformStep
-from midnite.visualization.base.methods import GradAM
-from midnite.visualization.base.methods import GuidedBackpropagation
-from midnite.visualization.base.methods import PixelActivation
-from midnite.visualization.base.methods import TVRegularization
-from midnite.visualization.base.methods import WeightDecay
-from midnite.visualization.base.splits import ChannelSplit
-from midnite.visualization.base.splits import Identity
-from midnite.visualization.base.splits import NeuronSplit
-from midnite.visualization.base.splits import SimpleSelector
-from midnite.visualization.base.splits import SpatialSplit
-from midnite.visualization.base.splits import SplitSelector
-from midnite.visualization.base.transforms import BilateralTransform
-from midnite.visualization.base.transforms import BlurTransform
-from midnite.visualization.base.transforms import RandomTransform
-from midnite.visualization.base.transforms import ResizeTransform
+from .interface import Activation
+from .interface import Attribution
+from .interface import LayerSplit
+from .interface import NeuronSelector
+from .interface import OutputRegularization
+from .interface import TransformSequence
+from .interface import TransformStep
+from .methods import Backpropagation
+from .methods import GradAM
+from .methods import GuidedBackpropagation
+from .methods import PixelActivation
+from .methods import TVRegularization
+from .methods import WeightDecay
+from .splits import ChannelSplit
+from .splits import Identity
+from .splits import NeuronSplit
+from .splits import SimpleSelector
+from .splits import SpatialSplit
+from .splits import SplitSelector
+from .transforms import BilateralTransform
+from .transforms import BlurTransform
+from .transforms import RandomTransform
+from .transforms import ResizeTransform
 
 __all__ = [
     "LayerSplit",
@@ -38,6 +39,7 @@ __all__ = [
     "TVRegularization",
     "WeightDecay",
     "PixelActivation",
+    "Backpropagation",
     "GuidedBackpropagation",
     "GradAM",
     "BlurTransform",

@@ -167,20 +167,51 @@ def test_invert_neuron(class_, inverse):
 
 
 @pytest.mark.parametrize(
-    "in_dim,split,out_dim",
+    "in_dim,num_dim,split,out_dim",
     [
-        ((4, 5), SpatialSplit(), (1, 4, 5)),
-        (4, ChannelSplit(), (4, 1, 1)),
-        ((3, 4, 5), NeuronSplit(), (3, 4, 5)),
-        ((), Identity(), (1, 1, 1)),
-        ((3, 4, 5), GroupSplit(torch.ones(3, 2), torch.ones(2, 4, 5)), (3, 4, 5)),
+        ((4, 5), 2, SpatialSplit(), (4, 5)),
+        ((4, 5), 3, SpatialSplit(), (1, 4, 5)),
+        ((4, 5), 5, SpatialSplit(), (1, 4, 5, 1, 1)),
+        (4, 1, ChannelSplit(), (4,)),
+        (4, 2, ChannelSplit(), (4, 1)),
+        (4, 3, ChannelSplit(), (4, 1, 1)),
+        (4, 5, ChannelSplit(), (4, 1, 1, 1, 1)),
+        (5, 2, NeuronSplit(), (5, 1)),
+        ((3, 4, 5), 3, NeuronSplit(), (3, 4, 5)),
+        ((3, 4, 5), 5, NeuronSplit(), (3, 4, 5, 1, 1)),
+        ((), 1, Identity(), (1,)),
+        ((), 3, Identity(), (1, 1, 1)),
+        ((), 5, Identity(), (1, 1, 1, 1, 1)),
+        ((3, 4), 3, GroupSplit(torch.ones(3, 2), torch.ones(2, 4)), (3, 4, 1)),
+        ((3, 4, 5), 3, GroupSplit(torch.ones(3, 2), torch.ones(2, 4, 5)), (3, 4, 5)),
+        ((3, 4, 5), 4, GroupSplit(torch.ones(3, 2), torch.ones(2, 4, 5)), (3, 4, 5, 1)),
     ],
 )
-def test_fill_dimension(in_dim, split, out_dim):
+def test_fill_dimension(in_dim, num_dim, split, out_dim):
     """Check that splits properly fill the cube dimensions."""
-    input_ = torch.ones(in_dim)
-    filled = split.fill_dimensions(input_)
+    input_ = torch.ones(in_dim) * 0.5
+    filled = split.fill_dimensions(input_, num_dim)
 
     assert_that(tuple(filled.size())).is_equal_to(out_dim)
     # Checksum
     assert_that(filled.sum()).is_equal_to(input_.sum())
+
+
+@pytest.mark.parametrize(
+    "in_dim,num_dim,split",
+    [
+        ((4, 5), 1, SpatialSplit()),
+        ((3, 4, 5), 3, SpatialSplit()),
+        (4, 0, ChannelSplit()),
+        ((4, 5), 2, ChannelSplit()),
+        ((3, 4, 5), 2, NeuronSplit()),
+        ((), -1, Identity()),
+        (1, 1, Identity()),
+        ((3, 4, 5), 2, GroupSplit(torch.ones(3, 2), torch.ones(2, 4, 5))),
+    ],
+)
+def test_fill_dimension_invalid_size(in_dim, num_dim, split):
+    """Check that splitting fails for invalid dimensions."""
+    input_ = torch.ones(in_dim)
+    with pytest.raises(ValueError):
+        split.fill_dimensions(input_, num_dim)

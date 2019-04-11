@@ -77,8 +77,8 @@ def show_heatmap(heatmap: Tensor, scale: float = 1.0, img: Optional[Tensor] = No
         img = _fix_dims(img)
         if not img.size()[:2] == heatmap.size()[:2]:
             raise ValueError("Image and heatmap need same spatial dimensions!")
+        im = ax.imshow(heatmap, cmap="jet")
         ax.imshow(img, alpha=0.5)
-        im = ax.imshow(heatmap, alpha=0.5, cmap="jet")
     else:
         im = ax.imshow(heatmap, cmap="jet")
     fig.colorbar(im, ax=ax)

@@ -4,12 +4,14 @@ from unittest.mock import PropertyMock
 import pytest
 import torch
 from assertpy import assert_that
+from torch.nn import Sequential
 
 from midnite.common import Flatten
 from midnite.visualization import gradcam
 from midnite.visualization.base import PixelActivation
 from midnite.visualization.compound_methods import class_visualization
 from midnite.visualization.compound_methods import guided_backpropagation
+from midnite.visualization.compound_methods import guided_gradcam
 
 
 @pytest.fixture(scope="module")
@@ -18,8 +20,9 @@ def single_img(img):
     return img.squeeze(0)
 
 
-def test_saliency_map(net, single_img):
-    result = guided_backpropagation(net, single_img)
+def test_guided_backpropagation(net, single_img):
+    """Run guided backpropagation and check output size."""
+    result = guided_backpropagation([net], single_img)
 
     assert_that(result.size()).is_equal_to(single_img.size()[1:])
     assert torch.all(result >= 0)
@@ -27,8 +30,11 @@ def test_saliency_map(net, single_img):
 
 
 def test_gradcam(net, single_img):
+    """Run gradcam and check size, all >=0."""
     result = gradcam(
-        [net.features, net.avgpool], [Flatten(), net.classifier], single_img
+        Sequential(net.features, net.avgpool),
+        Sequential(Flatten(), net.classifier),
+        single_img,
     )
 
     assert_that(result.size()).is_equal_to((6, 6))
@@ -36,7 +42,21 @@ def test_gradcam(net, single_img):
     assert_that(result.sum().item()).is_greater_than(0)
 
 
+def test_guided_gradcam(net, single_img):
+    """Run guided gradcam and check size, all >=0."""
+    result = guided_gradcam(
+        list(net.features.children()) + [net.avgpool],
+        [Flatten()] + list(net.classifier.children()),
+        single_img,
+    )
+
+    assert_that(result.size()).is_equal_to(single_img.size()[1:])
+    assert torch.all(result >= 0)
+    assert_that(result.sum().item()).is_greater_than(0)
+
+
 def test_class_visualization(mocker, net):
+    """Run class visualization and check that result is an image"""
     # Limit number of iterations
     mocker.patch.object(
         PixelActivation, "opt_n", create=True, new_callable=PropertyMock, return_value=2

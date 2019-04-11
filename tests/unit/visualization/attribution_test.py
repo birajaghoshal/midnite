@@ -1,9 +1,16 @@
 """Unit tests for the attribution methods."""
+from unittest.mock import PropertyMock
+
 import pytest
 import torch
 from assertpy import assert_that
+from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_equal
 from torch.nn import Module
+from torch.nn import Parameter
+from torch.nn import Sequential
 
+from midnite.visualization.base import Backpropagation
 from midnite.visualization.base import ChannelSplit
 from midnite.visualization.base import GradAM
 from midnite.visualization.base import GuidedBackpropagation
@@ -16,10 +23,18 @@ from midnite.visualization.base import SplitSelector
 
 
 @pytest.fixture
+def tiny_net():
+    layer0 = torch.nn.Linear(3, 3, bias=False)
+    layer0.weight = Parameter(torch.tensor([[2, 0, 0], [0, 2, 0], [0, 0, -2]]).float())
+    layer1 = torch.nn.Linear(3, 2, bias=False)
+    layer1.weight = Parameter(torch.tensor([[-1, 3, 0], [2, -1, 1]]).float())
+    return Sequential(layer0, layer1)
+
+
+@pytest.fixture
 def id_img(mocker):
     """Setup an image where .clone/.detach etc return id."""
-    img = torch.zeros((1, 3, 4, 4))
-
+    img = mocker.Mock(spec=torch.Tensor)
     # We want to have the exact same img after these operations because that makes
     # testing for equality in assert_called_with easy
     img.clone = mocker.Mock(return_value=img)
@@ -57,25 +72,16 @@ def layer_mock_setup(mocker):
 def backprop_mock_setup(mocker):
     """Setup layers, selectors, and (intermediate) outputs."""
     # All intermediate outputs
-    out = (
-        torch.ones((1, 3, 4, 4)),
-        torch.ones((1, 3, 4, 4)),
-        torch.ones((1, 3, 4, 4)),
-        torch.ones((1, 4, 4)),
-    )
-
-    out[1].detach = mocker.Mock(return_value=out[1])
-    out[2].squeeze = mocker.Mock(return_value=out[2])
+    out = (torch.ones((1, 3, 4, 4)), torch.ones((1, 4, 4)))
 
     # Wire mocks/outputs together
     mocker.patch(
         "midnite.visualization.base.methods._calculate_single_mean", return_value=out[0]
     )
-    mocker.patch("torch.autograd.grad", return_value=[out[1]])
-    mocker.patch("torch.nn.functional.relu", return_value=out[2])
+    mocker.patch("torch.autograd.backward")
 
     bottom_split = mocker.Mock(spec=LayerSplit)
-    bottom_split.get_mean = mocker.Mock(return_value=out[3])
+    bottom_split.get_mean = mocker.Mock(return_value=out[1])
 
     return out, bottom_split
 
@@ -94,7 +100,7 @@ def gradcam_mock_setup(mocker):
 
     # Wire mocks together
     mocker.patch(
-        "midnite.visualization.base.methods.GuidedBackpropagation.visualize",
+        "midnite.visualization.base.methods.Backpropagation.visualize",
         return_value=out[0],
     )
     mocker.patch("torch.nn.functional.relu", return_value=out[3])
@@ -118,6 +124,7 @@ def gradcam_mock_setup(mocker):
     ],
 )
 def test_calculate_single_mean(split, index, mean):
+    """Checks mean calculations of the given tensor with different splits."""
     input_ = torch.tensor(
         [[[2, 3], [0, 4]], [[1, 1], [7, 9]], [[0, 1], [0, 2]]]
     ).float()
@@ -127,12 +134,16 @@ def test_calculate_single_mean(split, index, mean):
     assert_that(result.item()).is_close_to(mean, tolerance=1e-40)
 
 
-def test_guided_backpropagation(mocker, backprop_mock_setup, layer_mock_setup, id_img):
+def test_backpropagation_wiring(mocker, backprop_mock_setup, layer_mock_setup, id_img):
     """Check that layers are in correct mode and the gradient is calculated properly."""
+    grad = torch.zeros((1, 3, 4, 4))
+    grad.detach = mocker.Mock(return_value=grad)
+    grad.squeeze = mocker.Mock(return_value=grad)
+    id_img.grad = PropertyMock(return_value=grad)
     out, bottom_split = backprop_mock_setup
     layers, layer_out = layer_mock_setup
     top_layer_sel = mocker.Mock(spec=NeuronSelector)
-    sut = GuidedBackpropagation(layers, top_layer_sel, bottom_split)
+    sut = Backpropagation(Sequential(*layers), top_layer_sel, bottom_split)
 
     result = sut.visualize(id_img)
 
@@ -153,25 +164,22 @@ def test_guided_backpropagation(mocker, backprop_mock_setup, layer_mock_setup, i
     # 1. Output mean
     methods._calculate_single_mean.assert_called_with(layer_out[1], top_layer_sel)
     # 2. Take gradient
-    torch.autograd.grad.assert_called_once_with(out[0], id_img)
-    out[1].detach.assert_called_once()
-    # 3. Relu
-    torch.nn.functional.relu.assert_called_once_with(out[1])
+    torch.autograd.backward.assert_called_once()
     # 4. Split mean
-    bottom_split.get_mean.assert_called_once_with(out[2])
+    bottom_split.get_mean.assert_called_once()
     # 5. Check result
-    assert_that(result).is_same_as(out[3])
+    assert_that(result).is_same_as(out[1])
 
 
-def test_gradcam(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
+def test_gradcam_wiring(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
     """Check gradam calculation."""
     layers, layer_out = layer_mock_setup
     split, out = gradcam_mock_setup
 
     sut = GradAM(
-        [mocker.Mock(spec=torch.nn.Module)],
+        mocker.Mock(spec=torch.nn.Module),
         mocker.Mock(spec=NeuronSelector),
-        layers,
+        Sequential(*layers),
         split[0],
     )
 
@@ -190,7 +198,7 @@ def test_gradcam(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
     layers[0].assert_called_once()
     layers[1].assert_called_once()
     # 2. backpropagation
-    methods.GuidedBackpropagation.visualize.assert_called_with(layer_out[1])
+    methods.Backpropagation.visualize.assert_called_with(layer_out[1])
     # 3. Split invert and fill dimensions
     split[0].invert.assert_called()
     split[1].fill_dimensions(out)  # -> out[1]
@@ -202,3 +210,30 @@ def test_gradcam(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
     torch.nn.functional.relu.assert_called_once_with(out[2])
     # Check result
     assert_that(result).is_same_as(out[3])
+
+
+def test_backpropagation(tiny_net):
+    """Checks backpropagation calculation with a tiny example."""
+    input_ = torch.tensor([1, 3, 2]).float()
+    sut = Backpropagation(tiny_net, SplitSelector(NeuronSplit(), [1]), NeuronSplit())
+    assert_array_equal(sut.visualize(input_).numpy(), [4, -2, -2])
+
+
+def test_guided_backpropagation(tiny_net):
+    """Checks guided backpropagation calculation with a tiny example."""
+    input_ = torch.tensor([1, 1, 2]).float()
+    layers = list(tiny_net.children())
+    sut = GuidedBackpropagation(
+        layers, SplitSelector(NeuronSplit(), [1]), NeuronSplit()
+    )
+    assert_array_equal(sut.visualize(input_).numpy(), [4, 0, 0])
+
+
+def test_gradam(tiny_net):
+    """Checks gradam calculation with tiny example, using NeuronSplit."""
+    input_ = torch.tensor([1, 1, 2]).float()
+    layers = list(tiny_net.children())
+    sut = GradAM(layers[1], SplitSelector(NeuronSplit(), [1]), layers[0], NeuronSplit())
+    assert_array_almost_equal(
+        sut.visualize(input_).numpy(), [1.333, 1.333, 0], decimal=3
+    )

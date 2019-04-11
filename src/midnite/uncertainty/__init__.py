@@ -1,10 +1,10 @@
-from midnite.uncertainty.modules import MeanEnsemble
-from midnite.uncertainty.modules import MutualInformation
-from midnite.uncertainty.modules import PredictionAndUncertainties
-from midnite.uncertainty.modules import PredictionDropout
-from midnite.uncertainty.modules import PredictionEnsemble
-from midnite.uncertainty.modules import PredictiveEntropy
-from midnite.uncertainty.modules import VariationRatio
+from .modules import MeanEnsemble
+from .modules import MutualInformation
+from .modules import PredictionAndUncertainties
+from .modules import PredictionDropout
+from .modules import PredictionEnsemble
+from .modules import PredictiveEntropy
+from .modules import VariationRatio
 
 __all__ = [
     "PredictionDropout",

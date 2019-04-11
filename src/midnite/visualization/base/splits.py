@@ -6,19 +6,19 @@ import torch
 from torch import Tensor
 
 import midnite
-from midnite.visualization.base.interface import LayerSplit
-from midnite.visualization.base.interface import NeuronSelector
+from ..base.interface import LayerSplit
+from ..base.interface import NeuronSelector
 
 
 class Identity(LayerSplit):
     """Identity selector that implements LayerSplit interface."""
 
-    def fill_dimensions(self, input_):
+    def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3) -> Tensor:
         if not len(input_.size()) == 0:
             raise ValueError(
                 f"Cannot specify element for identity. Got: {input_.size()}"
             )
-        return torch.ones((1, 1, 1), device=midnite.get_device())
+        return super().fill_dimensions(input_, num_dimensions)
 
     def invert(self) -> LayerSplit:
         return NeuronSplit()
@@ -37,11 +37,6 @@ class Identity(LayerSplit):
 
 class NeuronSplit(LayerSplit):
     """Split a layer neuron-wise, i.e. per single value."""
-
-    def fill_dimensions(self, input_):
-        if not len(input_.size()) == 3:
-            raise ValueError(f"Input must have three dimensions. Got: {input_.size()}")
-        return input_
 
     def invert(self) -> LayerSplit:
         return Identity()
@@ -62,13 +57,16 @@ class NeuronSplit(LayerSplit):
 class SpatialSplit(LayerSplit):
     """Split a layer by spatial positions."""
 
-    def fill_dimensions(self, input_):
+    def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3):
         if not len(input_.size()) == 2:
             raise ValueError(
                 f"Input needs to have 2 spatial dimensions: (h, w)."
                 f" Got: {input_.size()}"
             )
-        return input_.unsqueeze(dim=0)
+        if num_dimensions == 2:
+            return input_
+        else:
+            return super().fill_dimensions(input_.unsqueeze(0), num_dimensions)
 
     def invert(self) -> LayerSplit:
         return ChannelSplit()
@@ -96,13 +94,13 @@ class SpatialSplit(LayerSplit):
 class ChannelSplit(LayerSplit):
     """Split a layer by its channels."""
 
-    def fill_dimensions(self, input_):
+    def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3) -> Tensor:
         if not len(input_.size()) == 1:
             raise ValueError(
                 "Input needs to have 1 channel dimensions: (c,). Got: ",
                 len(input_.size()),
             )
-        return input_.unsqueeze(dim=1).unsqueeze(dim=2)
+        return super().fill_dimensions(input_, num_dimensions)
 
     def invert(self) -> LayerSplit:
         return SpatialSplit()
@@ -158,14 +156,14 @@ class GroupSplit(LayerSplit):
         idx = index[0]
         return self.left.select(-1, idx) * self.right.select(0, idx)
 
-    def fill_dimensions(self, input_):
+    def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3) -> Tensor:
         size = tuple(self.left.size()[:-1] + self.right.size()[1:])
         if not size == input_.size():
             raise ValueError(
                 f"Input must of incorrect size. Expected: {size},"
                 f" got: {tuple(input_.size())}"
             )
-        return input_
+        return super().fill_dimensions(input_, num_dimensions)
 
 
 class SimpleSelector(NeuronSelector):
