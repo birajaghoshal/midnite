@@ -8,6 +8,7 @@ from .interface import TransformStep
 from .methods import Backpropagation
 from .methods import GradAM
 from .methods import GuidedBackpropagation
+from .methods import Occlusion
 from .methods import PixelActivation
 from .methods import TVRegularization
 from .methods import WeightDecay
@@ -46,4 +47,5 @@ __all__ = [
     "ResizeTransform",
     "RandomTransform",
     "BilateralTransform",
+    "Occlusion",
 ]

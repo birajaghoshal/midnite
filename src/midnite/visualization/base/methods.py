@@ -1,5 +1,6 @@
 """Concrete implementations of visualization methods."""
 from contextlib import contextmanager
+from itertools import product
 from typing import List
 from typing import Optional
 from typing import Union
@@ -220,6 +221,66 @@ class GradAM(Attribution):
         result = self.bottom_layer_split.get_mean(intermediate.mul_(alpha))
 
         return functional.relu(result)
+
+
+class Occlusion(Attribution):
+    """Occlusion based method"""
+
+    def __init__(
+        self,
+        net: Module,
+        top_layer_selector: NeuronSelector,
+        bottom_layer_split: LayerSplit,
+        chunk_size: int = 10,
+        norm=2,
+    ):
+        """
+        Args:
+            net:
+            top_layer_selector:
+            bottom_layer_split:
+            chunk_size:
+            norm: the norm to be computed (usually l1 or l2)
+        """
+        super().__init__([], net, top_layer_selector, bottom_layer_split)
+        if chunk_size < 1:
+            raise ValueError("Chunks must be at least 1x1 pixel")
+        self.chunk_size = chunk_size
+        if norm < 1:
+            raise ValueError("Must be valid distance norm")
+        self.norm = norm
+
+    def _remove_chunk(self, img: Tensor, x: int, y: int) -> Tensor:
+        img = img.clone()
+
+        # Find appropriate mask
+        mask = torch.zeros_like(img, dtype=torch.uint8)
+        mask[:, :, x : x + self.chunk_size, y : y + self.chunk_size] = 1
+        chunk = img.masked_select(mask)
+        random_chunk = torch.empty(
+            (img.size(0), img.size(1), self.chunk_size, self.chunk_size),
+            device=midnite.get_device(),
+        )
+        random_chunk.uniform_(chunk.min().item(), chunk.max().item())
+        img.masked_scatter_(mask, random_chunk)
+        return img
+
+    def visualize(self, input_: Tensor) -> Tensor:
+        input_ = input_.clone().detach().to(midnite.get_device())
+        self.black_box_net.to(midnite.get_device()).eval()
+        H, W = tuple(map(lambda size: int(size / self.chunk_size), input_.size()[2:]))
+
+        # Make reference prediction
+        pred = self.black_box_net(input_)
+
+        result_img = torch.empty((H, W))
+        for i, j in tqdm.tqdm(product(range(H), range(W))):
+            img = self._remove_chunk(input_, i * self.chunk_size, j * self.chunk_size)
+            out = self.black_box_net(img)
+            result_img[i, j] = out.dist(pred, self.norm).item()
+
+        # Scale to [0, 1]
+        return result_img.div_(result_img.max().item())
 
 
 class PixelActivation(Activation):
