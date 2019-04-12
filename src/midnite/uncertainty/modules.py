@@ -15,7 +15,7 @@ from torch.nn import functional
 from torch.nn import Module
 
 import midnite
-import midnite.uncertainty.functional as func
+from . import functional as func
 
 log = logging.getLogger(__name__)
 
