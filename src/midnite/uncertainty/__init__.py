@@ -5,6 +5,7 @@ from .modules import PredictionDropout
 from .modules import PredictionEnsemble
 from .modules import PredictiveEntropy
 from .modules import VariationRatio
+from midnite.uncertainty import functional
 
 __all__ = [
     "PredictionDropout",
@@ -14,4 +15,5 @@ __all__ = [
     "MutualInformation",
     "VariationRatio",
     "PredictionAndUncertainties",
+    "functional",
 ]
