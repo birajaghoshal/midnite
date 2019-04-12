@@ -3,86 +3,39 @@
 </p>
 
 # midnite
-This is a framework for measuring and visualizing uncertainty in CNNs.
-
-Monte Carlo dropout is used to collect an ensemble of predictions, which are used as a basis for measuring data and model uncertainty.
-
-## Motivation
-
-There are two major types of uncertainty one can model. Data (aleatoric) uncertainty captures noise inherent in the observations. On the other hand, model (epistemic) uncertainty accounts for uncertainty in the model – uncertainty which can be explained away given enough data.
-
-We study the benefits of measuring and visualizing uncertainty for image classification and image segmentation and how we can leverage this insight to improve the model.
-For this, we want to gain insight on the expected uncertainty (confidence) of the predictions and identify irreducible uncertainties of the model.
-
-For measuring uncertainty we used two main applications:
-
- * Image Classification
- 
-    applying <name of our tool> measures the data and model uncertainty of an image.
-
- * Image Segmentation
- 
-    applying <name of our tool> measures the data and model uncertainty for each pixel.
+This is a framework to see into the dark boxes that are deep neural networks.
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
-### Prerequisites
-
-The model that needs to be tested, needs to be trained with Dropout. 
-
-What things you need to install the software and how to install them
-
+### Installation
+From package index: `pip install midnite` (not yet published!)
+or from source:
 ```
-poetry install
+git clone https://gitlab.com/luminovo/midnite.git
+cd midnite
+poetry build
+pip install dist/midnite-*.whl
 ```
 
-### API References
+### Overview
+The project is split into the following parts, with notebooks explaining them:
+ - [**uncertainty**](notebooks/): confidence of predictions
+ - [**visualization**](notebooks/) of network properties
+    - [**base**](notebooks/) building blocks in a consistent and flexible interface
+    - [**compound methods**](notebooks/) implementing 'standard' visualization methods
 
-todo
-
-## Deployment and usage
-
-In the notebook folder you find tutorial implementations, which show how to use the framework. 
-
-Run the notebooks via poetry.
-
-```
-cd notebooks
-poetry run jupyter-notebook
-```
-
-### Image Classification
-
-Open Uncertainty Tutorial 1 - Image Classification Example using AlexNet.ipynb for further details.
-
-### Image Segmentation
-
-Open Uncertainty Tutorial 2 - Image Segmentation Example using FCN32.ipynb for furhter details. 
-
-## Running the tests
-
-In the terminal, go to your project directory, then execute the following:
-
-```
-cd tests
-pytest
-```
+To follow the examples interactively, make sure you have cloned the repo and run `poetry install`.
+Then start jupyter with `poetry run jupyter notebook`.
 
 ## Development
+We value clean interfaces and well-tested code. If you want to contribute, please open an issue first.
+
+### Depenency management
+We use [poetry](https://github.com/sdispater/poetry) to manage dependencies.
 
 ### Pre-commit
 Please make sure to have the pre-commit hooks installed.
 Install [pre-commit](https://pre-commit.com/) and then run `pre-commit install` to register the hooks with git.
-
-### Poetry
-Use [poetry](https://poetry.eustace.io/) to manage your dependencies.
-Please make sure it is installed for your current python version.
-Then start by adding your dependencies:
-```console
-poetry add torch
-```
 
 ### Makefile
 We use [make](https://www.gnu.org/software/make/) to streamline our development workflow.
@@ -99,11 +52,10 @@ test                 Run all tests
 ```
 <!-- END makefile-doc -->
 
-## Credits
+## Acknowledgement
+Contributors:
+- Fabian Huch
+- Christina Aigner
 
-Alex Kendall, Yarin Gal, ... +Links
-
-## Authors
-
-* Fabian Huch
-* Christina Aigner
+Papers:
+- Alex Kendall, Yarin Gal, ... +Links
