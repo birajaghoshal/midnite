@@ -8,6 +8,7 @@ from torch.nn import Module
 
 from midnite.visualization import compound_methods
 from midnite.visualization.compound_methods import _prepare_input
+from midnite.visualization.compound_methods import _top_k_mask
 from midnite.visualization.compound_methods import _top_k_selector
 from midnite.visualization.compound_methods import _upscale
 from midnite.visualization.compound_methods import guided_gradcam
@@ -15,21 +16,16 @@ from midnite.visualization.compound_methods import guided_gradcam
 
 @pytest.fixture
 def img(mocker):
-    img = torch.zeros((3, 4, 4))
+    img = torch.zeros((1, 3, 4, 4))
     img.detach = mocker.Mock(return_value=img)
     img.to = mocker.Mock(return_value=img)
     return img
 
 
-@pytest.fixture
-def img_clone(mocker, img):
-    img_clone = torch.zeros((3, 4, 4))
-    img_clone.clone = mocker.Mock(return_value=img)
-    return img_clone
-
-
-def test_prepare_input(img, img_clone):
+def test_prepare_input(img, mocker):
     """Test image preparations."""
+    img_clone = torch.tensor((1, 3, 4, 4))
+    img_clone.clone = mocker.Mock(return_value=img)
     out = _prepare_input(img_clone)
 
     img_clone.clone.assert_called_once()
@@ -43,24 +39,34 @@ def test_prepare_invalid_sizes():
     with pytest.raises(ValueError):
         _prepare_input(torch.zeros((2, 4, 4)))
     with pytest.raises(ValueError):
-        _prepare_input(torch.zeros(1, 3, 4, 4))
+        _prepare_input(torch.zeros(1, 2, 4, 4))
     with pytest.raises(ValueError):
         _prepare_input(torch.zeros(2, 3))
 
 
-def test_top_k_selector():
-    """Test that the selector selects the top k outputs."""
-    out = torch.tensor([[0, 3, 0, 2, 1, 0]])
-    selector = _top_k_selector(out, 2)
-    assert_array_equal(selector.get_mask([6]), [0, 1, 0, 1, 0, 0])
+def test_top_k_mask():
+    """Test top-k masking."""
+    out = torch.tensor([0, 3, 0, 2, 1, 0])
+    mask = _top_k_mask(out, 2)
+    assert_array_equal(mask, [0, 1, 0, 1, 0, 0])
 
 
-def test_top_k_selector_invalid_inputs():
-    """Check that the selector throws errors for invalid dimensions/ks."""
-    with pytest.raises(ValueError):
-        _top_k_selector(torch.zeros((3, 2, 2)))
-    with pytest.raises(ValueError):
-        _top_k_selector(torch.tensor([1, 2]), 0)
+def test_top_k_selector(mocker):
+    """Test that the selector predicts and selects"""
+    out = mocker.Mock(spec=torch.Tensor)
+    out.squeeze = mocker.Mock(return_value=out)
+    net = mocker.Mock(spec=Module, return_value=out)
+    net.to = mocker.Mock(return_value=net)
+    net.eval = mocker.Mock(return_value=net)
+    mask = torch.tensor((0, 1, 0))
+    mocker.patch(
+        "midnite.visualization.compound_methods._top_k_mask", return_value=mask
+    )
+
+    sel = _top_k_selector(net, mocker.Mock(spec=torch.Tensor), 5)
+
+    compound_methods._top_k_mask.assert_called_with(out, 5)
+    assert_that(sel.get_mask([3])).is_same_as(mask)
 
 
 def test_upscale(mocker):

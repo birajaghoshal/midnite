@@ -1,6 +1,5 @@
 """Concrete implementations of visualization methods."""
 from contextlib import contextmanager
-from itertools import product
 from typing import List
 from typing import Optional
 from typing import Union
@@ -188,9 +187,9 @@ class GradAM(Attribution):
         """
 
         Args:
-            inspection_net: the list of layers from selected layer until output layer
-            top_layer_selector: specifies the split of interest in the output layer
-            base_net: list of layers from first layer of the model up to the selected
+            inspection_net: part of the network from selected until output layer
+            top_layer_selector: specifies selected neurons in the output layer
+            base_net: part of the network from first layer up to selected
             bottom_layer_split: specifies the split of interest in the selected layer
 
         """
@@ -224,63 +223,71 @@ class GradAM(Attribution):
 
 
 class Occlusion(Attribution):
-    """Occlusion based method"""
+    """Calculates attribution by occluding parts of the image and comparing outputs"""
 
     def __init__(
         self,
         net: Module,
         top_layer_selector: NeuronSelector,
         bottom_layer_split: LayerSplit,
-        chunk_size: int = 10,
+        chunk_size: List[int],
         norm=2,
     ):
         """
         Args:
-            net:
-            top_layer_selector:
-            bottom_layer_split:
-            chunk_size:
-            norm: the norm to be computed (usually l1 or l2)
+            net: part of the network to analyze
+            top_layer_selector: specifies elected neurons in the output layer
+            bottom_layer_split: neuron split of the bottom layer (i.e., input image)
+            chunk_size: chunk size, for each dimension of the inputs to visualize
+            norm: the norm to be computed
         """
         super().__init__([], net, top_layer_selector, bottom_layer_split)
-        if chunk_size < 1:
-            raise ValueError("Chunks must be at least 1x1 pixel")
         self.chunk_size = chunk_size
         if norm < 1:
             raise ValueError("Must be valid distance norm")
         self.norm = norm
 
-    def _remove_chunk(self, img: Tensor, x: int, y: int) -> Tensor:
-        img = img.clone()
-
-        # Find appropriate mask
-        mask = torch.zeros_like(img, dtype=torch.uint8)
-        mask[:, :, x : x + self.chunk_size, y : y + self.chunk_size] = 1
-        chunk = img.masked_select(mask)
-        random_chunk = torch.empty(
-            (img.size(0), img.size(1), self.chunk_size, self.chunk_size),
-            device=midnite.get_device(),
-        )
-        random_chunk.uniform_(chunk.min().item(), chunk.max().item())
+    def _remove_chunk(self, img: Tensor, chunk: Tensor) -> Tensor:
+        """Fills a chunk from the given image with random noise"""
+        # Upsample mask. Pretend volumetric data to get 3d upsample from torch
+        mask = functional.interpolate(chunk.unsqueeze(1), tuple(img.squeeze(0).size()))
+        mask = mask.squeeze(1).to(dtype=torch.uint8)
+        selected_chunk = img.masked_select(mask)
+        # Actual chunk might be one pixel larger to fit interpolation
+        chunk_size = list(map(lambda l: l + 1, self.chunk_size))
+        random_chunk = torch.empty(*chunk_size, device=midnite.get_device())
+        # Fill chunk with random values
+        random_chunk.uniform_(selected_chunk.min().item(), selected_chunk.max().item())
+        # Apply chunk to image
         img.masked_scatter_(mask, random_chunk)
         return img
 
     def visualize(self, input_: Tensor) -> Tensor:
         input_ = input_.clone().detach().to(midnite.get_device())
         self.black_box_net.to(midnite.get_device()).eval()
-        H, W = tuple(map(lambda size: int(size / self.chunk_size), input_.size()[2:]))
 
         # Make reference prediction
-        pred = self.black_box_net(input_)
+        pred = self.black_box_net(input_).squeeze(0)
+        pred_mask = self.top_layer_selector.get_mask(list(pred.size()))
+        pred_mask.div_(pred_mask.sum())
+        pred.mul_(pred_mask)
 
-        result_img = torch.empty((H, W))
-        for i, j in tqdm.tqdm(product(range(H), range(W))):
-            img = self._remove_chunk(input_, i * self.chunk_size, j * self.chunk_size)
-            out = self.black_box_net(img)
-            result_img[i, j] = out.dist(pred, self.norm).item()
+        chunk_dims = list(
+            map(
+                lambda t: int(t[0] / t[1]),
+                zip(input_.squeeze(0).size(), self.chunk_size),
+            )
+        )
 
-        # Scale to [0, 1]
-        return result_img.div_(result_img.max().item())
+        result_img = torch.zeros(chunk_dims)
+
+        # Use split to create chunks in chunk_dims space
+        for chunk in tqdm.tqdm(self.bottom_layer_split.get_split(chunk_dims)):
+            img = self._remove_chunk(input_.clone(), chunk.unsqueeze(0))
+            out = self.black_box_net(img).squeeze(0).mul_(pred_mask)
+            result_img.add_(chunk.mul_(out.dist(pred, self.norm).item()))
+
+        return result_img
 
 
 class PixelActivation(Activation):

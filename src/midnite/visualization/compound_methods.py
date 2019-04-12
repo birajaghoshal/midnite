@@ -22,24 +22,41 @@ from .base import SpatialSplit
 from .base import SplitSelector
 from .base import TVRegularization
 from .base import WeightDecay
+from midnite.visualization.base import Occlusion
 
 
 def _prepare_input(img: Tensor) -> Tensor:
-    if not len(img.size()) == 3 or not img.size(0) == 3:
+    img = img.clone()
+    if len(img.size()) == 3:
+        img = img.unsqueeze(0)
+    if not len(img.size()) == 4 or not img.size(1) == 3:
         raise ValueError(f"Not an image. Size: {img.size()}")
-    return img.clone().detach().to(midnite.get_device())
+    return img.detach().to(midnite.get_device())
 
 
-def _top_k_selector(out: Tensor, k: int = 3) -> NeuronSelector:
-    if not len(out.size()) == 2 or not out.size(0) == 1:
-        raise ValueError(f"Not a valid output for one input. Size: {out.size()}")
-    if k < 1:
-        raise ValueError(f"At least one class required. Got: {k}")
-    out = out.squeeze(0)
+def _top_k_mask(out, k):
     mask = torch.zeros_like(out, device=midnite.get_device())
     classes = out.topk(dim=0, k=k)[1]
     for i in range(k):
         mask[classes[i]] = 1
+    return mask
+
+
+def _top_k_selector(net: Module, img: Tensor, k) -> NeuronSelector:
+    """Creates a top-k classes selector.
+
+    Args:
+        net: network
+        img: prepared input image
+        k: number of classes
+
+    Returns:
+        neuron selector for the top k classes
+
+    """
+    net = net.to(midnite.get_device()).eval()
+    out = net(img).squeeze(0)
+    mask = _top_k_mask(out, k)
 
     return SimpleSelector(mask)
 
@@ -64,7 +81,7 @@ def guided_backpropagation(
 
     Args:
         layers: the whole model in its layers
-        input_image: image tensor of dimensions (c, h, w)
+        input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
         n_top_classes: the number of classes to take into account
 
     Returns:
@@ -72,13 +89,11 @@ def guided_backpropagation(
 
     """
     # Find classes to analyze
-    input_image = _prepare_input(input_image).unsqueeze(dim=0)
-    net = Sequential(*layers)
-    res = (net.to(midnite.get_device()))(input_image)
-    selector = _top_k_selector(res, n_top_classes)
+    input_image = _prepare_input(input_image)
+    class_selector = _top_k_selector(Sequential(*layers), input_image, n_top_classes)
 
     # Apply guided backpropagation
-    backprop = GuidedBackpropagation(layers, selector, SpatialSplit())
+    backprop = GuidedBackpropagation(layers, class_selector, SpatialSplit())
     return backprop.visualize(input_image)
 
 
@@ -92,27 +107,39 @@ def gradcam(
     Args:
         features: the spatial feature part of the model, before classifier
         classifier: the classifier part of the model, after spatial features
-        input_image: image tensor of dimensions (c, h, w)
+        input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
         n_top_classes: the number of classes to calculate GradCAM for
 
     Returns:
         a GradCAM heatmap of dimensions (h, w)
 
     """
-    # Prepare model and input
-    model = Sequential(features, classifier)
-    model.to(midnite.get_device()).eval()
+    # Get selector for top k classes
     input_image = _prepare_input(input_image)
+    class_selector = _top_k_selector(
+        Sequential(features, classifier), input_image, n_top_classes
+    )
+    # Apply spatial GradAM on classes
+    gradam = GradAM(classifier, class_selector, features, SpatialSplit())
+    return gradam.visualize(input_image)
 
-    out = model(input_image.unsqueeze(0))
 
-    # Get top N classes
-    selector = _top_k_selector(out, n_top_classes)
+def occlusion(net: Module, input_image: Tensor, n_top_classes: int = 3) -> Tensor:
+    """Creates a attribution heatmap by occluding parts of the input image.
 
-    # Apply GradAM on Classes
-    gradam = GradAM(classifier, selector, features, SpatialSplit())
-    result = gradam.visualize(input_image.unsqueeze(0))
-    return result
+    Args:
+        net:
+        input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
+        n_top_classes: the number of classes to account for in the attribution
+
+    Returns:
+
+    """
+    input_image = _prepare_input(input_image)
+    class_selector = _top_k_selector(net, input_image, n_top_classes)
+    # Apply occlusion
+    occlusion = Occlusion(net, class_selector, SpatialSplit(), [3, 10, 10])
+    return occlusion.visualize(input_image)
 
 
 def guided_gradcam(
@@ -128,13 +155,14 @@ def guided_gradcam(
     Args:
         features: the spatial feature layers of the model, before classifier
         classifier: the classifier layers of the model, after spatial features
-        input_image: image tensor of dimensions (c, h, w)
+        input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
         n_top_classes: the number of classes to calculate GradCAM for
 
     Returns:
         a Guided GradCAM heatmap of dimensions (h, w)
 
     """
+    input_image = _prepare_input(input_image)
     # Create scaled up gradcam image
     cam = gradcam(
         Sequential(*feature_layers),
@@ -142,7 +170,7 @@ def guided_gradcam(
         input_image,
         n_top_classes,
     )
-    cam_scaled = _upscale(cam, input_image.size()[1:])
+    cam_scaled = _upscale(cam, input_image.size()[2:])
 
     # Create guided backprop image
     guided_backprop = guided_backpropagation(
