@@ -18,6 +18,7 @@ from midnite.visualization.base import LayerSplit
 from midnite.visualization.base import methods
 from midnite.visualization.base import NeuronSelector
 from midnite.visualization.base import NeuronSplit
+from midnite.visualization.base import Occlusion
 from midnite.visualization.base import SpatialSplit
 from midnite.visualization.base import SplitSelector
 
@@ -210,6 +211,23 @@ def test_gradcam_wiring(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
     torch.nn.functional.relu.assert_called_once_with(out[2])
     # Check result
     assert_that(result).is_same_as(out[3])
+
+
+def test_remove_chunk(mocker):
+    sut = Occlusion(
+        mocker.Mock(spec=Module),
+        mocker.Mock(spec=NeuronSelector),
+        mocker.Mock(spec=LayerSplit),
+        [1, 5, 5],
+        stride_length=[1, 1, 1],
+    )
+    img = torch.ones((1, 10, 10))
+    result = sut._remove_chunk(img, torch.tensor([[[0, 0], [1, 0]]]).float())
+
+    assert_that(result.size()).is_equal_to((1, 10, 10))
+    assert torch.all(result[0, :5] == 1.0)
+    assert torch.all(result[0, 5:, :5] == 0.5)
+    assert torch.all(result[0, 5:, 5:] == 1.0)
 
 
 def test_backpropagation(tiny_net):

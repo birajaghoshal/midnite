@@ -5,6 +5,8 @@ from torchvision import models
 
 import data_utils
 from data_utils import DataConfig
+from midnite.visualization.base import NeuronSplit
+from midnite.visualization.base import SplitSelector
 
 
 @pytest.fixture(scope="module")
@@ -24,3 +26,9 @@ def img():
 def random_img():
     """Fixture for random image."""
     return data_utils.get_random_example(DataConfig.ALEX_NET)
+
+
+@pytest.fixture
+def correct_class_selector():
+    """Fixture for selector for the correct class on the example image"""
+    return SplitSelector(NeuronSplit(), [283])

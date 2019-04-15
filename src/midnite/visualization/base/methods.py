@@ -1,5 +1,6 @@
 """Concrete implementations of visualization methods."""
 from contextlib import contextmanager
+from itertools import product
 from typing import List
 from typing import Optional
 from typing import Union
@@ -8,7 +9,6 @@ import numpy as np
 import torch
 import tqdm
 from numpy import random
-from torch import autograd
 from torch import Tensor
 from torch.nn import functional
 from torch.nn import Module
@@ -115,7 +115,7 @@ class Backpropagation(Attribution):
         score = _calculate_single_mean(out, self.top_layer_selector)
 
         # backward pass
-        autograd.backward(score)
+        score.backward()
 
         # mean over bottom layer split dimension
         return self.bottom_layer_split.get_mean(input_.grad.detach().squeeze(dim=0))
@@ -231,6 +231,7 @@ class Occlusion(Attribution):
         top_layer_selector: NeuronSelector,
         bottom_layer_split: LayerSplit,
         chunk_size: List[int],
+        stride_length: List[int],
         norm=2,
     ):
         """
@@ -238,54 +239,75 @@ class Occlusion(Attribution):
             net: part of the network to analyze
             top_layer_selector: specifies elected neurons in the output layer
             bottom_layer_split: neuron split of the bottom layer (i.e., input image)
-            chunk_size: chunk size, for each dimension of the inputs to visualize
+            chunk_size: chunk size in number of strides
             norm: the norm to be computed
         """
         super().__init__([], net, top_layer_selector, bottom_layer_split)
         self.chunk_size = chunk_size
+        self.stride_length = stride_length
         if norm < 1:
             raise ValueError("Must be valid distance norm")
         self.norm = norm
 
-    def _remove_chunk(self, img: Tensor, chunk: Tensor) -> Tensor:
-        """Fills a chunk from the given image with random noise"""
-        # Upsample mask. Pretend volumetric data to get 3d upsample from torch
-        mask = functional.interpolate(chunk.unsqueeze(1), tuple(img.squeeze(0).size()))
-        mask = mask.squeeze(1).to(dtype=torch.uint8)
-        selected_chunk = img.masked_select(mask)
-        # Actual chunk might be one pixel larger to fit interpolation
-        chunk_size = list(map(lambda l: l + 1, self.chunk_size))
-        random_chunk = torch.empty(*chunk_size, device=midnite.get_device())
-        # Fill chunk with random values
-        random_chunk.uniform_(selected_chunk.min().item(), selected_chunk.max().item())
-        # Apply chunk to image
-        img.masked_scatter_(mask, random_chunk)
-        return img
+    def _chunk_mask(self, pixel_mask: Tensor) -> Tensor:
+        # Start with supersampled mask (a little bit larger to avoid out of bounds)
+        ss_size = list(
+            map(lambda x: x[0] + x[1], zip(pixel_mask.size(), [1, *self.chunk_size]))
+        )
+        ss_mask = torch.zeros(*ss_size)
+
+        # build SS mask
+        for chunk_elem in product(*map(range, [1, *self.chunk_size])):
+            chunk_idx = tuple(
+                map(
+                    lambda index: slice(index[0], index[1] + index[0]),
+                    zip(chunk_elem, pixel_mask.size()),
+                )
+            )
+            ss_mask[chunk_idx] += pixel_mask
+        # Cut out part of supersampled mask that we want
+        mask_size_idx = tuple(
+            map(lambda s: slice(s // 2, -s // 2), [1, *self.chunk_size])
+        )
+        ss_mask = ss_mask[mask_size_idx]
+        # Normalize indexes that were selected multiple times
+        return ss_mask.clamp_(max=1)
+
+    def _remove_chunk(self, input_: Tensor, chunk_mask: Tensor) -> Tensor:
+        # Upsample to input image dimensions (use volumetric to get 3d upsample)
+        mask = functional.interpolate(
+            chunk_mask.unsqueeze(1), tuple(input_.squeeze(0).size())
+        ).squeeze(1)
+        # Fill chunk with grey
+        return input_.mul_(1 - mask).add_(mask * 0.5)
 
     def visualize(self, input_: Tensor) -> Tensor:
+        # Preparation
         input_ = input_.clone().detach().to(midnite.get_device())
         self.black_box_net.to(midnite.get_device()).eval()
 
         # Make reference prediction
         pred = self.black_box_net(input_).squeeze(0)
+        # Store top layer mask for the future
         pred_mask = self.top_layer_selector.get_mask(list(pred.size()))
         pred_mask.div_(pred_mask.sum())
         pred.mul_(pred_mask)
 
-        chunk_dims = list(
+        # Dimensions of subsampled image
+        subsample_dims = list(
             map(
-                lambda t: int(t[0] / t[1]),
-                zip(input_.squeeze(0).size(), self.chunk_size),
+                lambda t: t[0] // t[1],
+                zip(input_.squeeze(0).size(), self.stride_length),
             )
         )
 
-        result_img = torch.zeros(chunk_dims)
-
-        # Use split to create chunks in chunk_dims space
-        for chunk in tqdm.tqdm(self.bottom_layer_split.get_split(chunk_dims)):
-            img = self._remove_chunk(input_.clone(), chunk.unsqueeze(0))
+        # For every pixel in subsampled image, measure difference to true prediction
+        result_img = torch.zeros(*subsample_dims)
+        for pixel in tqdm.tqdm(self.bottom_layer_split.get_split(subsample_dims)):
+            mask = self._chunk_mask(pixel.unsqueeze(0))
+            img = self._remove_chunk(input_.clone(), mask)
             out = self.black_box_net(img).squeeze(0).mul_(pred_mask)
-            result_img.add_(chunk.mul_(out.dist(pred, self.norm).item()))
+            result_img.add_(mask.squeeze(0).mul_(out.dist(pred, self.norm).item()))
 
         return result_img
 
