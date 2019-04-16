@@ -1,6 +1,5 @@
 """Concrete implementations of visualization methods."""
 from contextlib import contextmanager
-from itertools import product
 from typing import List
 from typing import Optional
 from typing import Union
@@ -231,7 +230,7 @@ class Occlusion(Attribution):
         top_layer_selector: NeuronSelector,
         bottom_layer_split: LayerSplit,
         chunk_size: List[int],
-        stride_length: List[int],
+        pixel_stride: List[int],
         norm=2,
     ):
         """
@@ -244,34 +243,44 @@ class Occlusion(Attribution):
         """
         super().__init__([], net, top_layer_selector, bottom_layer_split)
         self.chunk_size = chunk_size
-        self.stride_length = stride_length
+        self.pixel_stride = pixel_stride
         if norm < 1:
             raise ValueError("Must be valid distance norm")
         self.norm = norm
 
-    def _chunk_mask(self, pixel_mask: Tensor) -> Tensor:
-        # Start with supersampled mask (a little bit larger to avoid out of bounds)
-        ss_size = list(
-            map(lambda x: x[0] + x[1], zip(pixel_mask.size(), [1, *self.chunk_size]))
-        )
-        ss_mask = torch.zeros(*ss_size)
+    @classmethod
+    def _smear_matrix(cls, size: int, smear: int) -> Tensor:
+        # Identity
+        matrix = torch.eye(size, device=midnite.get_device())
+        # Add smear diagonals
+        for i in range(1, smear):
+            matrix[i:, :-i] += torch.eye(size - i)
+        return matrix.clamp_(max=1)
 
-        # build SS mask
-        for chunk_elem in product(*map(range, [1, *self.chunk_size])):
-            chunk_idx = tuple(
-                map(
-                    lambda index: slice(index[0], index[1] + index[0]),
-                    zip(chunk_elem, pixel_mask.size()),
-                )
+    def _chunk_matrixes(self, input_size: List[int]) -> List[Tensor]:
+        """Build the chunk matrixes"""
+        if not len(input_size) == len(self.chunk_size):
+            raise ValueError("Chunks size must be given for every input dimension")
+        return list(
+            map(
+                lambda sizes: self._smear_matrix(sizes[0] + sizes[1], sizes[1]),
+                zip(input_size, self.chunk_size),
             )
-            ss_mask[chunk_idx] += pixel_mask
-        # Cut out part of supersampled mask that we want
-        mask_size_idx = tuple(
-            map(lambda s: slice(s // 2, -s // 2), [1, *self.chunk_size])
         )
-        ss_mask = ss_mask[mask_size_idx]
+
+    def _chunk_mask(self, pixel_mask: Tensor, chunk_matrixes: List[Tensor]) -> Tensor:
+        sizes = list(zip(pixel_mask.size(), self.chunk_size))
+        mask_size = tuple(map(lambda s: s[0] + s[1], sizes))
+        # Create mask with initial pixel mask
+        mask = torch.zeros(mask_size, device=midnite.get_device())
+        mask[tuple(map(lambda s: slice(None, s), pixel_mask.size()))] = pixel_mask
+        # build mask
+        for i, matrix in enumerate(chunk_matrixes):
+            mask = (matrix @ mask.transpose(1, i)).transpose(1, i)
+        # Get relevant mask area
+        mask_area = tuple(map(lambda s: slice(s[1] // 2, s[0] + (s[1] // 2)), sizes))
         # Normalize indexes that were selected multiple times
-        return ss_mask.clamp_(max=1)
+        return mask[mask_area].clamp_(max=1)
 
     def _remove_chunk(self, input_: Tensor, chunk_mask: Tensor) -> Tensor:
         # Upsample to input image dimensions (use volumetric to get 3d upsample)
@@ -296,20 +305,21 @@ class Occlusion(Attribution):
         # Dimensions of subsampled image
         subsample_dims = list(
             map(
-                lambda t: t[0] // t[1],
-                zip(input_.squeeze(0).size(), self.stride_length),
+                lambda t: t[0] // t[1], zip(input_.squeeze(0).size(), self.pixel_stride)
             )
         )
 
+        chunk_matrixes = self._chunk_matrixes(subsample_dims)
+
         # For every pixel in subsampled image, measure difference to true prediction
-        result_img = torch.zeros(*subsample_dims)
+        result_img = torch.zeros(*subsample_dims, device=midnite.get_device())
         for pixel in tqdm.tqdm(self.bottom_layer_split.get_split(subsample_dims)):
-            mask = self._chunk_mask(pixel.unsqueeze(0))
-            img = self._remove_chunk(input_.clone(), mask)
+            mask = self._chunk_mask(pixel, chunk_matrixes)
+            img = self._remove_chunk(input_.clone(), mask.unsqueeze(0))
             out = self.black_box_net(img).squeeze(0).mul_(pred_mask)
             result_img.add_(mask.squeeze(0).mul_(out.dist(pred, self.norm).item()))
 
-        return result_img
+        return self.bottom_layer_split.get_mean(result_img)
 
 
 class PixelActivation(Activation):

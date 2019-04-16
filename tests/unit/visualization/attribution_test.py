@@ -219,7 +219,7 @@ def test_remove_chunk(mocker):
         mocker.Mock(spec=NeuronSelector),
         mocker.Mock(spec=LayerSplit),
         [1, 5, 5],
-        stride_length=[1, 1, 1],
+        pixel_stride=[1, 1, 1],
     )
     img = torch.ones((1, 10, 10))
     result = sut._remove_chunk(img, torch.tensor([[[0, 0], [1, 0]]]).float())
