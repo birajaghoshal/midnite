@@ -47,73 +47,24 @@ def id_img(mocker):
 
 
 @pytest.fixture
-def layer_mock_setup(mocker):
-    out = (
-        torch.zeros((1, 3, 4, 4)),
-        torch.ones((1, 3, 4, 4)),
-        torch.ones((1, 1, 4, 4)),
-    )
-
-    layers = [
-        mocker.MagicMock(spec=Module, return_value=out[0]),
-        mocker.MagicMock(spec=Module, return_value=out[1]),
-    ]
-
+def layer_out(mocker):
+    out = (torch.zeros((1, 3, 4, 4)), torch.ones((1, 3, 4, 4)))
     out[1].detach = mocker.Mock(return_value=out[1])
     out[1].squeeze = mocker.Mock(return_value=out[1])
-    out[1].mul_ = mocker.Mock(return_value=out[2])
+    return out
+
+
+@pytest.fixture
+def layers(mocker, layer_out):
+    layers = [
+        mocker.MagicMock(spec=Module, return_value=layer_out[0]),
+        mocker.MagicMock(spec=Module, return_value=layer_out[1]),
+    ]
 
     for layer in layers:
         layer.to = mocker.Mock(return_value=layer)
 
-    return layers, out
-
-
-@pytest.fixture
-def backprop_mock_setup(mocker):
-    """Setup layers, selectors, and (intermediate) outputs."""
-    # All intermediate outputs
-    out = (torch.ones((1, 3, 4, 4)), torch.ones((1, 4, 4)))
-
-    # Wire mocks/outputs together
-    mocker.patch(
-        "midnite.visualization.base.methods._calculate_single_mean", return_value=out[0]
-    )
-    mocker.patch("torch.autograd.backward")
-
-    bottom_split = mocker.Mock(spec=LayerSplit)
-    bottom_split.get_mean = mocker.Mock(return_value=out[1])
-
-    return out, bottom_split
-
-
-@pytest.fixture
-def gradcam_mock_setup(mocker):
-    """Patch splits and setup img and base layers"""
-    out = (
-        torch.ones((1, 3)),
-        torch.ones((1, 3, 1, 1)),
-        torch.ones((1, 1, 4, 4)),
-        torch.ones((1, 1, 4, 4)),
-    )
-    out[0].detach = mocker.Mock(return_value=out[0])
-    out[0].squeeze = mocker.Mock(return_value=out[0])
-
-    # Wire mocks together
-    mocker.patch(
-        "midnite.visualization.base.methods.Backpropagation.visualize",
-        return_value=out[0],
-    )
-    mocker.patch("torch.nn.functional.relu", return_value=out[3])
-
-    bottom_split = mocker.Mock(spec=LayerSplit)
-    bottom_split2 = mocker.Mock(spec=LayerSplit)
-
-    bottom_split.get_mean = mocker.Mock(return_value=out[2])
-    bottom_split.invert = mocker.Mock(return_value=bottom_split2)
-    bottom_split2.fill_dimensions = mocker.Mock(return_value=out[1])
-
-    return (bottom_split, bottom_split2), out
+    return layers
 
 
 @pytest.mark.parametrize(
@@ -135,14 +86,22 @@ def test_calculate_single_mean(split, index, mean):
     assert_that(result.item()).is_close_to(mean, tolerance=1e-40)
 
 
-def test_backpropagation_wiring(mocker, backprop_mock_setup, layer_mock_setup, id_img):
+def test_backpropagation_wiring(mocker, layers, layer_out, id_img):
     """Check that layers are in correct mode and the gradient is calculated properly."""
+    out = (torch.ones((1, 3, 4, 4)), torch.ones((1, 4, 4)))
+
+    # Wire mocks/outputs together
+    mocker.patch(
+        "midnite.visualization.base.methods._calculate_single_mean", return_value=out[0]
+    )
+    mocker.patch("torch.autograd.backward")
+
+    bottom_split = mocker.Mock(spec=LayerSplit)
+    bottom_split.get_mean = mocker.Mock(return_value=out[1])
     grad = torch.zeros((1, 3, 4, 4))
     grad.detach = mocker.Mock(return_value=grad)
     grad.squeeze = mocker.Mock(return_value=grad)
     id_img.grad = PropertyMock(return_value=grad)
-    out, bottom_split = backprop_mock_setup
-    layers, layer_out = layer_mock_setup
     top_layer_sel = mocker.Mock(spec=NeuronSelector)
     sut = Backpropagation(Sequential(*layers), top_layer_sel, bottom_split)
 
@@ -172,10 +131,32 @@ def test_backpropagation_wiring(mocker, backprop_mock_setup, layer_mock_setup, i
     assert_that(result).is_same_as(out[1])
 
 
-def test_gradcam_wiring(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
+def test_gradcam_wiring(mocker, layers, layer_out, id_img):
     """Check gradam calculation."""
-    layers, layer_out = layer_mock_setup
-    split, out = gradcam_mock_setup
+    out = (
+        torch.ones((1, 3)),
+        torch.ones((1, 3, 1, 1)),
+        torch.ones((1, 1, 4, 4)),
+        torch.ones((1, 1, 4, 4)),
+    )
+    out[0].detach = mocker.Mock(return_value=out[0])
+    out[0].squeeze = mocker.Mock(return_value=out[0])
+
+    # Wire mocks together
+    mocker.patch(
+        "midnite.visualization.base.methods.Backpropagation.visualize",
+        return_value=out[0],
+    )
+    mocker.patch("torch.nn.functional.relu", return_value=out[3])
+
+    split = (mocker.Mock(spec=LayerSplit), mocker.Mock(spec=LayerSplit))
+
+    split[0].get_mean = mocker.Mock(return_value=out[2])
+    split[0].invert = mocker.Mock(return_value=split[1])
+    split[1].fill_dimensions = mocker.Mock(return_value=out[1])
+
+    mul_out = torch.zeros((1, 1, 3, 4))
+    layer_out[1].mul_ = mocker.Mock(return_value=mul_out)
 
     sut = GradAM(
         mocker.Mock(spec=torch.nn.Module),
@@ -206,20 +187,92 @@ def test_gradcam_wiring(mocker, gradcam_mock_setup, layer_mock_setup, id_img):
     # 4. Multiply together
     layer_out[1].mul_.assert_called_once_with(out[1])  # -> layer_out[2]
     # 5. Calculate mean
-    split[0].get_mean.assert_called_with(layer_out[2])
+    split[0].get_mean.assert_called_with(mul_out)
     # 6. Relu
     torch.nn.functional.relu.assert_called_once_with(out[2])
     # Check result
     assert_that(result).is_same_as(out[3])
 
 
+@pytest.mark.parametrize(
+    "size,smear,out",
+    [
+        (2, 1, [[1, 0], [0, 1]]),
+        (2, 3, [[1, 0], [1, 1]]),
+        (3, 2, [[1, 0, 0], [1, 1, 0], [0, 1, 1]]),
+        (
+            5,
+            3,
+            [
+                [1, 0, 0, 0, 0],
+                [1, 1, 0, 0, 0],
+                [1, 1, 1, 0, 0],
+                [0, 1, 1, 1, 0],
+                [0, 0, 1, 1, 1],
+            ],
+        ),
+    ],
+)
+def test_smear_matrix(size, smear, out):
+    matrix = Occlusion._smear_matrix(size, smear)
+    assert_array_equal(matrix.numpy(), out)
+
+
+def test_chunk_matrixes(mocker):
+    mocker.patch(
+        "midnite.visualization.base.Occlusion._smear_matrix",
+        return_value=mocker.Mock(spec=torch.Tensor),
+    )
+    sut = Occlusion(
+        mocker.Mock(spec=Module),
+        mocker.Mock(spec=NeuronSelector),
+        mocker.Mock(spec=LayerSplit),
+        [3, 2, 4],
+        [],
+    )
+    matrices = sut._chunk_matrixes([3, 5, 6])
+    assert_that(matrices).is_length(3)
+    assert_that(Occlusion._smear_matrix.call_count).is_equal_to(3)
+    Occlusion._smear_matrix.assert_any_call(7, 2)
+    Occlusion._smear_matrix.assert_any_call(6, 3)
+    Occlusion._smear_matrix.assert_any_call(10, 4)
+
+
+def test_chunk_mask(mocker):
+    """Checks that selected pixels are correctly transformed into chunk masks."""
+    sut = Occlusion(
+        mocker.Mock(spec=Module),
+        mocker.Mock(spec=NeuronSelector),
+        mocker.Mock(spec=LayerSplit),
+        [2, 1, 3],
+        [1, 1, 1],
+    )
+    pixel_mask = torch.Tensor(
+        [
+            [[0, 1, 0, 0], [0, 0, 0, 0]],
+            [[0, 1, 1, 0], [1, 0, 0, 0]],
+            [[0, 0, 0, 0], [0, 0, 0, 0]],
+        ]
+    )
+    mask = sut._chunk_mask(pixel_mask, sut._chunk_matrixes([3, 2, 4]))
+    assert_array_equal(
+        mask.numpy(),
+        [
+            [[1, 1, 1, 0], [0, 0, 0, 0]],
+            [[1, 1, 1, 1], [1, 1, 0, 0]],
+            [[1, 1, 1, 1], [1, 1, 0, 0]],
+        ],
+    )
+
+
 def test_remove_chunk(mocker):
+    """Test that the correct chunk gets replaced by a grey square."""
     sut = Occlusion(
         mocker.Mock(spec=Module),
         mocker.Mock(spec=NeuronSelector),
         mocker.Mock(spec=LayerSplit),
         [1, 5, 5],
-        pixel_stride=[1, 1, 1],
+        stride=[1, 1, 1],
     )
     img = torch.ones((1, 10, 10))
     result = sut._remove_chunk(img, torch.tensor([[[0, 0], [1, 0]]]).float())
@@ -228,6 +281,60 @@ def test_remove_chunk(mocker):
     assert torch.all(result[0, :5] == 1.0)
     assert torch.all(result[0, 5:, :5] == 0.5)
     assert torch.all(result[0, 5:, 5:] == 1.0)
+
+
+def test_occlusion_wiring(mocker, id_img, layers, layer_out):
+    """Test the occlusion method."""
+    # Mock
+    id_img.squeeze = mocker.Mock(return_value=id_img)
+    id_img.size = mocker.Mock(return_value=torch.Size([3, 4, 4]))
+
+    mask = mocker.Mock(spec=torch.Tensor)
+    mask.unsqueeze = mocker.Mock(return_value=mask)
+    matrixes = [
+        mocker.Mock(spec=torch.Tensor),
+        mocker.Mock(spec=torch.Tensor),
+        mocker.Mock(spec=torch.Tensor),
+    ]
+
+    mocker.patch("midnite.visualization.base.Occlusion._chunk_mask", return_value=mask)
+    mocker.patch(
+        "midnite.visualization.base.Occlusion._chunk_matrixes", return_value=matrixes
+    )
+    mocker.patch(
+        "midnite.visualization.base.Occlusion._remove_chunk",
+        return_value=mocker.Mock(spec=torch.Tensor),
+    )
+    return_value = mocker.Mock(spec=torch.Tensor)
+    mocker.patch("torch.zeros", return_value=return_value)
+
+    split = mocker.Mock(spec=NeuronSplit)
+    splits = [mocker.Mock(spec=torch.Tensor), mocker.Mock(spec=torch.Tensor)]
+    split.get_split = mocker.Mock(return_value=splits)
+    split.get_mean = mocker.Mock(return_value=mocker.Mock(spec=torch.Tensor))
+    sel = mocker.Mock(spec=NeuronSelector)
+    pred_mask = torch.Tensor([[1, 1], [0, 0]])
+    sel.get_mask = mocker.Mock(return_value=pred_mask)
+    pred = mocker.Mock(spec=torch.Tensor)
+    layer_out[1].mul_ = mocker.Mock(return_value=pred)
+
+    # Execute methods
+    sut = Occlusion(Sequential(*layers), sel, split, [4, 5, 6], [1, 2, 3])
+    sut.visualize(id_img)
+
+    # Verify
+    assert_that(layers[0].call_count).is_equal_to(3)
+    sel.get_mask.assert_called_with([1, 3, 4, 4])
+    assert_array_equal(pred_mask, [[0.5, 0.5], [0, 0]])
+    layer_out[1].mul_.assert_called_with(pred_mask)
+    sut._chunk_matrixes.assert_called_with([3, 2, 1])
+    split.get_split.assert_called_with([3, 2, 1])
+    sut._chunk_mask.assert_any_call(splits[0], matrixes)
+    sut._chunk_mask.assert_any_call(splits[1], matrixes)
+    sut._remove_chunk.assert_called_with(id_img, mask)
+    assert_that(sut._remove_chunk.call_count).is_equal_to(2)
+    assert_that(return_value.add_.call_count).is_equal_to(2)
+    split.get_mean.assert_called_with(return_value)
 
 
 def test_backpropagation(tiny_net):

@@ -14,7 +14,9 @@ from midnite.visualization.base import BlurTransform
 from midnite.visualization.base import ChannelSplit
 from midnite.visualization.base import GradAM
 from midnite.visualization.base import GuidedBackpropagation
+from midnite.visualization.base import Identity
 from midnite.visualization.base import NeuronSplit
+from midnite.visualization.base import Occlusion
 from midnite.visualization.base import PixelActivation
 from midnite.visualization.base import RandomTransform
 from midnite.visualization.base import ResizeTransform
@@ -132,6 +134,27 @@ def test_gradam_neuron(net, random_img, correct_class_selector):
     assert_that(result.size()).is_equal_to((256, 6, 6))
     assert torch.all(result >= 0)
     assert_that(result.sum().item()).is_greater_than(0)
+
+
+def test_occlusion_channel(net, img):
+    """Test occlusion by channels on the total output."""
+    sut = Occlusion(
+        net, SplitSelector(Identity(), []), ChannelSplit(), [1, 1, 1], [1, 1, 1]
+    )
+    result = sut.visualize(img)
+    assert_that(result.size()).is_equal_to((3,))
+    assert torch.all(result > 0)
+
+
+def test_occlusion_spatial(net, img, correct_class_selector):
+    """Test occluding pixels on the class output."""
+    sut = Occlusion(
+        net, correct_class_selector, NeuronSplit(), [2, 2, 2], [3, 100, 100]
+    )
+    result = sut.visualize(img)
+    assert_that(result.size()).is_equal_to((1, 5, 3))
+    # At that size, each chunk should have a influence
+    assert torch.all(result > 0)
 
 
 def test_pixel_activation_simple(net, correct_class_selector):

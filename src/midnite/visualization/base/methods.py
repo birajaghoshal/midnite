@@ -230,7 +230,7 @@ class Occlusion(Attribution):
         top_layer_selector: NeuronSelector,
         bottom_layer_split: LayerSplit,
         chunk_size: List[int],
-        pixel_stride: List[int],
+        stride: List[int],
         norm=2,
     ):
         """
@@ -238,18 +238,21 @@ class Occlusion(Attribution):
             net: part of the network to analyze
             top_layer_selector: specifies elected neurons in the output layer
             bottom_layer_split: neuron split of the bottom layer (i.e., input image)
-            chunk_size: chunk size in number of strides
+            chunk_size: chunk size in number of strides, for each dimension
+            stride: number of elements (usually pixels) to go through per step,
+             for each dimension
             norm: the norm to be computed
         """
         super().__init__([], net, top_layer_selector, bottom_layer_split)
         self.chunk_size = chunk_size
-        self.pixel_stride = pixel_stride
+        self.stride = stride
         if norm < 1:
             raise ValueError("Must be valid distance norm")
         self.norm = norm
 
     @classmethod
     def _smear_matrix(cls, size: int, smear: int) -> Tensor:
+        """Creates a smear matrix with given size and smear factor."""
         # Identity
         matrix = torch.eye(size, device=midnite.get_device())
         # Add smear diagonals
@@ -258,7 +261,7 @@ class Occlusion(Attribution):
         return matrix.clamp_(max=1)
 
     def _chunk_matrixes(self, input_size: List[int]) -> List[Tensor]:
-        """Build the chunk matrixes"""
+        """For every dimension, builds the chunk matrix of chunk + input size."""
         if not len(input_size) == len(self.chunk_size):
             raise ValueError("Chunks size must be given for every input dimension")
         return list(
@@ -269,6 +272,7 @@ class Occlusion(Attribution):
         )
 
     def _chunk_mask(self, pixel_mask: Tensor, chunk_matrixes: List[Tensor]) -> Tensor:
+        """Translates a pixel selector mask into a chunk selector mask."""
         sizes = list(zip(pixel_mask.size(), self.chunk_size))
         mask_size = tuple(map(lambda s: s[0] + s[1], sizes))
         # Create mask with initial pixel mask
@@ -278,7 +282,9 @@ class Occlusion(Attribution):
         for i, matrix in enumerate(chunk_matrixes):
             mask = (matrix @ mask.transpose(1, i)).transpose(1, i)
         # Get relevant mask area
-        mask_area = tuple(map(lambda s: slice(s[1] // 2, s[0] + (s[1] // 2)), sizes))
+        mask_area = tuple(
+            map(lambda s: slice((s[1] - 1) // 2, s[0] + ((s[1] - 1) // 2)), sizes)
+        )
         # Normalize indexes that were selected multiple times
         return mask[mask_area].clamp_(max=1)
 
@@ -304,11 +310,10 @@ class Occlusion(Attribution):
 
         # Dimensions of subsampled image
         subsample_dims = list(
-            map(
-                lambda t: t[0] // t[1], zip(input_.squeeze(0).size(), self.pixel_stride)
-            )
+            map(lambda t: t[0] // t[1], zip(input_.squeeze(0).size(), self.stride))
         )
 
+        # Calculate chunk matrixes once and store
         chunk_matrixes = self._chunk_matrixes(subsample_dims)
 
         # For every pixel in subsampled image, measure difference to true prediction
