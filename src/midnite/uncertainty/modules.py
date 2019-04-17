@@ -13,6 +13,7 @@ from torch.nn import Dropout3d
 from torch.nn import FeatureAlphaDropout
 from torch.nn import functional
 from torch.nn import Module
+from tqdm import trange
 
 import midnite
 from . import functional as func
@@ -97,6 +98,22 @@ class _Ensemble(Module, ABC):
         return self
 
 
+class EnsembleLayer(_Ensemble):
+    """Module for a single layer in ensemble mode.
+
+    May be used between MeanEnsemble or PredictionEnsemble and an acquisition method,
+    e.g. MutualInformation.
+
+    """
+
+    def forward(self, input_: Tensor) -> Tensor:
+        outs = []
+        for i in trange(input_.size(-1)):
+            single_input = input_.select(-1, i).clone()
+            outs.append(self.inner(single_input))
+        return torch.stack(tuple(outs), len(outs[0].size()))
+
+
 class MeanEnsemble(_Ensemble):
     """Module for models that want the mean of their ensemble predictions."""
 
@@ -113,19 +130,23 @@ class MeanEnsemble(_Ensemble):
         input_.to(midnite.get_device())
 
         if self.training:
-            return self.inner.forward(input_)
+            return self.inner(input_)
         else:
-            with torch.no_grad():
-                with tqdm.trange(
-                    self.sample_size - 1, total=self.sample_size
-                ) as sample_range:
-                    sample_range.update()
-                    pred = self.inner.forward(input_)
+            if input_.requires_grad:
+                log.warning(
+                    "Gradients enabled for ensemble predictions requires large "
+                    "amounts of memeory"
+                )
+            with tqdm.trange(
+                self.sample_size - 1, total=self.sample_size
+            ) as sample_range:
+                sample_range.update()
+                pred = self.inner(input_)
 
-                    # Calc remaining forward pass
-                    for _ in sample_range:
-                        pred += self.inner.forward(input_)
-                    return pred.div(self.sample_size)
+                # Calc remaining forward pass
+                for _ in sample_range:
+                    pred += self.inner(input_)
+                return pred.div(self.sample_size)
 
 
 class PredictionEnsemble(_Ensemble):
@@ -145,35 +166,23 @@ class PredictionEnsemble(_Ensemble):
 
         # In eval mode, stack ensemble predictions
         if self.training:
-            return self.inner.forward(input_)
+            return self.inner(input_)
         else:
-            with torch.no_grad():
-                # Disable all gradients
-                for param in self.parameters():
-                    param.requires_grad = False
-                input_.requires_grad = False
+            requires_grad = input_.requires_grad
+            for param in self.parameters():
+                requires_grad = requires_grad or param.requires_grad
+            if requires_grad:
+                log.warning(
+                    "Gradients enabled for ensemble predictions requires large "
+                    "amounts of memory"
+                )
 
-                # Track progres
-                with tqdm.trange(
-                    self.sample_size - 1, total=self.sample_size
-                ) as sample_range:
-                    sample_range.update()
+            preds = []
+            for i in trange(self.sample_size):
+                preds.append(self.inner(input_))
 
-                    pred = self.inner.forward(input_)
-                    pred_shape = pred.size()
-
-                    # Allocate result tensor
-                    result = torch.zeros(
-                        (*pred_shape, self.sample_size), device=midnite.get_device()
-                    )
-                    # Store results in their slice
-                    result.select(len(pred_shape), 0).copy_(pred)
-
-                    for i in sample_range:
-                        pred = self.inner.forward(input_)
-                        result.select(len(pred_shape), i).copy_(pred)
-
-                    return result
+            result = torch.stack(tuple(preds), dim=len(preds[0].size()))
+            return result
 
 
 class PredictiveEntropy(Module):
@@ -191,8 +200,7 @@ class PredictiveEntropy(Module):
             pred_entropy: the predictive entropy per class
 
         """
-
-        return func.predictive_entropy(input_)
+        return func.predictive_entropy(input_, inplace=not input_.requires_grad)
 
 
 class MutualInformation(Module):
@@ -211,7 +219,7 @@ class MutualInformation(Module):
             the mutual information per class
 
         """
-        return func.mutual_information(input_)
+        return func.mutual_information(input_, inplace=not input_.requires_grad)
 
 
 class VariationRatio(Module):
@@ -229,7 +237,7 @@ class VariationRatio(Module):
             the total variation ratio
 
         """
-        return func.variation_ratio(input_)
+        return func.variation_ratio(input_, inplace=not input_.requires_grad)
 
 
 class PredictionAndUncertainties(Module):
@@ -249,6 +257,6 @@ class PredictionAndUncertainties(Module):
         input_.to(midnite.get_device())
         return (
             input_.mean(dim=(input_.dim() - 1,)),
-            func.predictive_entropy(input_),
-            func.mutual_information(input_),
+            func.predictive_entropy(input_, inplace=not input_.requires_grad),
+            func.mutual_information(input_, inplace=not input_.requires_grad),
         )

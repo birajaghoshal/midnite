@@ -90,8 +90,7 @@ def test_upscale(mocker):
 def test_guided_gradcam(mocker):
     """Check the guided gradcam wiring."""
     input_ = torch.zeros((3, 5, 5))
-    gradcam_out = torch.zeros((2, 2))
-    scaled_out = torch.ones((5, 5)).mul_(2)
+    gradcam_out = torch.ones((5, 5)).mul_(2)
     backprop_out = torch.ones((5, 5)).mul_(3)
     mocker.patch(
         "midnite.visualization.compound_methods.gradcam", return_value=gradcam_out
@@ -100,14 +99,10 @@ def test_guided_gradcam(mocker):
         "midnite.visualization.compound_methods.guided_backpropagation",
         return_value=backprop_out,
     )
-    mocker.patch(
-        "midnite.visualization.compound_methods._upscale", return_value=scaled_out
-    )
 
     res = guided_gradcam([mocker.Mock(spec=Module)], [mocker.Mock(spec=Module)], input_)
 
     compound_methods.gradcam.assert_called_once()
     compound_methods.gradcam.assert_called_once()
-    compound_methods._upscale.assert_called_once_with(gradcam_out, (5, 5))
     assert_that(res.size()).is_equal_to((5, 5))
     assert_that(res.sum()).is_equal_to(5 * 5 * 6)

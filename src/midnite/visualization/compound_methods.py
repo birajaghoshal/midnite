@@ -121,7 +121,8 @@ def gradcam(
     )
     # Apply spatial GradAM on classes
     gradam = GradAM(classifier, class_selector, features, SpatialSplit())
-    return gradam.visualize(input_image)
+    result = gradam.visualize(input_image)
+    return _upscale(result, tuple(input_image.size()[2:]))
 
 
 def guided_gradcam(
@@ -152,14 +153,13 @@ def guided_gradcam(
         input_image,
         n_top_classes,
     )
-    cam_scaled = _upscale(cam, input_image.size()[2:])
 
     # Create guided backprop image
     guided_backprop = guided_backpropagation(
         feature_layers + classifier_layers, input_image, n_top_classes
     )
     # Multiply
-    return cam_scaled.mul_(guided_backprop)
+    return cam.mul_(guided_backprop)
 
 
 def occlusion(net: Module, input_image: Tensor, n_top_classes: int = 3) -> Tensor:
@@ -178,7 +178,8 @@ def occlusion(net: Module, input_image: Tensor, n_top_classes: int = 3) -> Tenso
     class_selector = _top_k_selector(net, input_image, n_top_classes)
     # Apply occlusion
     occlusion_ = Occlusion(net, class_selector, SpatialSplit(), [1, 10, 10], [1, 5, 5])
-    return occlusion_.visualize(input_image)
+    result = occlusion_.visualize(input_image)
+    return _upscale(result, input_image.size()[1:])
 
 
 def class_visualization(net: Module, class_index: int) -> Tensor:

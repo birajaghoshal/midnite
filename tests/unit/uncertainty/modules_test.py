@@ -73,26 +73,6 @@ def test_ensemble_layer(mocker):
     assert_that(inner.forward.call_count).is_equal_to(25)
 
 
-def test_ensembles_autograd():
-    """Test if autograd is disabled in mean ensemble"""
-    inner = PredictionDropout()
-    ensemble = PredictionEnsemble(inner)
-    out = ensemble(torch.zeros(1, requires_grad=True))
-    assert_that(out.requires_grad).is_true()
-
-    ensemble.eval()
-    out = ensemble(torch.zeros(1, requires_grad=True))
-    assert_that(out.requires_grad).is_false()
-
-    ensemble = MeanEnsemble(inner)
-    out = ensemble(torch.zeros(1, requires_grad=True))
-    assert_that(out.requires_grad).is_true()
-
-    ensemble.eval()
-    out = ensemble(torch.zeros(1, requires_grad=True))
-    assert_that(out.requires_grad).is_false()
-
-
 def test_pred_entropy(mocker):
     """Predictive entropy layer test"""
     # Patch out functional
@@ -101,7 +81,7 @@ def test_pred_entropy(mocker):
     input_ = torch.ones((1, 20, 2))
     PredictiveEntropy()(input_)
 
-    functional.predictive_entropy.assert_called_once_with(input_)
+    functional.predictive_entropy.assert_called_once_with(input_, inplace=True)
 
 
 def test_mutual_information(mocker):
@@ -111,7 +91,7 @@ def test_mutual_information(mocker):
     input_ = torch.ones(1, 20, 2)
     MutualInformation()(input_)
 
-    functional.mutual_information.assert_called_once_with(input_)
+    functional.mutual_information.assert_called_once_with(input_, inplace=True)
 
 
 def test_variation_ratio(mocker):
@@ -121,7 +101,7 @@ def test_variation_ratio(mocker):
     input_ = torch.ones(1, 20, 2)
     VariationRatio()(input_)
 
-    functional.variation_ratio.assert_called_once_with(input_)
+    functional.variation_ratio.assert_called_once_with(input_, inplace=True)
 
 
 def test_prediction_and_uncertainties(mocker):
@@ -134,8 +114,8 @@ def test_prediction_and_uncertainties(mocker):
 
     assert_array_almost_equal(output, [0.6])
 
-    functional.predictive_entropy.assert_called_once_with(input_)
-    functional.mutual_information.assert_called_once_with(input_)
+    functional.predictive_entropy.assert_called_once_with(input_, inplace=True)
+    functional.mutual_information.assert_called_once_with(input_, inplace=True)
 
 
 def test_prediction_ensemble_layer_modes():

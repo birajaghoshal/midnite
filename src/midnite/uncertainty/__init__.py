@@ -1,3 +1,4 @@
+from .modules import EnsembleLayer
 from .modules import MeanEnsemble
 from .modules import MutualInformation
 from .modules import PredictionAndUncertainties
@@ -15,5 +16,6 @@ __all__ = [
     "MutualInformation",
     "VariationRatio",
     "PredictionAndUncertainties",
+    "EnsembleLayer",
     "functional",
 ]

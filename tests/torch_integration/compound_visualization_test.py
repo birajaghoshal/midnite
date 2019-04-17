@@ -39,7 +39,7 @@ def test_gradcam(net, single_img):
         single_img,
     )
 
-    assert_that(result.size()).is_equal_to((6, 6))
+    assert_that(result.size()).is_equal_to(single_img.size()[1:])
     assert torch.all(result >= 0)
     assert_that(result.sum().item()).is_greater_than(0)
 
