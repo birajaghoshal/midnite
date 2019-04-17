@@ -130,11 +130,13 @@ def gradcam(
     return _upscale(result, tuple(input_image.size()[2:]))
 
 
-def graduam(features: Module, classifier: Module, input_image: Tensor) -> Tensor:
+def graduam(
+    features: Module, classifier: Module, input_image: Tensor, num_samples: int = 50
+) -> Tensor:
     """TODO"""
     input_image = _prepare_input(input_image)
 
-    feature_ensemble = PredictionEnsemble(features)
+    feature_ensemble = PredictionEnsemble(features, num_samples)
     classifier_ensemble = EnsembleLayer(Sequential(classifier, Softmax(dim=1)))
 
     gradam = GradAM(
