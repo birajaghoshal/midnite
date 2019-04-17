@@ -228,7 +228,7 @@ def test_chunk_matrixes(mocker):
         mocker.Mock(spec=NeuronSelector),
         mocker.Mock(spec=LayerSplit),
         [3, 2, 4],
-        [],
+        [1, 1, 1],
     )
     matrices = sut._chunk_matrixes([3, 5, 6])
     assert_that(matrices).is_length(3)

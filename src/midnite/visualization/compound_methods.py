@@ -124,24 +124,6 @@ def gradcam(
     return gradam.visualize(input_image)
 
 
-def occlusion(net: Module, input_image: Tensor, n_top_classes: int = 3) -> Tensor:
-    """Creates a attribution heatmap by occluding parts of the input image.
-
-    Args:
-        net:
-        input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
-        n_top_classes: the number of classes to account for in the attribution
-
-    Returns:
-
-    """
-    input_image = _prepare_input(input_image)
-    class_selector = _top_k_selector(net, input_image, n_top_classes)
-    # Apply occlusion
-    occlusion = Occlusion(net, class_selector, SpatialSplit(), [3, 10, 10])
-    return occlusion.visualize(input_image)
-
-
 def guided_gradcam(
     feature_layers: List[Module],
     classifier_layers: List[Module],
@@ -180,11 +162,30 @@ def guided_gradcam(
     return cam_scaled.mul_(guided_backprop)
 
 
-def class_visualization(model: Module, class_index: int) -> Tensor:
+def occlusion(net: Module, input_image: Tensor, n_top_classes: int = 3) -> Tensor:
+    """Creates a attribution heatmap by occluding parts of the input image.
+
+    Args:
+        net: the network to visualize attribution for
+        input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
+        n_top_classes: the number of classes to account for
+
+    Returns:
+        a occlusion heatmap of dimensions (h, w)
+
+    """
+    input_image = _prepare_input(input_image)
+    class_selector = _top_k_selector(net, input_image, n_top_classes)
+    # Apply occlusion
+    occlusion_ = Occlusion(net, class_selector, SpatialSplit(), [1, 10, 10], [1, 5, 5])
+    return occlusion_.visualize(input_image)
+
+
+def class_visualization(net: Module, class_index: int) -> Tensor:
     """Visualizes a class for a classification network.
 
     Args:
-        model: the model to visualize for
+        net: the network to visualize for
         class_index: the index of the class to visualize
 
     """
@@ -192,7 +193,7 @@ def class_visualization(model: Module, class_index: int) -> Tensor:
         raise ValueError(f"Invalid class: {class_index}")
 
     img = PixelActivation(
-        model,
+        net,
         SplitSelector(NeuronSplit(), [class_index]),
         opt_n=500,
         iter_n=20,
@@ -204,7 +205,7 @@ def class_visualization(model: Module, class_index: int) -> Tensor:
     ).visualize()
 
     return PixelActivation(
-        model,
+        net,
         SplitSelector(NeuronSplit(), [class_index]),
         opt_n=100,
         iter_n=int(50),

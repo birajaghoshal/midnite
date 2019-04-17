@@ -244,6 +244,8 @@ class Occlusion(Attribution):
             norm: the norm to be computed
         """
         super().__init__([], net, top_layer_selector, bottom_layer_split)
+        if not len(chunk_size) == len(stride):
+            raise ValueError("Stride and chunk size must have same dimensionality")
         self.chunk_size = chunk_size
         self.stride = stride
         if norm < 1:
@@ -257,7 +259,7 @@ class Occlusion(Attribution):
         matrix = torch.eye(size, device=midnite.get_device())
         # Add smear diagonals
         for i in range(1, smear):
-            matrix[i:, :-i] += torch.eye(size - i)
+            matrix[i:, :-i] += torch.eye(size - i, device=midnite.get_device())
         return matrix.clamp_(max=1)
 
     def _chunk_matrixes(self, input_size: List[int]) -> List[Tensor]:
