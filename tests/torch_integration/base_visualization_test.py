@@ -14,8 +14,9 @@ from midnite.visualization.base import BlurTransform
 from midnite.visualization.base import ChannelSplit
 from midnite.visualization.base import GradAM
 from midnite.visualization.base import GuidedBackpropagation
-from midnite.visualization.base import NeuronSelector
+from midnite.visualization.base import Identity
 from midnite.visualization.base import NeuronSplit
+from midnite.visualization.base import Occlusion
 from midnite.visualization.base import PixelActivation
 from midnite.visualization.base import RandomTransform
 from midnite.visualization.base import ResizeTransform
@@ -35,16 +36,10 @@ def net_layers(net) -> List[Module]:
     )
 
 
-@pytest.fixture
-def class_selector() -> NeuronSelector:
-    """Class selector for the correct class of the example image."""
-    return SplitSelector(NeuronSplit(), [283])
-
-
-def test_channel_backpropagation(net_layers, img, class_selector):
+def test_channel_backpropagation(net_layers, img, correct_class_selector):
     """Test backpropagation with channel split."""
     result = (
-        Backpropagation(Sequential(*net_layers), class_selector, ChannelSplit())
+        Backpropagation(Sequential(*net_layers), correct_class_selector, ChannelSplit())
         .visualize(img)
         .cpu()
     )
@@ -53,10 +48,10 @@ def test_channel_backpropagation(net_layers, img, class_selector):
     assert_that(result.size(0)).is_equal_to(3)
 
 
-def test_spatial_guided_backpropagation(net_layers, img, class_selector):
+def test_spatial_guided_backpropagation(net_layers, img, correct_class_selector):
     """Test guided backpropagation with a spatial split."""
     result = (
-        GuidedBackpropagation(net_layers, class_selector, SpatialSplit())
+        GuidedBackpropagation(net_layers, correct_class_selector, SpatialSplit())
         .visualize(img)
         .cpu()
     )
@@ -85,18 +80,20 @@ def test_partial_guided_backpropagation(net, img):
     assert_that(result.sum().item()).is_greater_than(0)
 
 
-def _get_gradam(network, split, class_selector):
+def _get_gradam(network, split, correct_class_selector):
     return GradAM(
         Sequential(Flatten(), network.classifier),
-        class_selector,
+        correct_class_selector,
         Sequential(network.features, network.avgpool),
         split,
     )
 
 
-def test_gradam_spatial(net, img, class_selector):
+def test_gradam_spatial(net, img, correct_class_selector):
     """Test GradAM over spatial split."""
-    result = _get_gradam(net, SpatialSplit(), class_selector).visualize(img).cpu()
+    result = (
+        _get_gradam(net, SpatialSplit(), correct_class_selector).visualize(img).cpu()
+    )
 
     size = result.size()
     assert_that(size).is_length(2)
@@ -106,7 +103,7 @@ def test_gradam_spatial(net, img, class_selector):
     assert_that(result.sum().item()).is_greater_than(0)
 
 
-def test_gradam_channel(net, random_img, class_selector):
+def test_gradam_channel(net, random_img, correct_class_selector):
     """Test GradAM over channel split, with random image.
 
     Uses random image as in the example, there is no channel which is important over
@@ -114,7 +111,9 @@ def test_gradam_channel(net, random_img, class_selector):
 
     """
     result = (
-        _get_gradam(net, ChannelSplit(), class_selector).visualize(random_img).cpu()
+        _get_gradam(net, ChannelSplit(), correct_class_selector)
+        .visualize(random_img)
+        .cpu()
     )
 
     # 256 channels
@@ -123,9 +122,13 @@ def test_gradam_channel(net, random_img, class_selector):
     assert_that(result.sum().item()).is_greater_than(0)
 
 
-def test_gradam_neuron(net, random_img, class_selector):
+def test_gradam_neuron(net, random_img, correct_class_selector):
     """Test GradAM over neuron split, with random image."""
-    result = _get_gradam(net, NeuronSplit(), class_selector).visualize(random_img).cpu()
+    result = (
+        _get_gradam(net, NeuronSplit(), correct_class_selector)
+        .visualize(random_img)
+        .cpu()
+    )
 
     # 256 x 6 x 6 neurons
     assert_that(result.size()).is_equal_to((256, 6, 6))
@@ -133,9 +136,30 @@ def test_gradam_neuron(net, random_img, class_selector):
     assert_that(result.sum().item()).is_greater_than(0)
 
 
-def test_pixel_activation_simple(net, class_selector):
+def test_occlusion_channel(net, img):
+    """Test occlusion by channels on the total output."""
+    sut = Occlusion(
+        net, SplitSelector(Identity(), []), ChannelSplit(), [1, 1, 1], [1, 1, 1]
+    )
+    result = sut.visualize(img)
+    assert_that(result.size()).is_equal_to((3,))
+    assert torch.all(result > 0)
+
+
+def test_occlusion_spatial(net, img, correct_class_selector):
+    """Test occluding pixels on the class output."""
+    sut = Occlusion(
+        net, correct_class_selector, NeuronSplit(), [2, 2, 2], [3, 100, 100]
+    )
+    result = sut.visualize(img)
+    assert_that(result.size()).is_equal_to((1, 5, 3))
+    # At that size, each chunk should have a influence
+    assert torch.all(result > 0)
+
+
+def test_pixel_activation_simple(net, correct_class_selector):
     """Test pixel activation without any transformations/regularizations."""
-    opt = PixelActivation(net, class_selector, iter_n=2, opt_n=2)
+    opt = PixelActivation(net, correct_class_selector, iter_n=2, opt_n=2)
     out = opt.visualize()
     assert_that(out.size()).is_length(3)
     assert_that(out.size(0)).is_equal_to(3)
@@ -143,11 +167,11 @@ def test_pixel_activation_simple(net, class_selector):
     assert torch.all(out <= 1)
 
 
-def test_pixel_activation_complex(net, class_selector):
+def test_pixel_activation_complex(net, correct_class_selector):
     """Test pixel activation with all transformatinons/regularizers activated."""
     opt = PixelActivation(
         net,
-        class_selector,
+        correct_class_selector,
         iter_n=2,
         opt_n=2,
         init_size=50,
