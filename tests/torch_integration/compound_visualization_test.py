@@ -77,7 +77,7 @@ def test_occlusion(mocker, net, single_img):
 
     result = occlusion(net, single_img)
 
-    assert_that(result.size()).is_equal_to((5, 3))
+    assert_that(result.size()).is_equal_to(single_img.size()[1:])
     assert torch.all(result > 0)
 
 

@@ -179,7 +179,7 @@ def occlusion(net: Module, input_image: Tensor, n_top_classes: int = 3) -> Tenso
     # Apply occlusion
     occlusion_ = Occlusion(net, class_selector, SpatialSplit(), [1, 10, 10], [1, 5, 5])
     result = occlusion_.visualize(input_image)
-    return _upscale(result, input_image.size()[1:])
+    return _upscale(result, tuple(input_image.size()[2:]))
 
 
 def class_visualization(net: Module, class_index: int) -> Tensor:
