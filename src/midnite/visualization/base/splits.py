@@ -29,7 +29,7 @@ class Identity(LayerSplit):
     def get_mask(self, index: List[int], size: List[int]) -> Tensor:
         if len(index) > 0:
             raise ValueError("No index required for identity split")
-        return torch.ones(tuple(size))
+        return torch.ones(tuple(size), device=midnite.get_device())
 
     def get_mean(self, input_):
         return input_.mean()
@@ -182,7 +182,7 @@ class SimpleSelector(NeuronSelector):
         mask_size = list(self.mask.size())
         if not mask_size == size:
             raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")
-        return self.mask
+        return self.mask.to(midnite.get_device())
 
 
 class SplitSelector(NeuronSelector):
