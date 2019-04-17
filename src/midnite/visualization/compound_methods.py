@@ -5,6 +5,7 @@ from typing import Tuple
 import torch
 from torch import Tensor
 from torch.nn import functional
+from torch.nn import Softmax
 from torch.nn.modules import Module
 from torch.nn.modules import Sequential
 
@@ -22,6 +23,10 @@ from .base import SpatialSplit
 from .base import SplitSelector
 from .base import TVRegularization
 from .base import WeightDecay
+from midnite.uncertainty import EnsembleLayer
+from midnite.uncertainty import MutualInformation
+from midnite.uncertainty import PredictionEnsemble
+from midnite.visualization.base import Identity
 from midnite.visualization.base import Occlusion
 
 
@@ -122,6 +127,23 @@ def gradcam(
     # Apply spatial GradAM on classes
     gradam = GradAM(classifier, class_selector, features, SpatialSplit())
     result = gradam.visualize(input_image)
+    return _upscale(result, tuple(input_image.size()[2:]))
+
+
+def graduam(features: Module, classifier: Module, input_image: Tensor) -> Tensor:
+    """TODO"""
+    input_image = _prepare_input(input_image)
+
+    feature_ensemble = PredictionEnsemble(features)
+    classifier_ensemble = EnsembleLayer(Sequential(classifier, Softmax(dim=1)))
+
+    gradam = GradAM(
+        Sequential(classifier_ensemble, MutualInformation()),
+        SplitSelector(Identity(), []),
+        feature_ensemble,
+        SpatialSplit(),
+    )
+    result = gradam.visualize(input_image).sum(2)
     return _upscale(result, tuple(input_image.size()[2:]))
 
 

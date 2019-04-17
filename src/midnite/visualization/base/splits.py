@@ -83,10 +83,10 @@ class SpatialSplit(LayerSplit):
         return mask
 
     def get_mean(self, input_: Tensor) -> Tensor:
-        if not len(input_.size()) == 3:
-            raise ValueError(
-                f"Input needs to have 3 dimensions: (c, h, w). Got: {input_.size()}"
-            )
+        # if not len(input_.size()) == 3:
+        #    raise ValueError(
+        #        f"Input needs to have 3 dimensions: (c, h, w). Got: {input_.size()}"
+        #    )
         # mean over channel dimension, so that there is one mean value for each spatial
         return input_.mean(0)
 
@@ -95,11 +95,9 @@ class ChannelSplit(LayerSplit):
     """Split a layer by its channels."""
 
     def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3) -> Tensor:
-        if not len(input_.size()) == 1:
-            raise ValueError(
-                "Input needs to have 1 channel dimensions: (c,). Got: ",
-                len(input_.size()),
-            )
+        # if not len(input_.size()) == 1:
+        #    raise ValueError(f"Input needs to have 1 channel dimensions: (c,)."
+        #                     f" Got: {len(input_.size())}")
         return super().fill_dimensions(input_, num_dimensions)
 
     def invert(self) -> LayerSplit:
@@ -151,6 +149,7 @@ class GroupSplit(LayerSplit):
         return list(map(lambda i: self.get_mask([i], size), indexes))
 
     def get_mask(self, index: List[int], _: List[int]) -> Tensor:
+        # TODO interpolate result mask to size dimensions
         if not len(index) == 1:
             raise ValueError("Need to provide exactly one index for a group")
         idx = index[0]
