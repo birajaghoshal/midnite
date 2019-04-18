@@ -10,11 +10,17 @@ from torch.nn.modules import Module
 from torch.nn.modules import Sequential
 
 import midnite
+from ..uncertainty import EnsembleBegin
+from ..uncertainty import EnsembleLayer
+from ..uncertainty import MutualInformationUncertainty
+from ..uncertainty import StochasticModule
 from .base import BilateralTransform
 from .base import GradAM
 from .base import GuidedBackpropagation
+from .base import Identity
 from .base import NeuronSelector
 from .base import NeuronSplit
+from .base import Occlusion
 from .base import PixelActivation
 from .base import RandomTransform
 from .base import ResizeTransform
@@ -23,11 +29,6 @@ from .base import SpatialSplit
 from .base import SplitSelector
 from .base import TVRegularization
 from .base import WeightDecay
-from midnite.uncertainty import EnsembleLayer
-from midnite.uncertainty import MutualInformation
-from midnite.uncertainty import PredictionEnsemble
-from midnite.visualization.base import Identity
-from midnite.visualization.base import Occlusion
 
 
 def _prepare_input(img: Tensor) -> Tensor:
@@ -59,7 +60,7 @@ def _top_k_selector(net: Module, img: Tensor, k) -> NeuronSelector:
         neuron selector for the top k classes
 
     """
-    net = net.to(midnite.get_device()).eval()
+    net = net.to(midnite.get_device())
     out = net(img).squeeze(0)
     mask = _top_k_mask(out, k)
 
@@ -95,7 +96,8 @@ def guided_backpropagation(
     """
     # Find classes to analyze
     input_image = _prepare_input(input_image)
-    class_selector = _top_k_selector(Sequential(*layers), input_image, n_top_classes)
+    net = Sequential(*layers).eval()
+    class_selector = _top_k_selector(net, input_image, n_top_classes)
 
     # Apply guided backpropagation
     backprop = GuidedBackpropagation(layers, class_selector, SpatialSplit())
@@ -122,7 +124,7 @@ def gradcam(
     # Get selector for top k classes
     input_image = _prepare_input(input_image)
     class_selector = _top_k_selector(
-        Sequential(features, classifier), input_image, n_top_classes
+        Sequential(features.eval(), classifier.eval()), input_image, n_top_classes
     )
     # Apply spatial GradAM on classes
     gradam = GradAM(classifier, class_selector, features, SpatialSplit())
@@ -131,21 +133,37 @@ def gradcam(
 
 
 def graduam(
-    features: Module, classifier: Module, input_image: Tensor, num_samples: int = 50
+    features: StochasticModule,
+    classifier: StochasticModule,
+    input_image: Tensor,
+    num_samples: int = 50,
 ) -> Tensor:
-    """TODO"""
+    """Creates a gradient uncertainty attribution heatmap from the input image.
+
+    Args:
+        features: spatial feature part as stochastic module
+        classifier: classifier part as stochastic module
+        input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
+        num_samples: number of stochastic samples to run
+
+    Returns:
+        a GradUAM heatmap of dimensions (h, w)
+
+    """
     input_image = _prepare_input(input_image)
 
-    feature_ensemble = PredictionEnsemble(features, num_samples)
+    ensemble_start = EnsembleBegin(num_samples).stochastic_eval()
+    feature_ensemble = EnsembleLayer(features).stochastic_eval()
     classifier_ensemble = EnsembleLayer(Sequential(classifier, Softmax(dim=1)))
+    classifier_ensemble.stochastic_eval()
 
     gradam = GradAM(
-        Sequential(classifier_ensemble, MutualInformation()),
+        Sequential(classifier_ensemble, MutualInformationUncertainty()),
         SplitSelector(Identity(), []),
-        feature_ensemble,
+        Sequential(ensemble_start, feature_ensemble),
         SpatialSplit(),
     )
-    result = gradam.visualize(input_image).sum(2)
+    result = gradam.visualize(input_image).sum(-1)
     return _upscale(result, tuple(input_image.size()[2:]))
 
 
@@ -172,8 +190,8 @@ def guided_gradcam(
     input_image = _prepare_input(input_image)
     # Create scaled up gradcam image
     cam = gradcam(
-        Sequential(*feature_layers),
-        Sequential(*classifier_layers),
+        Sequential(*feature_layers).eval(),
+        Sequential(*classifier_layers).eval(),
         input_image,
         n_top_classes,
     )
@@ -199,7 +217,7 @@ def occlusion(net: Module, input_image: Tensor, n_top_classes: int = 3) -> Tenso
 
     """
     input_image = _prepare_input(input_image)
-    class_selector = _top_k_selector(net, input_image, n_top_classes)
+    class_selector = _top_k_selector(net.eval(), input_image, n_top_classes)
     # Apply occlusion
     occlusion_ = Occlusion(net, class_selector, SpatialSplit(), [1, 10, 10], [1, 5, 5])
     result = occlusion_.visualize(input_image)
@@ -218,7 +236,7 @@ def class_visualization(net: Module, class_index: int) -> Tensor:
         raise ValueError(f"Invalid class: {class_index}")
 
     img = PixelActivation(
-        net,
+        net.eval(),
         SplitSelector(NeuronSplit(), [class_index]),
         opt_n=500,
         iter_n=20,

@@ -93,7 +93,7 @@ class Occlusion(Attribution):
     def visualize(self, input_: Tensor) -> Tensor:
         # Preparation
         input_ = input_.clone().detach().to(midnite.get_device())
-        self.black_box_net.to(midnite.get_device()).eval()
+        self.black_box_net.to(midnite.get_device())
 
         # Make reference prediction
         pred = self.black_box_net(input_).squeeze(0)

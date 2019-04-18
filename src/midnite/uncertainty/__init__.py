@@ -1,19 +1,21 @@
+from .modules import EnsembleBegin
 from .modules import EnsembleLayer
 from .modules import MeanEnsemble
-from .modules import MutualInformation
+from .modules import MutualInformationUncertainty
 from .modules import PredictionAndUncertainties
-from .modules import PredictionDropout
-from .modules import PredictionEnsemble
 from .modules import PredictiveEntropy
+from .modules import StochasticDropouts
+from .modules import StochasticModule
 from .modules import VariationRatio
 from midnite.uncertainty import functional
 
 __all__ = [
-    "PredictionDropout",
-    "PredictionEnsemble",
+    "StochasticModule",
+    "StochasticDropouts",
+    "EnsembleBegin",
     "MeanEnsemble",
     "PredictiveEntropy",
-    "MutualInformation",
+    "MutualInformationUncertainty",
     "VariationRatio",
     "PredictionAndUncertainties",
     "EnsembleLayer",

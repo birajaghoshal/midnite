@@ -83,13 +83,15 @@ def test_pred_entropy_image_batch(inplace):
 def test_mutual_information(inplace):
     """Test the mutual information function."""
     input_ = torch.tensor([[[1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 1.0, 1.0, 1.0]]])
-    output = functional.mutual_information(input_.clone(), inplace=inplace).numpy()
+    output = functional.mutual_information_uncertainty(
+        input_.clone(), inplace=inplace
+    ).numpy()
 
     assert_array_almost_equal(output, [[0.3219, 0.1785]], decimal=4)
 
     # More confident prediction
     input_ = torch.tensor([[[0.2, 0.3, 0.1], [0.8, 0.7, 0.9]]])
-    output = functional.mutual_information(input_, inplace=inplace).numpy()
+    output = functional.mutual_information_uncertainty(input_, inplace=inplace).numpy()
 
     assert_array_almost_equal(output, [[0.0174, 0.0042]], decimal=4)
 
@@ -103,7 +105,7 @@ def test_mutual_information_batch(inplace):
             [[0.2, 0.3, 0.1, 0.2], [0.8, 0.7, 0.9, 0.8]],
         ]
     )
-    output = functional.mutual_information(input_, inplace=inplace).numpy()
+    output = functional.mutual_information_uncertainty(input_, inplace=inplace).numpy()
 
     assert_array_almost_equal(output, [[0.3466, 0.2158], [0.0131, 0.0031]], decimal=4)
 
@@ -114,7 +116,7 @@ def test_mutual_information_image_batch(inplace):
     sample_1 = torch.ones(3, 4, 5, 5)
     sample_2 = torch.zeros(3, 4, 5, 5)
 
-    output = functional.mutual_information(
+    output = functional.mutual_information_uncertainty(
         torch.stack((sample_1, sample_2), dim=4), inplace=inplace
     )
 
@@ -136,7 +138,7 @@ def test_variation_ratio(inplace):
     [
         functional.variation_ratio,
         functional.predictive_entropy,
-        functional.mutual_information,
+        functional.mutual_information_uncertainty,
     ],
 )
 def test_variation_non_probabilistic(acquisition_function):
@@ -178,5 +180,5 @@ def test_variation_ratio_image_batch(inplace):
 def test_mutual_information_zero(inplace):
     """Mutual information should be zero on equal predictions"""
     input_ = torch.ones((1, 1000, 200)) * 0.001
-    res = functional.mutual_information(input_, inplace=inplace)
+    res = functional.mutual_information_uncertainty(input_, inplace=inplace)
     assert torch.all(res == 0)
