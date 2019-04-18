@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -15,12 +15,13 @@ from torch.nn import Dropout
 from torch.nn import Softmax
 from torch.nn import Sequential
 import matplotlib.pyplot as plt
-import data_utils
-from data_utils import DataConfig
-from plot_utils import show_normalized
+from data_utils import *
 from plot_utils import *
 
-from midnite.uncertainty import modules
+from midnite.visualization import graduam
+from midnite.common import Flatten
+import midnite
+from midnite.uncertainty import *
 
 
 # In[2]:
@@ -33,34 +34,24 @@ alexnet.classifier.add_module("softmax", Softmax(dim=1))
 # In[3]:
 
 
-id_example = data_utils.get_example_from_path("../data/imagenet_example_283.jpg", DataConfig.ALEX_NET)
-ood_example = data_utils.get_example_from_path("../data/ood_example.jpg", DataConfig.ALEX_NET)
-
-show(id_example)
-show(ood_example)
+id_example = get_example_from_path("../data/imagenet_example_283.jpg", DataConfig.ALEX_NET)
+ood_example = get_example_from_path("../data/ood_example.jpg", DataConfig.ALEX_NET)
 
 
 # In[4]:
 
 
-random_example = data_utils.get_random_example(DataConfig.ALEX_NET)
+random_example = get_random_example(DataConfig.ALEX_NET)
 
 
 # In[5]:
 
 
-from midnite.visualization import graduam
-from torch.nn import Sequential
-from midnite.common import Flatten
-import midnite
-
-
 def uncert(img):
-    with midnite.device("cuda:0"):
-        result = graduam(Sequential(*(list(alexnet.features.children()) + [alexnet.avgpool])),
-                         Sequential(*([Flatten()] + list(alexnet.classifier.children()))),
-                        img)
-        show_heatmap(result, 1.5)
+    with midnite.device("cpu"): # cuda:0 if available
+        result = graduam(StochasticDropouts(Sequential(*(list(alexnet.features.children()) + [alexnet.avgpool]))),
+                         StochasticDropouts(Sequential(*([Flatten()] + list(alexnet.classifier.children())))),
+                        img, 50)
         show_heatmap(result, 1.5, img)
 
 
@@ -70,10 +61,4 @@ def uncert(img):
 uncert(id_example)
 uncert(ood_example)
 uncert(random_example)
-
-
-# In[ ]:
-
-
-
 

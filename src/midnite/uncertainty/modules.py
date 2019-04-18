@@ -2,6 +2,7 @@
 import logging
 from abc import ABC
 from typing import Tuple
+from typing import Union
 
 import torch
 import tqdm
@@ -12,6 +13,7 @@ from torch.nn import Dropout2d
 from torch.nn import Dropout3d
 from torch.nn import FeatureAlphaDropout
 from torch.nn import Module
+from torch.nn import Sequential
 from tqdm import trange
 
 import midnite
@@ -141,7 +143,7 @@ class EnsembleLayer(InnerForwardMixin, StochasticModule):
 
     """
 
-    def __init__(self, inner: StochasticModule):
+    def __init__(self, inner: Union[Module, StochasticModule]):
         """
         Args:
             inner: stochastic inner module
@@ -165,7 +167,7 @@ class EnsembleLayer(InnerForwardMixin, StochasticModule):
 class MeanEnsemble(InnerForwardMixin, StochasticModule):
     """Module for models that want the mean of their ensemble predictions."""
 
-    def __init__(self, inner: StochasticModule, num_passes: int = 20):
+    def __init__(self, inner: Union[Module, StochasticModule], num_passes: int = 20):
         """
         Args:
             inner: stochastic inner module
@@ -265,3 +267,21 @@ class PredictionAndUncertainties(Module):
                 input_, inplace=not input_.requires_grad
             ),
         )
+
+
+class Ensemble(InnerForwardMixin, StochasticModule):
+    """Complete ensemble wrapper."""
+
+    def __init__(
+        self, begin: EnsembleBegin, acquisition: Module, *layers: EnsembleLayer
+    ):
+        """
+        Args:
+            start: the ensemble start
+            *layers: the intermediate layers
+            acquisition: the final acquisition function
+        """
+        super().__init__()
+        self.add_module("start", begin)
+        self.add_module("layers", Sequential(*layers))
+        self.add_module("acquisition", acquisition)
