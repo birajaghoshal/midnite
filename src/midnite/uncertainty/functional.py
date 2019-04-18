@@ -9,7 +9,6 @@ import logging
 
 import torch
 from torch import Tensor
-from torch.nn import functional
 
 import midnite
 
@@ -49,6 +48,8 @@ def predictive_entropy(input_: Tensor, log_clamp=1e-40, inplace=False) -> Tensor
      i.e. H[y|x,D] = - sum_y p(y|x,D) * log p(y|x,D), of shape (N, K, ...)
 
     """
+    if not torch.all(input_ >= 0) or not torch.all(input_ <= 1):
+        raise ValueError("Not a probabilistic input")
     input_.to(midnite.get_device())
     # Min clamp necessary in case of log(0)
     _ensemble_mean = mean_prediction(input_)
@@ -62,7 +63,9 @@ def predictive_entropy(input_: Tensor, log_clamp=1e-40, inplace=False) -> Tensor
         return res
 
 
-def mutual_information(input_: Tensor, log_clamp=1e-40, inplace=False) -> Tensor:
+def mutual_information(
+    input_: Tensor, log_clamp=1e-40, inplace=False, zero_clamp=1e-6
+) -> Tensor:
     """Calculates the mutual information over the samples in the input.
 
     Approximation: I[y,w|x,D] = H[y|x,D] - E[sum_y H[y|x,w]]
@@ -74,11 +77,14 @@ def mutual_information(input_: Tensor, log_clamp=1e-40, inplace=False) -> Tensor
         input_: concatenated predictions for K classes and T samples (minibatch size N),
          of shape (N, K, T, ...)
         inplace: whether to perform the operations in-place
+        zero_clamp: any value larger as this counts as non zero
 
     Returns: the mutual information, i.e. I[y,w|x,D] = H[y|x,D] - E[sum_y H[y|x,w]],
      of shape (N, K, ...)
 
     """
+    if not torch.all(input_ >= 0) or not torch.all(input_ <= 1):
+        raise ValueError("Not a probabilistic input")
     input_.to(midnite.get_device())
     # Min clamp necessary in case of log(0)
     pred_entropy = predictive_entropy(input_, log_clamp, inplace)
@@ -89,15 +95,16 @@ def mutual_information(input_: Tensor, log_clamp=1e-40, inplace=False) -> Tensor
         expected_entropy = (
             clamped_input.mul_(clamped_input.log()).sum(dim=-1).div_(num_samples)
         )
+        result = expected_entropy.add_(pred_entropy)
+        return result.sub_(zero_clamp).clamp_(0).add_(zero_clamp)
 
-        return expected_entropy.add_(pred_entropy)
     else:
         clamped_input = input_.clamp(min=log_clamp)
         expected_entropy = (
             clamped_input.mul(clamped_input.log()).sum(dim=-1).div(num_samples)
         )
-
-        return expected_entropy.add(pred_entropy)
+        result = expected_entropy.add(pred_entropy)
+        return result.sub(zero_clamp).clamp(0).add(zero_clamp)
 
 
 def variation_ratio(input_: Tensor, inplace=False) -> Tensor:
@@ -111,15 +118,11 @@ def variation_ratio(input_: Tensor, inplace=False) -> Tensor:
     Returns: the variation ratio, i.e. 1 - max_y p(y|x,D), of shape (N, K, ...)
 
     """
+    if not torch.all(input_ >= 0) or not torch.all(input_ <= 1):
+        raise ValueError("Not a probabilistic input")
     # shape (N, K, ...)
     input_.to(midnite.get_device())
     mean = mean_prediction(input_)
-
-    prob_sum = mean.sum(dim=(1,))
-
-    if not torch.allclose(prob_sum, torch.ones_like(prob_sum)):
-        log.warning("variation ratio input not in probabilistic form, using softmax")
-        mean = functional.softmax(mean, dim=1)
 
     # shape (N, ...)
     max_mean = torch.max(mean, dim=1)[0]

@@ -80,6 +80,7 @@ class _Ensemble(Module, ABC):
         if dropout_train:
             for module in inner.modules():
                 if _is_dropout(module):
+                    log.info(f"Setting dropout module to training mode: {module}")
                     module.train()
 
     def train(self, mode=True):
@@ -93,6 +94,7 @@ class _Ensemble(Module, ABC):
         # Set dropout modules to train.
         if not mode and self.dropout_eval:
             for module in filter(_is_dropout, self.inner.modules()):
+                log.info(f"Keeping dropout module in training mode: {module}")
                 module.train()
 
         return self

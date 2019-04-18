@@ -1,5 +1,6 @@
 """Numerical tests for the functional module"""
 import numpy as np
+import pytest
 import torch
 from assertpy import assert_that
 from numpy.testing import assert_array_almost_equal
@@ -119,12 +120,19 @@ def test_variation_ratio():
     assert_array_almost_equal(output, [0.4])
 
 
-def test_variation_ratio_no_softmax():
+@pytest.mark.parametrize(
+    "acquisition_function",
+    [
+        functional.variation_ratio,
+        functional.predictive_entropy,
+        functional.mutual_information,
+    ],
+)
+def test_variation_non_probabilistic(acquisition_function):
     """Test the variation ratio function with non-probabilistic inputs"""
     input_ = torch.tensor([[[0.0, 2.0, 0.4], [2.0, 0.0, 1.6]]])
-    output = functional.variation_ratio(input_).numpy()
-
-    assert_array_almost_equal(output, [0.401312])
+    with pytest.raises(ValueError):
+        acquisition_function(input_)
 
 
 def test_variation_ratio_batch():
