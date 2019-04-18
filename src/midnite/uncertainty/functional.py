@@ -29,6 +29,10 @@ def mean_prediction(input_: Tensor) -> Tensor:
 
     """
     input_.to(midnite.get_device())
+    # Check if all equal predictions, as .mean would introduce numerical error
+    if input_.unique(dim=-1).size(-1) == 1:
+        return input_.select(dim=-1, index=-1).clone()
+
     return torch.mean(input_, dim=(-1,))
 
 
@@ -58,14 +62,10 @@ def predictive_entropy(input_: Tensor, log_clamp=1e-40, inplace=False) -> Tensor
         return _ensemble_mean.mul_(_ensemble_mean.log()).mul_(-1.0)
     else:
         _ensemble_mean = _ensemble_mean.clamp(log_clamp)
-        log = _ensemble_mean.log()
-        res = _ensemble_mean.mul(log).mul(-1.0)
-        return res
+        return _ensemble_mean.mul(_ensemble_mean.log()).mul(-1.0)
 
 
-def mutual_information(
-    input_: Tensor, log_clamp=1e-40, inplace=False, zero_clamp=1e-6
-) -> Tensor:
+def mutual_information(input_: Tensor, log_clamp=1e-40, inplace=False) -> Tensor:
     """Calculates the mutual information over the samples in the input.
 
     Approximation: I[y,w|x,D] = H[y|x,D] - E[sum_y H[y|x,w]]
@@ -77,7 +77,6 @@ def mutual_information(
         input_: concatenated predictions for K classes and T samples (minibatch size N),
          of shape (N, K, T, ...)
         inplace: whether to perform the operations in-place
-        zero_clamp: any value larger as this counts as non zero
 
     Returns: the mutual information, i.e. I[y,w|x,D] = H[y|x,D] - E[sum_y H[y|x,w]],
      of shape (N, K, ...)
@@ -89,22 +88,15 @@ def mutual_information(
     # Min clamp necessary in case of log(0)
     pred_entropy = predictive_entropy(input_, log_clamp, inplace)
 
-    num_samples = input_.size(dim=input_.dim() - 1)
     if inplace:
         clamped_input = input_.clamp_(min=log_clamp)
-        expected_entropy = (
-            clamped_input.mul_(clamped_input.log()).sum(dim=-1).div_(num_samples)
-        )
-        result = expected_entropy.add_(pred_entropy)
-        return result.sub_(zero_clamp).clamp_(0).add_(zero_clamp)
+        expected_entropies = clamped_input.mul_(clamped_input.log())
+        return expected_entropies.add_(pred_entropy.unsqueeze_(-1)).mean(-1)
 
     else:
         clamped_input = input_.clamp(min=log_clamp)
-        expected_entropy = (
-            clamped_input.mul(clamped_input.log()).sum(dim=-1).div(num_samples)
-        )
-        result = expected_entropy.add(pred_entropy)
-        return result.sub(zero_clamp).clamp(0).add(zero_clamp)
+        expected_entropies = clamped_input.mul(clamped_input.log())
+        return expected_entropies.add(pred_entropy.unsqueeze(-1)).mean(-1)
 
 
 def variation_ratio(input_: Tensor, inplace=False) -> Tensor:
