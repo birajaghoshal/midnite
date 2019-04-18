@@ -7,10 +7,12 @@ from assertpy import assert_that
 from torch.nn import Sequential
 
 from midnite.common import Flatten
+from midnite.uncertainty import StochasticDropouts
 from midnite.visualization import gradcam
 from midnite.visualization.base import Occlusion
 from midnite.visualization.base import PixelActivation
 from midnite.visualization.compound_methods import class_visualization
+from midnite.visualization.compound_methods import graduam
 from midnite.visualization.compound_methods import guided_backpropagation
 from midnite.visualization.compound_methods import guided_gradcam
 from midnite.visualization.compound_methods import occlusion
@@ -42,6 +44,20 @@ def test_gradcam(net, single_img):
     assert_that(result.size()).is_equal_to(single_img.size()[1:])
     assert torch.all(result >= 0)
     assert_that(result.sum().item()).is_greater_than(0)
+
+
+def test_graduam(net, single_img):
+    """Run graduam and check sizes + sufficiently large gradients"""
+    result = graduam(
+        StochasticDropouts(Sequential(net.features, net.avgpool)),
+        StochasticDropouts(Sequential(Flatten(), net.classifier)),
+        single_img,
+        5,
+    )
+
+    assert_that(result.size()).is_equal_to(single_img.size()[1:])
+    assert torch.all(result >= 0)
+    assert_that(result.sum().item()).is_greater_than(0.0001)
 
 
 def test_guided_gradcam(net, single_img):

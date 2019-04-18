@@ -203,7 +203,6 @@ def test_fill_dimension(in_dim, num_dim, split, out_dim):
         ((4, 5), 1, SpatialSplit()),
         ((3, 4, 5), 3, SpatialSplit()),
         (4, 0, ChannelSplit()),
-        ((4, 5), 2, ChannelSplit()),
         ((3, 4, 5), 2, NeuronSplit()),
         ((), -1, Identity()),
         (1, 1, Identity()),

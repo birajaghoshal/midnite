@@ -43,7 +43,7 @@ class GradAM(Attribution):
 
     def visualize(self, input_: Tensor) -> Tensor:
         # Prepare layers/input
-        self.base_net.to(midnite.get_device()).eval()
+        self.base_net.to(midnite.get_device())
         input_ = input_.clone().detach().to(midnite.get_device())
 
         # forward pass through base layers

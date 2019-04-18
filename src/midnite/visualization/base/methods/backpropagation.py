@@ -36,7 +36,7 @@ class Backpropagation(Attribution):
     def visualize(self, input_: Tensor) -> Tensor:
         # Prepare layers/input
         input_ = input_.clone().detach().to(midnite.get_device()).requires_grad_()
-        self.black_box_net.to(midnite.get_device()).eval()
+        self.black_box_net.to(midnite.get_device())
 
         # forward pass
         out = self.black_box_net(input_)

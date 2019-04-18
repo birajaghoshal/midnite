@@ -115,8 +115,8 @@ def test_backpropagation_wiring(mocker, layers, layer_out, id_img):
     id_img.to.assert_called_once()
     id_img.requires_grad_.assert_called_once()
 
-    layers[0].train.assert_called_once_with(False)
-    layers[1].train.assert_called_once_with(False)
+    layers[0].train.assert_not_called()
+    layers[1].train.assert_not_called()
 
     # Check forward pass
     layers[0].assert_called_once()
@@ -174,8 +174,8 @@ def test_gradcam_wiring(mocker, layers, layer_out, id_img):
     id_img.detach.assert_called_once()
     id_img.to.assert_called_once()
 
-    layers[0].train.assert_called_once_with(False)
-    layers[1].train.assert_called_once_with(False)
+    layers[0].train.assert_not_called()
+    layers[1].train.assert_not_called()
 
     # Check Calculation
     # 1. forward pass

@@ -1,5 +1,6 @@
 """General interface of the visualization building blocks"""
 import itertools
+import logging
 from typing import List
 
 import torch
@@ -8,6 +9,8 @@ from torch import Tensor
 import midnite
 from ..base.interface import LayerSplit
 from ..base.interface import NeuronSelector
+
+log = logging.getLogger(__name__)
 
 
 class Identity(LayerSplit):
@@ -51,6 +54,8 @@ class NeuronSplit(LayerSplit):
         return mask
 
     def get_mean(self, input_: Tensor) -> Tensor:
+        if not len(input_.size()) == 3:
+            log.warning(f"Input normally has 3 dimensions. Got: {input_.size()}")
         return input_
 
 
@@ -59,11 +64,8 @@ class SpatialSplit(LayerSplit):
 
     def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3):
         if not len(input_.size()) == 2:
-            raise ValueError(
-                f"Input needs to have 2 spatial dimensions: (h, w)."
-                f" Got: {input_.size()}"
-            )
-        if num_dimensions == 2:
+            log.warning(f"Input should have 2 spatial dimensions. Got: {input_.size()}")
+        if num_dimensions == 2 and len(input_.size()) == 2:
             return input_
         else:
             return super().fill_dimensions(input_.unsqueeze(0), num_dimensions)
@@ -84,9 +86,7 @@ class SpatialSplit(LayerSplit):
 
     def get_mean(self, input_: Tensor) -> Tensor:
         if not len(input_.size()) == 3:
-            raise ValueError(
-                f"Input needs to have 3 dimensions: (c, h, w). Got: {input_.size()}"
-            )
+            log.warning(f"Input normally has 3 dimensions. Got: {input_.size()}")
         # mean over channel dimension, so that there is one mean value for each spatial
         return input_.mean(0)
 
@@ -96,10 +96,7 @@ class ChannelSplit(LayerSplit):
 
     def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3) -> Tensor:
         if not len(input_.size()) == 1:
-            raise ValueError(
-                "Input needs to have 1 channel dimensions: (c,). Got: ",
-                len(input_.size()),
-            )
+            log.warning(f"Input should have 1 channel dimensions. Got: {input_.size()}")
         return super().fill_dimensions(input_, num_dimensions)
 
     def invert(self) -> LayerSplit:
@@ -117,6 +114,8 @@ class ChannelSplit(LayerSplit):
         return mask
 
     def get_mean(self, input_: Tensor) -> Tensor:
+        if not len(input_.size()) == 3:
+            log.warning(f"Input normally has 3 dimensions. Got: {input_.size()}")
         # mean over spatials, s.t. there is one mean value for each channel
         return input_.mean(-1).mean(-1)
 
@@ -151,6 +150,7 @@ class GroupSplit(LayerSplit):
         return list(map(lambda i: self.get_mask([i], size), indexes))
 
     def get_mask(self, index: List[int], _: List[int]) -> Tensor:
+        # TODO interpolate result mask to size dimensions
         if not len(index) == 1:
             raise ValueError("Need to provide exactly one index for a group")
         idx = index[0]

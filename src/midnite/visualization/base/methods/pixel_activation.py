@@ -167,7 +167,7 @@ class PixelActivation(Activation):
 
     def visualize(self, input_: Optional[Tensor] = None) -> Tensor:
         # Prepare layers/input
-        self.black_box_net.to(midnite.get_device()).eval()
+        self.black_box_net.to(midnite.get_device())
 
         if input_ is None:
             # Create uniform random starting image
