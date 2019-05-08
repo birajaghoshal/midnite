@@ -18,14 +18,25 @@ pip install dist/midnite-*.whl
 ```
 
 ### Overview
-The project is split into the following parts, with notebooks explaining them:
- - [**uncertainty**](notebooks/): confidence of predictions
- - [**visualization**](notebooks/) of network properties
-    - [**base**](notebooks/) building blocks in a consistent and flexible interface
-    - [**compound methods**](notebooks/) implementing 'standard' visualization methods
+The project is split into the following parts:
+ - **uncertainty** <sub>[notebook](notebooks/uncertainty.ipynb), [doc](TODO)</sub>: confidence of predictions
+ - **visualization** of network properties.
+    - **base** building blocks <sub>[notebook](notebooks/building_blocks.ipynb), [doc](TODO)</sub> in a consistent and flexible interface
+    - **compound** methods <sub>[notebook](notebooks/compound.ipynb), [doc](TODO)</sub> implementing 'standard' visualization methods
 
 To follow the examples interactively, make sure you have cloned the repo and run `poetry install`.
 Then start jupyter with `poetry run jupyter notebook`.
+
+### Implemented methods
+#### Uncertainty measures
+ - predictive entropy (total uncertainty). <sub>[doc](TODO), [reference](TODO)</sub>
+ - mutual information (model uncertainty). <sub>[doc](TODO), [reference](TODO)</sub>
+
+#### Visualization
+ - pixel activation optimization <sub>[building block](TODO), [doc](TODO), [reference](TODO)</sub>
+ - (guided) backpropagation<sub> [building block](TODO), [doc](TODO), [reference](TODO)</sub>
+ - (guided) gradCAM<sub> [building block](TODO), [doc](TODO), [reference](TODO)</sub>
+ - occlusion<sub> [building block](TODO), [doc](TODO), [reference](TODO)</sub>
 
 ## Development
 We value clean interfaces and well-tested code. If you want to contribute, please open an issue first.
