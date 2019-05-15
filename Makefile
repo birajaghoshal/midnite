@@ -3,8 +3,6 @@
 
 # ----------Environment Variables---------
 
-# set environment variables to be used in the commands here
-
 # ----------------Commands----------------
 
 # change the 20 value in printf to adjust width
@@ -12,17 +10,11 @@
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build the docker container
-	docker build --file docker/Dockerfile --tag luminovo/midnite:latest .
-
 check: ## Run all static checks (like pre-commit hooks)
 	pre-commit run --all-files
 
 docs: ## Build all docs
-	docker run --rm -it -v `pwd`/docs:/docs squidfunk/mkdocs-material build
-
-test: ## Run all tests
-	docker run -v `pwd`:/home/midnite luminovo/midnite:latest pytest tests/
+	docker run --rm -it -u $$(id -u):$$(id -g) -v `pwd`:/midnite tmp:1 make -sC /midnite/docs html
 
 
 # --------------Configuration-------------

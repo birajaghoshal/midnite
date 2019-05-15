@@ -1,13 +1,37 @@
+# midnite
 <p align="center">
 <a href="https://github.com/ambv/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+
 </p>
 
-# midnite
-This is a framework to see into the dark boxes that are deep neural networks.
 
-## Getting Started
+This is a framework to gain insight into [pytorch](https://pytorch.org/) deep neural networks for visual recognition tasks.
 
-### Installation
+--> **[full documentation and apidoc](https://luminovo.github.io/midnite)** <--
+
+## Overview
+The project is split into the following parts, with the linked jupyter notebooks explaining them:
+ - [uncertainty](notebooks/uncertainty.ipynb): confidence of predictions
+ - visualization of network properties.
+    - [base](notebooks/building_blocks.ipynb) building blocks in a consistent and flexible interface
+    - [compound](notebooks/compound.ipynb) methods implementing 'standard' visualization methods
+
+To follow the examples interactively, clone the repository and run `poetry install`.
+Then start jupyter with `poetry run jupyter notebook`.
+
+### Implemented methods and reference literature
+In the following, we list implemented methods and reference papers/literature.
+- [uncertainties](https://arxiv.org/abs/1506.02142)
+    - predictive entropy (total uncertainty).
+    - mutual information (model uncertainty).
+- [building blocks](https://distill.pub/2018/building-blocks/)
+- visualization
+    - [pixel activation optimization](https://distill.pub/2017/feature-visualization/)
+    - [(guided) backpropagation](TODO)
+    - [(guided) gradCAM](TODO)
+    - [occlusion](TODO)
+
+## Installation
 From package index: `pip install midnite` (not yet published!)
 or from source:
 ```
@@ -17,29 +41,8 @@ poetry build
 pip install dist/midnite-*.whl
 ```
 
-### Overview
-The project is split into the following parts:
- - **uncertainty** <sub>[notebook](notebooks/uncertainty.ipynb), [doc](TODO)</sub>: confidence of predictions
- - **visualization** of network properties.
-    - **base** building blocks <sub>[notebook](notebooks/building_blocks.ipynb), [doc](TODO)</sub> in a consistent and flexible interface
-    - **compound** methods <sub>[notebook](notebooks/compound.ipynb), [doc](TODO)</sub> implementing 'standard' visualization methods
-
-To follow the examples interactively, make sure you have cloned the repo and run `poetry install`.
-Then start jupyter with `poetry run jupyter notebook`.
-
-### Implemented methods
-#### Uncertainty measures
- - predictive entropy (total uncertainty). <sub>[doc](TODO), [reference](TODO)</sub>
- - mutual information (model uncertainty). <sub>[doc](TODO), [reference](TODO)</sub>
-
-#### Visualization
- - pixel activation optimization <sub>[building block](TODO), [doc](TODO), [reference](TODO)</sub>
- - (guided) backpropagation<sub> [building block](TODO), [doc](TODO), [reference](TODO)</sub>
- - (guided) gradCAM<sub> [building block](TODO), [doc](TODO), [reference](TODO)</sub>
- - occlusion<sub> [building block](TODO), [doc](TODO), [reference](TODO)</sub>
-
 ## Development
-We value clean interfaces and well-tested code. If you want to contribute, please open an issue first.
+We value clean interfaces and well-tested code. If you want to contribute, usually it's best to open an issue first.
 
 ### Depenency management
 We use [poetry](https://github.com/sdispater/poetry) to manage dependencies.
@@ -56,17 +59,15 @@ Run `make help` to see all available commands.
 ```
 $ make help 
 help                 Show this help message
-build                Build the docker container
 check                Run all static checks (like pre-commit hooks)
-docs                 Build all docs
-test                 Run all tests 
+docs                 Build all docs 
 ```
 <!-- END makefile-doc -->
 
 ## Acknowledgement
+Scientific sources: see [reference doc page]().
+
 Contributors:
+- luminovo.ai
 - Fabian Huch
 - Christina Aigner
-
-Papers:
-- Alex Kendall, Yarin Gal, ... +Links
