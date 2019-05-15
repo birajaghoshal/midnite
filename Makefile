@@ -14,7 +14,7 @@ check: ## Run all static checks (like pre-commit hooks)
 	pre-commit run --all-files
 
 docs: ## Build all docs
-	docker run --rm -it -u $$(id -u):$$(id -g) -v `pwd`:/midnite tmp:1 make -sC /midnite/docs html
+	docker run --rm -it -u $$(id -u):$$(id -g) -v `pwd`:/midnite dacit/sphinx-doc-extended make -sC /midnite/docs html
 
 
 # --------------Configuration-------------
