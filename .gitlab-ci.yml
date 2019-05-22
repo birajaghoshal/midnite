@@ -11,7 +11,7 @@ stages:
   - check
   - build
   - test
-  - build-artifacts
+  - deploy
 
 check:
   stage: check
@@ -39,10 +39,13 @@ integration-test:
   script:
     - poetry run pytest tests/torch_integration
 
-build-doc:
-  stage: build-artifacts
+pages:
+  stage: deploy
   script:
     - make -s docs
+    - mv docs/build/html public
+  artifacts:
+    paths:
+      - public
   only:
-    refs:
-      - master
+    - fabian_ci # master
