@@ -48,4 +48,5 @@ pages:
     paths:
       - public
   only:
-    - fabian_ci # master
+    - master
+    - fabian_doc
