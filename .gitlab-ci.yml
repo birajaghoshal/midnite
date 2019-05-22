@@ -11,6 +11,7 @@ stages:
   - check
   - build
   - test
+  - deploy
 
 check:
   stage: check
@@ -31,4 +32,21 @@ build:
 unit-test:
   stage: test
   script:
-    - poetry run pytest tests
+    - poetry run pytest tests/unit
+
+integration-test:
+  stage: test
+  script:
+    - poetry run pytest tests/torch_integration
+
+pages:
+  stage: deploy
+  script:
+    - make -s docs
+    - mv docs/build/html public
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
+    - fabian_doc

@@ -77,6 +77,9 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# All untitled notebooks
+notebooks/Untitled*
+
 # celery beat schedule file
 celerybeat-schedule
 

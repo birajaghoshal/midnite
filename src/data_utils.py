@@ -10,14 +10,14 @@ from PIL import Image
 from torch import Tensor
 from torchvision.transforms import Normalize
 
-from midnite import get_device
+import midnite
 
 
 class DataConfig(Enum):
     """Available data configs for networks."""
 
     ALEX_NET = (auto(),)
-    FCN32 = (auto(),)
+    FCN32 = auto()
 
 
 fcn_mean_bgr = torch.tensor([104.00698793, 116.66876762, 122.67891434])
@@ -26,7 +26,7 @@ alexnet_var = torch.tensor([0.229, 0.224, 0.225])
 
 
 def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> list:
-    """ Use dataloader to handle image data from image folder "data"
+    """Use dataloader to handle image data from image folder 'data'.
 
     Args:
         path_to_imagenet: path of the imagenet TEST dataset
@@ -53,7 +53,7 @@ def load_imagenet_dataset(path_to_imagenet: str, transform, batch_size: int) -> 
 
 
 def get_example_from_path(path_to_img: str, config: DataConfig) -> Tensor:
-    """Retrieves and converts an image to a processable torch tensor for AlexNet
+    """Retrieves and converts an image to a processable torch tensor for AlexNet.
 
     Args:
         path_to_img: specify the path of the image to be retrieved
@@ -67,12 +67,12 @@ def get_example_from_path(path_to_img: str, config: DataConfig) -> Tensor:
     with Image.open(abs_path_to_img) as img:
         if config is DataConfig.ALEX_NET:
             img.convert("RGB")
-            img = torch.from_numpy(np.array(img)).float().to(get_device())
+            img = torch.from_numpy(np.array(img)).float().to(midnite.get_device())
             img = img.sub_(255 * alexnet_mean).div_(255 * alexnet_var)
         elif config is DataConfig.FCN32:
             # RGB -> BGR
             img = np.array(img)[:, :, ::-1]
-            img = torch.from_numpy(np.array(img)).float().to(get_device())
+            img = torch.from_numpy(np.array(img)).float().to(midnite.get_device())
             img.sub_(fcn_mean_bgr)
         else:
             raise ValueError("Invalid config.")
@@ -89,12 +89,12 @@ def get_random_example(config: DataConfig) -> Tensor:
 
     if config is DataConfig.ALEX_NET:
         random_img = torch.randint(low=0, high=255, size=(3, 227, 227)).float()
-        random_img.to(get_device()).div_(255)
+        random_img.to(midnite.get_device()).div_(255)
         random_img = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(
             random_img
         )
     elif config is DataConfig.FCN32:
-        random_img = torch.zeros((3, 640, 488)).to(get_device())
+        random_img = torch.zeros((3, 640, 488)).to(midnite.get_device())
         random_img.add_(torch.randint(low=0, high=255, size=(3, 640, 488)))
         random_img.div_(255).sub_(fcn_mean_bgr)
     else:

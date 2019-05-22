@@ -1,38 +1,25 @@
 """Custom modules for MC dropout ensembles and uncertainty."""
 import logging
+from abc import ABC
 from typing import Tuple
+from typing import Union
 
 import torch
+import tqdm
 from torch import Tensor
 from torch.nn import AlphaDropout
 from torch.nn import Dropout
 from torch.nn import Dropout2d
 from torch.nn import Dropout3d
 from torch.nn import FeatureAlphaDropout
-from torch.nn import functional
 from torch.nn import Module
-from tqdm import tqdm
+from torch.nn import Sequential
+from tqdm import trange
 
-import midnite.uncertainty.functional as func
-from midnite import get_device
+import midnite
+from . import functional as func
 
 log = logging.getLogger(__name__)
-
-
-class PredictionDropout(Dropout):
-    """Layer for dropout at prediction time."""
-
-    def forward(self, input_: Tensor) -> Tensor:
-        """Performs dropout at training and at test time.
-
-        Args:
-            input_: the input data
-
-        Returns:
-            the dropout forward pass
-
-        """
-        return functional.dropout(input_, p=self.p, inplace=self.inplace)
 
 
 def _is_dropout(layer: Module) -> bool:
@@ -45,209 +32,256 @@ def _is_dropout(layer: Module) -> bool:
     )
 
 
-class _Ensemble(Module):
-    """Module for ensemble models."""
+class InnerForwardMixin:
+    """Mixin for simple forward passes."""
 
-    def __init__(
-        self, inner: Module, sample_size: int = 20, dropout_train: bool = True
-    ):
-        """Create a network with probabilistic predictions from a variable inner model.
+    def forward(self, input_):
+        input_.to(midnite.get_device())
+        for module in self.children():
+            input_ = module(input_)
+        return input_
 
-        Args:
-            inner: the inner network block
-            sample_size: the number of samples of the inner prediction to use
-             in the forward pass at eval time
-            dropout_train: flag whether to use dropout layers in eval mode
 
-        """
-        super(_Ensemble, self).__init__()
-        self.to(get_device())
-        inner.to(get_device())
+class StochasticModule(Module, ABC):
+    """Interface for stochastic models.
 
-        if sample_size < 2:
-            raise ValueError("At least two samples are necessary")
+    Stochastic models can make different predictions for the same input, e.g. using an
+    active dropout layer at prediction time.
 
-        if sample_size < 20:
-            log.warning("Using low number of samples may give greatly skewed results")
+    """
 
-        self.sample_size = sample_size
-        self.inner = inner
-
-        # Set dropout to train mode
-        self.dropout_eval = dropout_train
-        if dropout_train:
-            for module in inner.modules():
-                if _is_dropout(module):
-                    module.train()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stochastic = False
 
     def train(self, mode=True):
-        """Keep dropout modules in train mode, if necessary."""
-        self.training = mode
+        super().train(mode)
+        self.stochastic = False
 
-        # Set everything to proper mode
-        for module in self.children():
-            module.train(mode)
+        # All recursive submodules, including self
+        for module in self.modules():
+            if module is not self and isinstance(module, StochasticModule):
+                module.stochastic = False
+        return self
 
-        # Set dropout modules to train.
-        if not mode and self.dropout_eval:
-            for module in filter(_is_dropout, self.inner.modules()):
-                module.train()
+    def stochastic_eval(self):
+        """Sets the model to stochastic evaluation mode.
+
+        Returns: self for fluent interface
+
+        """
+        if self.training:
+            self.eval()
+
+        self.stochastic = True
+
+        # All recursive submodules, including self
+        for module in self.modules():
+            if module is not self and isinstance(module, StochasticModule):
+                module.stochastic_eval()
+        return self
+
+
+class StochasticDropouts(InnerForwardMixin, StochasticModule):
+    """Modifies all dropout layers to be in train mode durching stochastic_eval time."""
+
+    def __init__(self, inner: Module):
+        """
+        Args:
+            inner: inner module
+
+        """
+        super().__init__()
+        self.add_module("inner", inner)
+
+    def stochastic_eval(self):
+        super().stochastic_eval()
+
+        for module in self.modules():
+            if module is not self and _is_dropout(module):
+                module.training = True
 
         return self
 
 
-class MeanEnsemble(_Ensemble):
-    """Module for models that want the mean of their ensemble predictions."""
-
-    def forward(self, input_: Tensor) -> Tensor:
-        """Forward pass for ensemble, calculating mean.
-
+class EnsembleBegin(StochasticModule):
+    def __init__(self, num_passes: int = 20):
+        """
         Args:
-            input_: the input data
-
-        Returns:
-            the mean of the inner network's foward pass for sample_size samples
+            num_passes: number of stochastic passes in the ensemble
 
         """
-        input_.to(get_device())
+        super().__init__()
+        if num_passes < 2:
+            raise ValueError("At least two samples are necessary")
 
-        if self.training:
-            return self.inner.forward(input_)
-        else:
-            with torch.no_grad():
-                with tqdm(
-                    range(self.sample_size - 1), total=self.sample_size
-                ) as sample_range:
-                    sample_range.update()
-                    pred = self.inner.forward(input_)
+        if num_passes < 20:
+            log.warning("Using low number of samples may give greatly skewed results")
 
-                    # Calc remaining forward pass
-                    for _ in sample_range:
-                        pred += self.inner.forward(input_)
-                    return pred.div(self.sample_size)
-
-
-class PredictionEnsemble(_Ensemble):
-    """Generic module for ensemble models."""
+        self.num_passes = num_passes
 
     def forward(self, input_: Tensor) -> Tensor:
-        """Forward pass for ensemble, returning all samples.
-
-        Args:
-            input_: the input data
-
-        Returns:
-            all prediction samples stacked in dim 0
-
-        """
-        input_.to(get_device())
+        input_.to(midnite.get_device())
 
         # In eval mode, stack ensemble predictions
-        if self.training:
-            return self.inner.forward(input_)
+        if self.stochastic:
+            if input_.requires_grad:
+                log.warning(
+                    "Gradients enabled for ensemble predictions requires large "
+                    "amounts of memory"
+                )
+
+            return torch.stack((input_,) * self.num_passes, len(input_.size()))
         else:
-            with torch.no_grad():
-                # Disable all gradients
-                for param in self.parameters():
-                    param.requires_grad = False
-                input_.requires_grad = False
+            return input_
 
-                # Track progress
-                with tqdm(
-                    range(self.sample_size - 1), total=self.sample_size
-                ) as sample_range:
-                    sample_range.update()
 
-                    pred = self.inner.forward(input_)
-                    pred_shape = pred.size()
+class EnsembleLayer(InnerForwardMixin, StochasticModule):
+    """Module for a single layer in ensemble mode.
 
-                    # Allocate result tensor
-                    result = torch.zeros(
-                        (*pred_shape, self.sample_size), device=get_device()
+    May be used between EnsembleBegin and an acquisition function, e.g. PredictiveEntropy.
+
+    """
+
+    def __init__(self, inner: Union[Module, StochasticModule]):
+        """
+        Args:
+            inner: stochastic inner module
+
+        """
+        super().__init__()
+        self.add_module("inner", inner)
+
+    def forward(self, input_: Tensor) -> Tensor:
+        if self.stochastic:
+            input_.to(midnite.get_device())
+            outs = []
+            for i in trange(input_.size(-1)):
+                single_input = input_.select(-1, i).clone()
+                outs.append(super().forward(single_input))
+            return torch.stack(tuple(outs), len(outs[0].size()))
+        else:
+            return super().forward(input_)
+
+
+class MeanEnsemble(InnerForwardMixin, StochasticModule):
+    """Module for models that want the mean of their ensemble predictions."""
+
+    def __init__(self, inner: Union[Module, StochasticModule], num_passes: int = 20):
+        """
+        Args:
+            inner: stochastic inner module
+            num_passes: number of stochastic passes in the ensemble
+
+        """
+        super().__init__()
+        self.add_module("inner", inner)
+
+        if num_passes < 2:
+            raise ValueError("At least two samples are necessary")
+
+        if num_passes < 20:
+            log.warning("Using low number of samples may give greatly skewed results")
+
+        self.num_passes = num_passes
+
+    def forward(self, input_: Tensor) -> Tensor:
+        if self.stochastic:
+            with tqdm.trange(
+                self.num_passes - 1, total=self.num_passes
+            ) as sample_range:
+                pred = super().forward(input_)
+                sample_range.update()
+
+                # Calc remaining forward pass
+                if input_.requires_grad:
+                    log.warning(
+                        "Gradients enabled for ensemble predictions requires large "
+                        "amounts of memeory"
                     )
-                    # Store results in their slice
-                    result.select(len(pred_shape), 0).copy_(pred)
 
-                    for i in sample_range:
-                        pred = self.inner.forward(input_)
-                        result.select(len(pred_shape), i).copy_(pred)
-
-                    return result
+                    for _ in sample_range:
+                        pred = pred.add(super().forward(input_))
+                    return pred.div(self.num_passes)
+                else:
+                    for _ in sample_range:
+                        pred.add_(super().forward(input_))
+                    return pred.div_(self.num_passes)
+        else:
+            return super().forward(input_)
 
 
 class PredictiveEntropy(Module):
-    """Module to calculate the predictive entropy from an generic ensemble model."""
+    """Module to calculate the predictive entropy from an ensemble model.
+
+    Predictive entropy (also called max entropy) measures total uncertainty.
+
+    """
 
     def forward(self, input_: Tensor) -> Tensor:
-        """Forward pass for predictive entropy (also called max entropy),
-         to measure total uncertainty.
-
-        Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
-
-        Returns:
-            pred_entropy: the predictive entropy per class
-
-        """
-
-        return func.predictive_entropy(input_)
+        input_.to(midnite.get_device())
+        return func.predictive_entropy(input_, inplace=not input_.requires_grad)
 
 
-class MutualInformation(Module):
-    """Module to calculate the mutual information from an generic ensemble model."""
+class MutualInformationUncertainty(Module):
+    """Module to calculate an uncertainty based on mutual information.
+
+    Measures epistemic uncertinty. Also called Bayesian Active Learning by Disagreement
+     (BALD).
+
+    """
 
     def forward(self, input_: Tensor) -> Tensor:
-        """Forward pass for mutual information, to measure epistemic uncertainty.
-
-        Also called Bayesian Active Learning by Disagreement (BALD)
-
-        Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
-
-        Returns:
-            the mutual information per class
-
-        """
-        return func.mutual_information(input_)
+        input_.to(midnite.get_device())
+        return func.mutual_information_uncertainty(
+            input_, inplace=not input_.requires_grad
+        )
 
 
 class VariationRatio(Module):
-    """Module to calculate the variation ratio from an generic ensemble model."""
+    """Module to calculate the variation ratio from an ensemble model.
+
+    Gives a percentage for total predictive uncertainty.
+
+    """
 
     def forward(self, input_: Tensor) -> Tensor:
-        """Forward pass for the variation ratio, to give a percentage
-         of total predictive uncertainty.
-
-        Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
-
-        Returns:
-            the total variation ratio
-
-        """
-        return func.variation_ratio(input_)
+        input_.to(midnite.get_device())
+        return func.variation_ratio(input_, inplace=not input_.requires_grad)
 
 
 class PredictionAndUncertainties(Module):
     """Module to conveniently calculate sampled mean and uncertainties."""
 
     def forward(self, input_: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        """Forward pass to calculate sampled mean and different uncertainties.
-
-        Args:
-            input_: concatenated predictions for K classes and T samples (minibatch size N),
-             of shape (N, K, ..., T)
-
+        """
         Returns:
             mean prediction, predictive entropy, mutual information
 
         """
-        input_.to(get_device())
+        input_.to(midnite.get_device())
         return (
             input_.mean(dim=(input_.dim() - 1,)),
-            func.predictive_entropy(input_),
-            func.mutual_information(input_),
+            func.predictive_entropy(input_.clone(), inplace=not input_.requires_grad),
+            func.mutual_information_uncertainty(
+                input_, inplace=not input_.requires_grad
+            ),
         )
+
+
+class Ensemble(InnerForwardMixin, StochasticModule):
+    """Complete ensemble wrapper."""
+
+    def __init__(
+        self, begin: EnsembleBegin, acquisition: Module, *layers: EnsembleLayer
+    ):
+        """
+        Args:
+            start: the ensemble start
+            *layers: the intermediate layers
+            acquisition: the final acquisition function
+        """
+        super().__init__()
+        self.add_module("start", begin)
+        self.add_module("layers", Sequential(*layers))
+        self.add_module("acquisition", acquisition)

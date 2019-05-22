@@ -19,7 +19,7 @@ import data_utils
 from data_utils import DataConfig
 from plot_utils import show_normalized
 
-from midnite.uncertainty import modules
+from midnite.uncertainty import *
 
 
 # # midnite - Uncertainty Tutorial 1
@@ -45,17 +45,18 @@ alexnet.classifier.add_module("softmax", Softmax(dim=1))
 
 # ### Step 2: Create MC Ensemble
 # 
-# Wrap your net with an PredictionEnsemble layer. This layer collects an ensemble of predictions with Monte Carlo dropout. This ensemble will be used for measuring uncertainties. 
+# Wrap your net with an Ensemble layer. This layer collects an ensemble of predictions with Monte Carlo dropout. This ensemble will be used for measuring uncertainties. 
 
 # In[3]:
 
 
-ensemble = Sequential(
-    modules.PredictionEnsemble(inner=alexnet),
-    modules.PredictionAndUncertainties()
+ensemble = Ensemble(
+    EnsembleBegin(),
+    PredictionAndUncertainties(),
+    EnsembleLayer(StochasticDropouts(alexnet)),
 )
 
-ensemble.eval();
+ensemble.stochastic_eval();
 
 
 # ### Step 4: Load data
@@ -81,7 +82,7 @@ show_normalized(ood_example)
 # Retrieve a random example normalized with the distribution mean and standard deviation, which can also be seen as an out-of-distribution sample.
 # 
 
-# In[6]:
+# In[5]:
 
 
 random_example = data_utils.get_random_example(DataConfig.ALEX_NET)
@@ -93,10 +94,11 @@ show_normalized(random_example)
 # 
 # #### In-distribuiton example (correct label: 283)
 
-# In[7]:
+# In[6]:
 
 
-pred, pred_entropy, mutual_info = ensemble(id_example)
+with torch.no_grad():
+    pred, pred_entropy, mutual_info = ensemble(id_example)
 
 print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
 print(f"total predictive entropy: {pred_entropy.sum()}")
@@ -105,10 +107,11 @@ print(f"total mutual information: {mutual_info.sum()}")
 
 # #### Out of distribution example
 
-# In[8]:
+# In[7]:
 
 
-pred, pred_entropy, mutual_info = ensemble(ood_example)
+with torch.no_grad():
+    pred, pred_entropy, mutual_info = ensemble(ood_example)
 
 print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
 print(f"total predictive entropy: {pred_entropy.sum()}")
@@ -117,10 +120,11 @@ print(f"total mutual information: {mutual_info.sum()}")
 
 # #### Random example
 
-# In[9]:
+# In[8]:
 
 
-pred, pred_entropy, mutual_info = ensemble(random_example)
+with torch.no_grad():
+    pred, pred_entropy, mutual_info = ensemble(random_example)
 
 print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
 print(f"total predictive entropy: {pred_entropy.sum()}")

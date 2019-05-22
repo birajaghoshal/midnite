@@ -10,7 +10,7 @@
 # Demonstration of visualizing the class activation mapping for an image classification example with ResNet.
 # 
 
-# In[1]:
+# In[ ]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -20,21 +20,16 @@ get_ipython().run_line_magic('cd', '../src')
 
 import data_utils
 from data_utils import DataConfig
-from model_utils import Flatten
-import plot_utils
+from plot_utils import *
 from PIL import Image
 
 from midnite import get_device
-from midnite.visualization import GradCAM
-from midnite.visualization import GuidedBackpropagation
-from midnite.visualization import SpatialSplit
-from midnite.visualization import ChannelSplit
-from midnite.visualization import NeuronSplit
-from midnite.visualization import NeuronSelector
-
+from midnite.visualization.base import *
+from midnite.common import Flatten
 import torch
 from torch import Tensor
 from torch.nn import Softmax
+from torch.nn.modules import Sequential
 from torch.nn.functional import interpolate
 
 from torchvision import models
@@ -58,14 +53,7 @@ model.to(get_device());
 # In[3]:
 
 
-img_path = "../data/imagenet_example_283.jpg"
-
-# load image as torch tensor for computation, we can also load alexnet data for ResNet.
-input_ = data_utils.get_example_from_path(img_path, DataConfig.ALEX_NET)
-
-# load image as PIL Image for plotting and resizing
-img = Image.open(img_path)
-H, W = img.size
+input_ = data_utils.get_example_from_path("../data/imagenet_example_283.jpg", DataConfig.ALEX_NET)
 
 
 # ## Step 3: Select layer of interest
@@ -101,7 +89,7 @@ selected_layer = 8
 # In[5]:
 
 
-top_layer_selector = NeuronSelector(NeuronSplit(), [283])
+top_layer_selector = SplitSelector(NeuronSplit(), [283])
 bottom_layer_split = SpatialSplit()
 
 
@@ -115,8 +103,7 @@ base_layers = list(model.children())[:selected_layer]
 
 inspection_layers = (
     list(model.children())[selected_layer:-1]
-    + [Flatten()]
-    + list(model.children())[-1:]
+    + [Flatten(), list(model.children())[-1]]
 )
 
 
@@ -133,60 +120,81 @@ inspection_layers = (
 # In[7]:
 
 
-saliency = GradCAM(
-    inspection_layers, 
-    top_layer_selector, 
-    base_layers, 
-    bottom_layer_split
-).visualize(input_)
+def upsample(img, target):
+    return interpolate(
+        img.unsqueeze(dim=0).unsqueeze(dim=0), 
+        size=target.size()[2:], 
+        mode='bilinear',
+        align_corners=True
+    ).squeeze(0).squeeze(0)
 
-# upsample saliency to the pixel dimensions of the image
-sal_map = interpolate(
-    saliency.unsqueeze(dim=0).unsqueeze(dim=0), 
-    size=(H, W), 
-    mode='bilinear', 
-    align_corners=True
-)
-
-# plot saliencies with the input image
-plot_utils.plot_saliency(sal_map, img, selected_layer, output_layer="classification")
-
-
-# ## Guided Backpropagation
 
 # In[8]:
 
 
-backprop = GuidedBackpropagation(
-    (list(model.children())[:-1] + [Flatten()] + list(model.children())[-1:]),
-    top_layer_selector,
+heatmap = GradAM(
+    Sequential(*inspection_layers), 
+    top_layer_selector, 
+    Sequential(*base_layers), 
     bottom_layer_split
 ).visualize(input_)
 
+# upsample saliency to the pixel dimensions of the image
+heatmap = upsample(heatmap, input_)
+
 # plot saliencies with the input image
-plot_utils.plot_guided_backprop(saliency, img)
+show_heatmap(heatmap, 1.5, input_)
 
 
-# ### Example 2: Compute saliency map with bottom layer channel split.
+# ## Backpropagation
 
 # In[9]:
 
 
-top_layer_selector = NeuronSelector(NeuronSplit(), [283])
-bottom_layer_split = ChannelSplit()
+backprop = torch.nn.functional.relu(Backpropagation(
+    Sequential(*base_layers+inspection_layers),
+    top_layer_selector,
+    bottom_layer_split
+).visualize(input_))
 
+show_heatmap(backprop, 1.5)
+
+
+# # Guided Backpropagation
 
 # In[10]:
 
 
-saliency = GradCAM(
-    inspection_layers, 
-    top_layer_selector, 
-    base_layers, 
+backprop = GuidedBackpropagation(
+    base_layers+inspection_layers,
+    SplitSelector(NeuronSplit(), [283]),
     bottom_layer_split
 ).visualize(input_)
 
-top_values, top_channels = torch.topk(saliency, 5)
+# plot saliencies with the input image
+show_heatmap(backprop, 1.5)
+
+
+# ### Example 2: Compute saliency map with bottom layer channel split.
+
+# In[11]:
+
+
+top_layer_selector = SplitSelector(NeuronSplit(), [283])
+bottom_layer_split = ChannelSplit()
+
+
+# In[12]:
+
+
+heatmap = GradAM(
+    Sequential(*inspection_layers), 
+    top_layer_selector, 
+    Sequential(*base_layers), 
+    bottom_layer_split
+).visualize(input_)
+
+top_values, top_channels = torch.topk(heatmap, 5)
 
 for (value, idx) in zip(top_values, top_channels):
     print("Channel number: {} with channel value: {}".format(idx, value))
@@ -195,33 +203,33 @@ for (value, idx) in zip(top_values, top_channels):
 # ### Example 3: Compute saliency map with neuron split
 # 
 
-# In[11]:
+# In[13]:
 
 
 bottom_layer_split = NeuronSplit()
 
 
-# In[12]:
+# In[14]:
 
 
-saliency = GradCAM(
-    inspection_layers, 
+heatmap = GradAM(
+    Sequential(*inspection_layers), 
     top_layer_selector, 
-    base_layers, 
+    Sequential(*base_layers), 
     bottom_layer_split
 ).visualize(input_)
 
-print("Neuron activations for channel 39 of layer {}:".format(selected_layer))
+print(f"Neuron activations for channel 39 of layer {selected_layer}:")
 
 # visualize the neurons of channel 39
-# upsample saliency to the pixel dimensions of the image
-sal_map = interpolate(
-    saliency[39].unsqueeze(dim=0).unsqueeze(dim=0),
-    size=(H, W),
-    mode='bilinear', 
-    align_corners=True
-)
+heatmap = upsample(heatmap[39], input_)
 
 # plot saliencies neuron activations
-plot_utils.plot_saliency(sal_map, img, selected_layer, output_layer="classification")
+show_heatmap(heatmap, 1.5, input_)
+
+
+# In[ ]:
+
+
+
 
