@@ -14,7 +14,7 @@ check: ## Run all static checks (like pre-commit hooks)
 	pre-commit run --all-files
 
 docs: ## Build all docs
-	docker run --rm -it -e USER_ID=$$(id -u) -v `pwd`:/midnite dacit/sphinx-doc-extended:1.0 make -sC /midnite/docs html
+	docker run --rm -it -e USER_ID=$$(id -u) -v `pwd`:/midnite dacit/sphinx-doc-extended:1.1 make -sC /midnite/docs html
 
 
 # --------------Configuration-------------

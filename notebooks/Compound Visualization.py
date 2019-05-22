@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # midnite - Visualization Tutorial 1 - Part 1
+# # Compound Visualization
 # 
 # in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 
@@ -160,7 +160,7 @@ backprop = torch.nn.functional.relu(Backpropagation(
 show_heatmap(backprop, 1.5)
 
 
-# # Guided Backpropagation
+# ## Guided Backpropagation
 
 # In[10]:
 
