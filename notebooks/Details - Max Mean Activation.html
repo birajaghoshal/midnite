@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="utf-8" />
 
-<title>Visualization Tutorial 2 - Max Mean Activation</title>
+<title>Details - Max Mean Activation</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -13113,6 +13113,13 @@ div#notebook {
   <div tabindex="-1" id="notebook" class="border-box-sizing">
     <div class="container" id="notebook-container">
 
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Details---Max-Mean-Activation">Details - Max Mean Activation<a class="anchor-link" href="#Details---Max-Mean-Activation">&#182;</a></h1>
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
@@ -13155,8 +13162,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="1.-Channel-wise-regularization/transformation-comparisons">1. Channel-wise regularization/transformation comparisons<a class="anchor-link" href="#1.-Channel-wise-regularization/transformation-comparisons">&#182;</a></h1><p>Here we will look at the effect of different regularizers.</p>
-<h2 id="1.1-No-regularization">1.1 No regularization<a class="anchor-link" href="#1.1-No-regularization">&#182;</a></h2>
+<h2 id="1.-Channel-wise-regularization/transformation-comparisons">1. Channel-wise regularization/transformation comparisons<a class="anchor-link" href="#1.-Channel-wise-regularization/transformation-comparisons">&#182;</a></h2><p>Here we will look at the effect of different regularizers.</p>
+<h3 id="1.1-No-regularization">1.1 No regularization<a class="anchor-link" href="#1.1-No-regularization">&#182;</a></h3>
 </div>
 </div>
 </div>
@@ -13212,7 +13219,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="1.2-Weight-decay-(l1)">1.2 Weight decay (l1)<a class="anchor-link" href="#1.2-Weight-decay-(l1)">&#182;</a></h2><p>Less relevant parts of the image are set to zero.</p>
+<h3 id="1.2-Weight-decay-(l1)">1.2 Weight decay (l1)<a class="anchor-link" href="#1.2-Weight-decay-(l1)">&#182;</a></h3><p>Less relevant parts of the image are set to zero.</p>
 
 </div>
 </div>
@@ -13271,7 +13278,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="1.3-Blur-Filter">1.3 Blur Filter<a class="anchor-link" href="#1.3-Blur-Filter">&#182;</a></h2><p>Performs simple blurring after each step. Has the issue that edges are not preserved.</p>
+<h3 id="1.3-Blur-Filter">1.3 Blur Filter<a class="anchor-link" href="#1.3-Blur-Filter">&#182;</a></h3><p>Performs simple blurring after each step. Has the issue that edges are not preserved.</p>
 
 </div>
 </div>
@@ -13329,7 +13336,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="1.4-Bilateral-Filter">1.4 Bilateral Filter<a class="anchor-link" href="#1.4-Bilateral-Filter">&#182;</a></h2><p>Like blur, but preserves edges.</p>
+<h3 id="1.4-Bilateral-Filter">1.4 Bilateral Filter<a class="anchor-link" href="#1.4-Bilateral-Filter">&#182;</a></h3><p>Like blur, but preserves edges.</p>
 
 </div>
 </div>
@@ -13387,7 +13394,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="1.5-Random-robustness-transformations">1.5 Random robustness transformations<a class="anchor-link" href="#1.5-Random-robustness-transformations">&#182;</a></h2><p>Apply random translation, rotation, and scaling after each iteration</p>
+<h3 id="1.5-Random-robustness-transformations">1.5 Random robustness transformations<a class="anchor-link" href="#1.5-Random-robustness-transformations">&#182;</a></h3><p>Apply random translation, rotation, and scaling after each iteration</p>
 
 </div>
 </div>
@@ -13445,7 +13452,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="1.6-Resizing-transform">1.6 Resizing transform<a class="anchor-link" href="#1.6-Resizing-transform">&#182;</a></h2><p>After each iteration, scale the image up. This has the advantage that low-frequency patterns can be picked up better.</p>
+<h3 id="1.6-Resizing-transform">1.6 Resizing transform<a class="anchor-link" href="#1.6-Resizing-transform">&#182;</a></h3><p>After each iteration, scale the image up. This has the advantage that low-frequency patterns can be picked up better.</p>
 
 </div>
 </div>
@@ -13504,7 +13511,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="1.7-Total-Variation-Regularizer">1.7 Total Variation Regularizer<a class="anchor-link" href="#1.7-Total-Variation-Regularizer">&#182;</a></h2><p>Add total variation to the loss, which punishes difference in adjacent pixels.</p>
+<h3 id="1.7-Total-Variation-Regularizer">1.7 Total Variation Regularizer<a class="anchor-link" href="#1.7-Total-Variation-Regularizer">&#182;</a></h3><p>Add total variation to the loss, which punishes difference in adjacent pixels.</p>
 
 </div>
 </div>
@@ -13562,7 +13569,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="2.-Combining-regularizers">2. Combining regularizers<a class="anchor-link" href="#2.-Combining-regularizers">&#182;</a></h1><ul>
+<h2 id="2.-Combining-regularizers">2. Combining regularizers<a class="anchor-link" href="#2.-Combining-regularizers">&#182;</a></h2><ul>
 <li>weight decay to gray out irrelevant parts</li>
 <li>blur (or biliteral filter) for penalizing high-frequency noise</li>
 <li>resizing to capture low-frequency patterns</li>
@@ -13628,7 +13635,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="3.-Spatial-and-Individual-Splits">3. Spatial and Individual Splits<a class="anchor-link" href="#3.-Spatial-and-Individual-Splits">&#182;</a></h1><h2 id="3.1-Spatial">3.1 Spatial<a class="anchor-link" href="#3.1-Spatial">&#182;</a></h2><p>Note how some parts of the image do not have any influence on the gradient, since the convolutions have not yet progressed as far.</p>
+<h2 id="3.-Spatial-and-Individual-Splits">3. Spatial and Individual Splits<a class="anchor-link" href="#3.-Spatial-and-Individual-Splits">&#182;</a></h2><h3 id="3.1-Spatial">3.1 Spatial<a class="anchor-link" href="#3.1-Spatial">&#182;</a></h3><p>Note how some parts of the image do not have any influence on the gradient, since the convolutions have not yet progressed as far.</p>
 
 </div>
 </div>
@@ -13687,7 +13694,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="3.2-Individual-Neurons">3.2 Individual Neurons<a class="anchor-link" href="#3.2-Individual-Neurons">&#182;</a></h1>
+<h2 id="3.2-Individual-Neurons">3.2 Individual Neurons<a class="anchor-link" href="#3.2-Individual-Neurons">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -13745,7 +13752,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="4.-Class-visualization">4. Class visualization<a class="anchor-link" href="#4.-Class-visualization">&#182;</a></h1><p>Try to visualize class 783 (Screw)</p>
+<h2 id="4.-Class-visualization">4. Class visualization<a class="anchor-link" href="#4.-Class-visualization">&#182;</a></h2><p>Try to visualize class 783 (Screw)</p>
 <p>TODO experiment (using a GPU) and add result here</p>
 
 </div>

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # Details - Max Mean Activation
+
 # In[ ]:
 
 
@@ -26,9 +28,9 @@ from midnite.visualization.base import *
 alexnet = models.alexnet(pretrained=True)
 
 
-# # 1. Channel-wise regularization/transformation comparisons
+# ## 1. Channel-wise regularization/transformation comparisons
 # Here we will look at the effect of different regularizers.
-# ## 1.1 No regularization
+# ### 1.1 No regularization
 
 # In[3]:
 
@@ -39,7 +41,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# ## 1.2 Weight decay (l1)
+# ### 1.2 Weight decay (l1)
 # Less relevant parts of the image are set to zero.
 
 # In[4]:
@@ -53,7 +55,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# ## 1.3 Blur Filter
+# ### 1.3 Blur Filter
 # Performs simple blurring after each step. Has the issue that edges are not preserved.
 
 # In[5]:
@@ -66,7 +68,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# ## 1.4 Bilateral Filter
+# ### 1.4 Bilateral Filter
 # Like blur, but preserves edges.
 
 # In[6]:
@@ -79,7 +81,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# ## 1.5 Random robustness transformations
+# ### 1.5 Random robustness transformations
 # Apply random translation, rotation, and scaling after each iteration
 
 # In[7]:
@@ -92,7 +94,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# ## 1.6 Resizing transform
+# ### 1.6 Resizing transform
 # After each iteration, scale the image up. This has the advantage that low-frequency patterns can be picked up better.
 
 # In[8]:
@@ -106,7 +108,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# ## 1.7 Total Variation Regularizer
+# ### 1.7 Total Variation Regularizer
 # Add total variation to the loss, which punishes difference in adjacent pixels.
 
 # In[9]:
@@ -119,7 +121,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# # 2. Combining regularizers
+# ## 2. Combining regularizers
 #  - weight decay to gray out irrelevant parts
 #  - blur (or biliteral filter) for penalizing high-frequency noise
 #  - resizing to capture low-frequency patterns
@@ -138,8 +140,8 @@ show(PixelActivation(
 ).visualize())
 
 
-# # 3. Spatial and Individual Splits
-# ## 3.1 Spatial
+# ## 3. Spatial and Individual Splits
+# ### 3.1 Spatial
 # Note how some parts of the image do not have any influence on the gradient, since the convolutions have not yet progressed as far.
 
 # In[11]:
@@ -153,7 +155,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# # 3.2 Individual Neurons
+# ## 3.2 Individual Neurons
 
 # In[14]:
 
@@ -166,7 +168,7 @@ show(PixelActivation(
 ).visualize())
 
 
-# # 4. Class visualization
+# ## 4. Class visualization
 # Try to visualize class 783 (Screw)
 # 
 # TODO experiment (using a GPU) and add result here

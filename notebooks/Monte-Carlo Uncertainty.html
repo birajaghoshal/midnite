@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="utf-8" />
 
-<title>Uncertainty Tutorial 1 - Image Classification Example with AlexNet</title>
+<title>Monte-Carlo Uncertainty</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -13113,6 +13113,13 @@ div#notebook {
   <div tabindex="-1" id="notebook" class="border-box-sizing">
     <div class="container" id="notebook-container">
 
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Monte-Carlo-Uncertainty">Monte-Carlo Uncertainty<a class="anchor-link" href="#Monte-Carlo-Uncertainty">&#182;</a></h1>
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
@@ -13144,7 +13151,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="midnite---Uncertainty-Tutorial-1">midnite - Uncertainty Tutorial 1<a class="anchor-link" href="#midnite---Uncertainty-Tutorial-1">&#182;</a></h1><p>in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.</p>
+<p>in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.</p>
 <h2 id="Classification-Example-with-AlexNet">Classification Example with AlexNet<a class="anchor-link" href="#Classification-Example-with-AlexNet">&#182;</a></h2><p>Demonstration of an uncertainty measurement of an image classification example.</p>
 <h3 id="Step-1:-Load-pretrained-model">Step 1: Load pretrained model<a class="anchor-link" href="#Step-1:-Load-pretrained-model">&#182;</a></h3><p><strong>Note: Monte Carlo Dropout ensembles only achieve proper results when used on a net which was trained with dropout. So check if the model you would like to use has dropout layers active in training.</strong></p>
 <p>In our example we use a pretrained AlexNet for demonstration.</p>

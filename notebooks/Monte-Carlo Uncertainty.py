@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# # Monte-Carlo Uncertainty
+
 # In[ ]:
 
 
@@ -22,8 +24,6 @@ from plot_utils import show_normalized
 from midnite.uncertainty import *
 
 
-# # midnite - Uncertainty Tutorial 1
-# 
 # in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 
 # ## Classification Example with AlexNet

@@ -7,7 +7,9 @@
 
 This is a framework to gain insight into [pytorch](https://pytorch.org/) deep neural networks for visual recognition tasks.
 
---> **[full documentation and apidoc](https://luminovo.github.io/midnite)** <--
+The `README.md` contains only a brief description - for details, visit the
+
+--> **[full documentation and apidoc](https://luminovo.gitlab.io/midnite/)** <--
 
 ## Overview
 The project is split into the following parts, with the linked jupyter notebooks explaining them:
