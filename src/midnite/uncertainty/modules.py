@@ -67,6 +67,8 @@ class StochasticModule(Module, ABC):
     def stochastic_eval(self):
         """Sets the model to stochastic evaluation mode.
 
+        Override this to set your module to stochastic mode.
+
         Returns: self for fluent interface
 
         """

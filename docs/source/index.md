@@ -7,9 +7,13 @@ A brief introduction is in the project's [README](https://gitlab.com/luminovo/mi
 Here, you will find the comprehensive documentation, including apidoc and jupyter notebooks.
 
 ## Contents
- * [Getting started](contents/getting_started.md)
- * [Implemented techiques](https://TODO.example)
- * [References](contents/references.md)
+```eval_rst
+.. toctree::
+   :maxdepth: 2
+   
+   getting_started
+   references
+```
 
 ## Apidoc
 ```eval_rst
