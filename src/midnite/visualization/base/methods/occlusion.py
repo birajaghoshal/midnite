@@ -82,7 +82,8 @@ class Occlusion(Attribution):
         # Normalize indexes that were selected multiple times
         return mask[mask_area].clamp_(max=1)
 
-    def _remove_chunk(self, input_: Tensor, chunk_mask: Tensor) -> Tensor:
+    @classmethod
+    def _remove_chunk(cls, input_: Tensor, chunk_mask: Tensor) -> Tensor:
         # Upsample to input image dimensions (use volumetric to get 3d upsample)
         mask = functional.interpolate(
             chunk_mask.unsqueeze(1), tuple(input_.squeeze(0).size())

@@ -21,7 +21,7 @@ class LayerSplit(ABC):
     """
 
     @abstractmethod
-    def invert(self):
+    def invert(self) -> "LayerSplit":
         """Returns an inverted split"""
         raise NotImplementedError()
 
@@ -52,7 +52,7 @@ class LayerSplit(ABC):
         """
         raise NotImplementedError()
 
-    def get_mean(self, input_):
+    def get_mean(self, input_: Tensor) -> Tensor:
         """Returns the mean of an input along the split dimension.
 
         Args:
@@ -88,7 +88,7 @@ class LayerSplit(ABC):
 
 class NeuronSelector(ABC):
     @abstractmethod
-    def get_mask(self, size: List[int]):
+    def get_mask(self, size: List[int]) -> Tensor:
         """Get the mask for the specified neurons
 
         Args:
@@ -120,7 +120,6 @@ class Attribution(ABC):
         Args:
             white_box_layers: list of adjacent layers viewed as white box
             black_box_net: part of the network that is viewed as black box
-            layers: the list of ajacent layers to execute the method on
             top_layer_selector: the target split for analyzing attribution
             bottom_layer_split: split of the selected layer
 
@@ -163,7 +162,6 @@ class Activation(ABC):
         Args:
             white_box_layers: list of adjacent layers viewed as white box
             black_box_net: part of the network that is viewed as black box
-            layers: the list of adjacent layers to execute the method on
             top_layer_selector: the split on which the activation properties are
              extracted
 
@@ -231,7 +229,7 @@ class TransformStep(ABC):
         """
         raise NotImplementedError()
 
-    def __add__(self, other):
+    def __add__(self, other: "TransformStep"):
         """Method to easily concatenate two transformations.
 
         Args:
@@ -260,6 +258,6 @@ class TransformSequence(TransformStep):
             img = step.transform(img)
         return img
 
-    def __add__(self, other: TransformStep) -> TransformStep:
+    def __add__(self, other: TransformStep):
         self.steps += (other,)
         return self

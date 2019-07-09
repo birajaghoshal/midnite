@@ -34,7 +34,7 @@ class Identity(LayerSplit):
             raise ValueError("No index required for identity split")
         return torch.ones(tuple(size), device=midnite.get_device())
 
-    def get_mean(self, input_):
+    def get_mean(self, input_: Tensor) -> Tensor:
         return input_.mean()
 
 
@@ -141,7 +141,7 @@ class GroupSplit(LayerSplit):
         self.left = left
         self.right = right
 
-    def invert(self):
+    def invert(self) -> LayerSplit:
         # TODO complex group split
         raise NotImplementedError()
 
@@ -178,7 +178,7 @@ class SimpleSelector(NeuronSelector):
         """
         self.mask = mask
 
-    def get_mask(self, size: List[int]):
+    def get_mask(self, size: List[int]) -> Tensor:
         mask_size = list(self.mask.size())
         if not mask_size == size:
             raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")

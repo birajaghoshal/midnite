@@ -83,7 +83,7 @@ def test_calculate_single_mean(split, index, mean):
     ).float()
     select = SplitSelector(split, index)
 
-    result = common._calculate_single_mean(input_, select)
+    result = common.calculate_single_mean(input_, select)
     assert_that(result.item()).is_close_to(mean, tolerance=1e-40)
 
 
@@ -93,7 +93,7 @@ def test_backpropagation_wiring(mocker, layers, layer_out, id_img):
 
     # Wire mocks/outputs together
     mocker.patch(
-        "midnite.visualization.base.methods.common._calculate_single_mean",
+        "midnite.visualization.base.methods.common.calculate_single_mean",
         return_value=out[0],
     )
     mocker.patch("torch.autograd.backward")
@@ -124,7 +124,7 @@ def test_backpropagation_wiring(mocker, layers, layer_out, id_img):
 
     # Check gradient calculation
     # 1. Output mean
-    common._calculate_single_mean.assert_called_with(layer_out[1], top_layer_sel)
+    common.calculate_single_mean.assert_called_with(layer_out[1], top_layer_sel)
     # 2. Take gradient
     torch.autograd.backward.assert_called_once()
     # 4. Split mean

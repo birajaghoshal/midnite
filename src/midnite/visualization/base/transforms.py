@@ -89,7 +89,9 @@ class RandomTransform(TransformStep):
 class BilateralTransform(TransformStep):
     """Bilateral filter step"""
 
-    def __init__(self, diameter=9, color_tolerance=75, dist_tolerance=75):
+    def __init__(
+        self, diameter: int = 9, color_tolerance: int = 75, dist_tolerance: int = 75
+    ):
         """
         Args:
             diameter: diameter of pixel neighbourhood for the filter
@@ -101,5 +103,5 @@ class BilateralTransform(TransformStep):
         self.color_sigma = color_tolerance
         self.space_sigma = dist_tolerance
 
-    def transform(self, img: ndarray):
+    def transform(self, img: ndarray) -> ndarray:
         return cv2.bilateralFilter(img, self.diam, self.color_sigma, self.space_sigma)

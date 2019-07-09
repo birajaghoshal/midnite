@@ -4,7 +4,7 @@ from torch import Tensor
 from midnite.visualization.base import NeuronSelector
 
 
-def _calculate_single_mean(out, select: NeuronSelector) -> Tensor:
+def calculate_single_mean(out, select: NeuronSelector) -> Tensor:
     """Calculates the selected mean for a minibatch with one element, retaining grads.
 
     Args:
