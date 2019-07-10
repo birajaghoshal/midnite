@@ -9,9 +9,12 @@ Here, you will find the comprehensive documentation, including apidoc and jupyte
 ## Contents
 ```eval_rst
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    
    getting_started
+.. toctree::
+   :maxdepth: 1
+   
    references
 ```
 

@@ -665,6 +665,14 @@ version = "1.12.0"
 
 [[package]]
 category = "dev"
+description = "Python library and command line utility to pretty-print      tabular data"
+name = "tabletext"
+optional = false
+python-versions = "*"
+version = "0.1"
+
+[[package]]
+category = "dev"
 description = "Terminals served to xterm.js using Tornado websockets"
 name = "terminado"
 optional = false
@@ -783,7 +791,7 @@ python-versions = ">=2.7"
 version = "0.5.2"
 
 [metadata]
-content-hash = "ce70252a139072965e665d87baf01aad72ae0cf4bb8e6bec0f5f186a6f844f8a"
+content-hash = "026dc8678d919f73cdc00a6a6c759fc73cd37f521d3e858fd8d887b3d458d05e"
 python-versions = "^3.6"
 
 [metadata.hashes]
@@ -848,6 +856,7 @@ qtconsole = ["4af84facdd6f00a6b9b2927255f717bb23ae4b7a20ba1d9ef0a5a5a8dbe01ae2",
 requests = ["11e007a8a2aa0323f5a921e9e6a2d7e4e67d9877e85773fba9ba6419025cbeb4", "9cf5292fcd0f598c671cfc1e0d7d1a7f13bb8085e9a590f48c010551dc6c4b31"]
 send2trash = ["60001cc07d707fe247c94f74ca6ac0d3255aabcb930529690897ca2a39db28b2", "f1691922577b6fa12821234aeb57599d887c4900b9ca537948d2dac34aea888b"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
+tabletext = ["7fd53c6acb9641cf0b6641ff9675ce3818d4b0541b9e05e8219c90ffc8512337"]
 terminado = ["d9d012de63acb8223ac969c17c3043337c2fcfd28f3aea1ee429b345d01ef460", "de08e141f83c3a0798b050ecb097ab6259c3f0331b2f7b7750c9075ced2c20c2"]
 testpath = ["46c89ebb683f473ffe2aab0ed9f12581d4d078308a3cb3765d79c6b2317b0109", "b694b3d9288dbd81685c5d2e7140b81365d46c29f5db4bc659de5aa6b98780f8"]
 torch = ["12387aa96653004d9ad7d9e5d3eadc98b15e51f5f4d168808cb5d81bffe70618", "2e852457ff6830868d7acd1fcb0b3ea3b0447947d5f57460cbe2eb4e05796d85", "337161e62354f40766be367a338766b409c59b64214436851ac81d6ef2e4f3ab", "40c644abef1767dcac58f3285021ea963123b392e5628d402e985123ea8701ca", "ac6d634468849876b1ae3ae8e35a6c4755be9eddac2708922782730ec0415cd0", "b1abcbb86c08912dd791895d3beccbef9404de7a0b9966ae7f8c9d2a04668e49", "cb1a87d732b084bf1d931b8d1e34c357b10b2f9f7bbdf1a41fe951d16007ed75", "d7d48a3472688debf86ba9ba61b570d6ed0529413dacaa8408b84db878079395", "f3342d535a3465bd73f30504a16d61d2995618e07b62b94b041b4a5860c1c684"]

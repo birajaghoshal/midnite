@@ -4,10 +4,11 @@ In particular, for non-bayesian CNNs, we approximate the predictive distribution
 
 **Note**: This requires that your model is trained with dropout.
 
-To evaluate uncertainty for an existing model, implement the `StochastiModel` interface and create an `Ensemble` for your model.
+To evaluate uncertainty for an existing model, implement the `StochasticModule` interface and create an `Ensemble` for your model.
+See the [notebook](notebooks/1_monte_carlo_uncertainty) for a hands-on.
 
 ## Implementing `StochasticModule`
-The [`StochasticModel`](api/midnite.uncertainty.modules.rst#midnite.uncertainty.modules.StochasticModule) interface allows your network to switch into the 'stochastic evaluation' mode needed for MC dropout.
+The [`StochasticModule`](api/midnite.uncertainty.modules.rst#midnite.uncertainty.modules.StochasticModule) interface allows your network to switch into the 'stochastic evaluation' mode needed for MC dropout.
 If your model only uses _Dropout_ layers from torch (`torch.nn.Dropout`, `torch.nn.Dropoud2d`, etc.), you can simply use the [`StochasticDropouts`](api/midnite.uncertainty.modules.rst#midnite.uncertainty.modules.StochasticDropouts) wrapper:
 ```python
 my_stochastic_model = StochasticDropouts(model)
@@ -17,11 +18,15 @@ Otherwise, you have to implement the interface - here's an example for the torch
 ```python
 class StochasticDenseNet121(StochasticModule, DenseNet121):
     def stochastic_eval(self):
-        #TODO
+        super().stochastic_eval()
+        # Layer 4, 6, 8, 10 use dropout when dl.training is set to true
+        for i in [4, 6, 8, 10]:
+            for dl in self.cnn.features[i]:
+                dl.training = True
 ```
 
 ## Create a prediciton ensemble
-Now that you have a `StochasticModel`, you can build a MC Dropout ensemble.
+Now that you have a `StochasticModule`, you can build a MC Dropout ensemble.
 It consists of the following parts:
 1. [`EnsembleBegin`](api/midnite.uncertainty.modules.rst#midnite.uncertainty.modules.EnsembleBegin): splits the prediction up into multiple (by default: 20) samples
 2. [`EnsembleLayer`](api/midnite.uncertainty.modules.rst#midnite.uncertainty.modules.EnsembleLayer): layer that is executed for each sample
@@ -49,7 +54,7 @@ Now that we can calculate uncertainty, let's have a look at what it actually mea
 
 ### Taxonomy
 ```eval_rst
-When talking about uncertainty, we differentiate between *epistemic* and *aleatoric* uncertainty. [TODO]_
+When talking about uncertainty, we differentiate between *epistemic* and *aleatoric* uncertainty. [GAL2016]_
 
 - *epistemic* uncertainty captures the model uncertainty, i.e. the uncertainty of the learned model parameters
 - *aleatoric* uncertainty is the uncertainty that is inherent to the data, e.g., noise or measurement imperfections
@@ -59,12 +64,12 @@ Also, some literature further distinguishes _distribution uncertainty_, i.e. the
 ### Acquisition Functions
 Those model uncertainties are not independent from each other and not all can be calculated directly.
 We implement the following approximations:
- - predictive entropy: captures the _total_ uncertainty in the prediction
- - entropy based on mutual information: captures model uncertainty (and, depending how you view it, also distribution uncertainty)
- - variation ratio: gives point estimation for total uncertainty on a 0-1 scale
+ - _predictive entropy_: captures the _total_ uncertainty in the prediction
+ - _mutual information_ based entropy: captures model uncertainty (and, depending how you view it, also distribution uncertainty)
+ - _variation ratio_: gives point estimation for total uncertainty on a 0-1 scale (simply `1 - max class probability`)
 
 
 For more information on this topic, see our [references](references.md).
 ```eval_rst
-.. [TODO] give reference
+.. [GAL2016] Gal, Yarin, Uncertainty in Deep Learning, University of Cambridge, 2016
 ```
