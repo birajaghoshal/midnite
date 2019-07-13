@@ -8,6 +8,7 @@ from torch.nn import Dropout
 from torch.nn import Sequential
 
 from midnite.uncertainty import functional
+from midnite.uncertainty.modules import Acquisition
 from midnite.uncertainty.modules import EnsembleBegin
 from midnite.uncertainty.modules import EnsembleLayer
 from midnite.uncertainty.modules import MeanEnsemble
@@ -103,6 +104,18 @@ def test_ensemble_layer(mocker):
     assert_that(inner.forward.call_count).is_equal_to(26)
 
 
+def test_acquisition():
+    """Checks if the acquisition base class uses per_class flag correctly."""
+
+    class TestAcquisition(Acquisition):
+        def measure_uncertainty(self, input_):
+            return input_ * 2
+
+    input_ = torch.ones((1, 3, 2))
+    assert_array_equal(TestAcquisition()(input_), [[6, 6]])
+    assert_array_equal(TestAcquisition(True)(input_), [[[2, 2], [2, 2], [2, 2]]])
+
+
 def test_pred_entropy(mocker):
     """Predictive entropy layer test"""
     # Patch out functional
@@ -151,3 +164,17 @@ def test_prediction_and_uncertainties(mocker):
     functional.mutual_information_uncertainty.assert_called_once_with(
         input_, inplace=True
     )
+
+
+def test_prediction_and_uncertainties_per_class():
+    """Checks if the layer uses per_class flag correctly."""
+    input_ = torch.ones((1, 3, 2))
+    res = PredictionAndUncertainties()(input_)
+    assert_that(res[0].size()).is_equal_to((1, 3))
+    assert_that(res[1].size()).is_equal_to((1,))
+    assert_that(res[2].size()).is_equal_to((1,))
+
+    res = PredictionAndUncertainties(True)(input_)
+    assert_that(res[0].size()).is_equal_to((1, 3))
+    assert_that(res[1].size()).is_equal_to((1, 3))
+    assert_that(res[2].size()).is_equal_to((1, 3))

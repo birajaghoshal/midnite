@@ -55,6 +55,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinxcontrib.apidoc",
+    "sphinxcontrib.bibtex",
     "recommonmark",
     "nbsphinx_link",
     "nbsphinx",
@@ -67,6 +68,12 @@ apidoc_separate_modules = True
 apidoc_toc_file = False
 
 autodoc_mock_imports = ["tqdm", "cv2"]
+
+# Use short class/function names in modules
+add_module_names = False
+
+# Add package to latex output that is capable of drawing jupyter notebook outputs
+latex_elements = {"preamble": r"\usepackage{pmboxdraw}"}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = []
@@ -95,7 +102,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
-html_favicon = "assets/images/favicon.ico"  # TODO change
+html_favicon = "assets/images/favicon.ico"
 
 # markdown support
 source_suffix = [".rst", ".md"]

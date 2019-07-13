@@ -4,6 +4,8 @@ from typing import Optional
 import matplotlib.pyplot as plt
 from torch import Tensor
 
+from midnite.visualization.compound_methods import _upscale
+
 
 def _fix_dims(img: Tensor):
     # Detach from gradient
@@ -76,7 +78,7 @@ def show_heatmap(heatmap: Tensor, scale: float = 1.0, img: Optional[Tensor] = No
     if img is not None:
         img = _fix_dims(img)
         if not img.size()[:2] == heatmap.size()[:2]:
-            raise ValueError("Image and heatmap need same spatial dimensions!")
+            heatmap = _upscale(heatmap, img.size()[:2])
         im = ax.imshow(heatmap, cmap="jet")
         ax.imshow(img, alpha=0.5)
     else:

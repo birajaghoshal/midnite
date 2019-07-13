@@ -40,7 +40,7 @@ def _prepare_input(img: Tensor) -> Tensor:
     return img.detach().to(midnite.get_device())
 
 
-def _top_k_mask(out, k):
+def _top_k_mask(out: Tensor, k: int) -> Tensor:
     mask = torch.zeros_like(out, device=midnite.get_device())
     classes = out.topk(dim=0, k=k)[1]
     for i in range(k):
@@ -48,7 +48,7 @@ def _top_k_mask(out, k):
     return mask
 
 
-def _top_k_selector(net: Module, img: Tensor, k) -> NeuronSelector:
+def _top_k_selector(net: Module, img: Tensor, k: int) -> NeuronSelector:
     """Creates a top-k classes selector.
 
     Args:
@@ -178,8 +178,8 @@ def guided_gradcam(
     For further explanations about Guided GradCam, see https://arxiv.org/abs/1610.02391.
 
     Args:
-        features: the spatial feature layers of the model, before classifier
-        classifier: the classifier layers of the model, after spatial features
+        feature_layers: the spatial feature layers of the model, before classifier
+        classifier_layers: the classifier layers of the model, after spatial features
         input_image: image tensor of dimensions (c, h, w) or (1, c, h, w)
         n_top_classes: the number of classes to calculate GradCAM for
 

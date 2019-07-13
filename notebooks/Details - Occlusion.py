@@ -3,133 +3,87 @@
 
 # # Details - Occlusion
 # 
-# in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
+# This notebook complements the [docs](https://luminovo.gitlab.io/midnite/visualization.html) and explains the occlusion method in detail.
 # 
-# ## Layer Activation Mappings with AlexNet
-# 
-# Demonstration of visualizing layer attribution, the activation mapping  between two specified layers and their splits.
+# The method occludes parts of the input image and measures the effect on the prediciton, creating an importance heatmap of the input image.
 
 # In[1]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('cd', '../src')
-
-import data_utils
-from data_utils import DataConfig
-from midnite.common import Flatten
-from plot_utils import *
-from PIL import Image
-from midnite import get_device
-from midnite.visualization.base import *
-
-import torch
-from torch import Tensor
-from torch.nn import Softmax
-from torch.nn.modules import Sequential
-from torch.nn.functional import interpolate
-from torchvision import models
+get_ipython().run_cell_magic('capture', '', '%matplotlib inline  \n%load_ext autoreload\n%autoreload 2  \n%cd ../src')
 
 
-# ## Step 1: Load pretrained model
+# ## Preparation: Load Pretrained Model and Example Data
 # 
-# In our example we use a pretrained ResNet for demonstration.
+# As in other notebooks, we use a pretrained alexnet.
 
 # In[2]:
 
 
-model = models.alexnet(pretrained=True)
+from torchvision import models
+import data_utils
+import midnite
+from plot_utils import show, show_normalized, show_heatmap
 
-model.eval()
-model.to(get_device());
+
+alexnet = models.alexnet(pretrained=True)
+alexnet.eval().to(midnite.get_device());
+
+example_img = data_utils.get_example_from_path(
+    "../data/imagenet_example_283.jpg",
+    data_utils.DataConfig.ALEX_NET
+)
+
+show_normalized(example_img)
 
 
-# ## Step 2: Load Image
+# ## Neuron Selection and Split
+# In the following examples, we measure the effect on the neuron for the target output class (283).
+# This yields us a heatmap of the influence on the correct prediction.
+# 
+# The input image is split spatially (`SpatialSplit`), i.e. we _stride_ through the the spatial positions, doing a measurement at every step. The _chunk size_ controls which parts of the image are occluded. 
+# 
+# ## Paramters: Chunk Size and Stride
+# To be generic for any split, _chunk size_ and _stride_ are three-dimensional tuples for (depth, height, width). In our example, the depth dimension is irrelevant, since our split is spatial.
+# 
+# A small _chunk size_ creates a nosiy, fine-grained heatmap, as only small parts of the image features are occluded. On the other hand, a larger chunk size rather shows which _areas_ are important. 
 
 # In[3]:
 
 
-input_ = data_utils.get_example_from_path("../data/imagenet_example_283.jpg", DataConfig.ALEX_NET)
+import midnite
+from midnite.visualization.base import *
 
+# Use 'cpu' if you have no GPU available
+with midnite.device('cuda:0'):
+    show_heatmap(Occlusion(
+        alexnet,
+        SplitSelector(NeuronSplit(), [283]),
+        SpatialSplit(),
+        chunk_size=(1, 3, 3),
+        stride=(1, 10, 10),
+    ).visualize(example_img))
+    
+    show_heatmap(Occlusion(
+        alexnet,
+        SplitSelector(NeuronSplit(), [283]),
+        SpatialSplit(),
+        chunk_size=(1, 15, 15),
+        stride=(1, 10, 10),
+    ).visualize(example_img))
+
+
+# The `stride` on the other hand only controls the granularity of the output image - but keep in mind that smaller strides use much more performance:
 
 # In[4]:
 
 
-# Pooling operations loose 10 pixels on each side
-def upsample(img, target):
-    return interpolate(
-        img.unsqueeze(dim=0).unsqueeze(dim=0), 
-        size=target.size()[2:],
-        mode='bilinear',
-        align_corners=True
-    ).squeeze(0).squeeze(0)
-
-
-# ## Example 4: Guided Backpropagation of the input image w.r.t. the class score
-
-# In[5]:
-
-
-from midnite.visualization.base import Occlusion
-
-heatmap = Occlusion(model, SplitSelector(NeuronSplit(), [283]), SpatialSplit(), chunk_size=(1, 10, 10), pixel_stride=(1, 20, 20)).visualize(input_)
-show_heatmap(heatmap, 1.5)
-
-
-# In[6]:
-
-
-from midnite.visualization.base import Occlusion
-
-heatmap = Occlusion(model, SplitSelector(NeuronSplit(), [283]), SpatialSplit(), chunk_size=(1, 3, 3), pixel_stride=(1, 20, 20)).visualize(input_)
-show_heatmap(heatmap, 1.5)
-
-
-# In[ ]:
-
-
-from midnite.visualization.base import Occlusion
-
-print(input_.size())
-
-heatmap = Occlusion(model, SplitSelector(NeuronSplit(), [283]), SpatialSplit(), chunk_size=(1, 20, 20), pixel_stride=(1, 5, 5)).visualize(input_)
-show_heatmap(heatmap, 1.5, input_)
-
-
-# In[8]:
-
-
-show_heatmap(upsample(heatmap, input_), 1.5, input_)
-
-
-# In[ ]:
-
-
-import torch
-
-x = torch.tensor([[[1, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0]]])
-
-m0 = torch.tensor([[1, 0, 0],
-                   [1, 1, 0],
-                   [1, 1, 1]]) # 3 channels
-m1 = torch.tensor([[1, 0],
-                   [1, 1]]) # 2 height
-m2 = torch.tensor([[1, 0, 0],
-                   [1, 1, 0],
-                   [0, 1, 1]]) # 2 width
-
-x = (m0 @ x.transpose(1, 0)).transpose(1, 0)
-print(x)
-x = (m1 @ x.transpose(1, 1)).transpose(1, 1)
-print(x)
-x = (m2 @ x.transpose(1, 2)).transpose(1, 2)
-print(x)
-
-
-# In[ ]:
-
-
-
+with midnite.device('cuda:0'):
+    show_heatmap(Occlusion(
+        alexnet,
+        SplitSelector(NeuronSplit(), [283]),
+        SpatialSplit(),
+        chunk_size=(1, 15, 15),
+        stride=(1, 3, 3),
+    ).visualize(example_img))
 

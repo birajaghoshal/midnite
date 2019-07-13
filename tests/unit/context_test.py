@@ -30,6 +30,6 @@ def test_context_stack(mocker):
 
 def test_context_fail_early():
     """Checks that creating a context with invalid device immediately fails"""
-    with pytest.raises(TypeError):
+    with pytest.raises(RuntimeError):
         with midnite.device("does not exist"):
             pass

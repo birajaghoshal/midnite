@@ -1,6 +1,7 @@
 """Custom modules for MC dropout ensembles and uncertainty."""
 import logging
 from abc import ABC
+from abc import abstractmethod
 from typing import Tuple
 from typing import Union
 
@@ -213,19 +214,54 @@ class MeanEnsemble(InnerForwardMixin, StochasticModule):
             return super().forward(input_)
 
 
-class PredictiveEntropy(Module):
+class Acquisition(Module, ABC):
+    """Abstract base class for acquisition functions."""
+
+    def __init__(self, per_class=False):
+        """
+        Args:
+            per_class: signals whether the uncertainty measure should be outputted
+             in total or per class
+
+        """
+        super().__init__()
+        self.per_class = per_class
+
+    @abstractmethod
+    def measure_uncertainty(self, input_: Tensor) -> Tensor:
+        """Abstract method to calculate uncertainty
+
+        Args:
+            input_: the input tensor
+
+        Returns:
+            an uncertainty tensor
+
+        """
+        raise NotImplementedError
+
+    def forward(self, input_: Tensor) -> Tensor:
+        input_.to(midnite.get_device())
+        uncertainty = self.measure_uncertainty(input_)
+
+        if self.per_class:
+            return uncertainty
+        else:
+            return uncertainty.sum(dim=1)
+
+
+class PredictiveEntropy(Acquisition):
     """Module to calculate the predictive entropy from an ensemble model.
 
     Predictive entropy (also called max entropy) measures total uncertainty.
 
     """
 
-    def forward(self, input_: Tensor) -> Tensor:
-        input_.to(midnite.get_device())
+    def measure_uncertainty(self, input_: Tensor) -> Tensor:
         return func.predictive_entropy(input_, inplace=not input_.requires_grad)
 
 
-class MutualInformationUncertainty(Module):
+class MutualInformationUncertainty(Acquisition):
     """Module to calculate an uncertainty based on mutual information.
 
     Measures epistemic uncertinty. Also called Bayesian Active Learning by Disagreement
@@ -233,27 +269,33 @@ class MutualInformationUncertainty(Module):
 
     """
 
-    def forward(self, input_: Tensor) -> Tensor:
-        input_.to(midnite.get_device())
+    def measure_uncertainty(self, input_: Tensor) -> Tensor:
         return func.mutual_information_uncertainty(
             input_, inplace=not input_.requires_grad
         )
 
 
-class VariationRatio(Module):
+class VariationRatio(Acquisition):
     """Module to calculate the variation ratio from an ensemble model.
 
     Gives a percentage for total predictive uncertainty.
 
     """
 
-    def forward(self, input_: Tensor) -> Tensor:
-        input_.to(midnite.get_device())
+    def measure_uncertainty(self, input_: Tensor) -> Tensor:
         return func.variation_ratio(input_, inplace=not input_.requires_grad)
 
 
-class PredictionAndUncertainties(Module):
+class PredictionAndUncertainties(Acquisition):
     """Module to conveniently calculate sampled mean and uncertainties."""
+
+    def measure_uncertainty(self, input_: Tensor) -> Tuple[Tensor, Tensor]:
+        return (
+            func.predictive_entropy(input_.clone(), inplace=not input_.requires_grad),
+            func.mutual_information_uncertainty(
+                input_, inplace=not input_.requires_grad
+            ),
+        )
 
     def forward(self, input_: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """
@@ -262,20 +304,19 @@ class PredictionAndUncertainties(Module):
 
         """
         input_.to(midnite.get_device())
-        return (
-            input_.mean(dim=(input_.dim() - 1,)),
-            func.predictive_entropy(input_.clone(), inplace=not input_.requires_grad),
-            func.mutual_information_uncertainty(
-                input_, inplace=not input_.requires_grad
-            ),
-        )
+        pred = input_.mean(dim=(input_.dim() - 1,))
+        pe, mi = self.measure_uncertainty(input_)
+        if self.per_class:
+            return pred, pe, mi
+        else:
+            return pred, pe.sum(dim=1), mi.sum(dim=1)
 
 
 class Ensemble(InnerForwardMixin, StochasticModule):
     """Complete ensemble wrapper."""
 
     def __init__(
-        self, begin: EnsembleBegin, acquisition: Module, *layers: EnsembleLayer
+        self, begin: EnsembleBegin, acquisition: Acquisition, *layers: EnsembleLayer
     ):
         """
         Args:

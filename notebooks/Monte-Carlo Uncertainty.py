@@ -2,141 +2,173 @@
 # coding: utf-8
 
 # # Monte-Carlo Uncertainty
-
-# In[ ]:
-
-
-get_ipython().run_line_magic('matplotlib', 'inline')
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('cd', '../src')
-
-import torch
-import torchvision.models as models
-from torch.nn import Dropout
-from torch.nn import Softmax
-from torch.nn import Sequential
-import matplotlib.pyplot as plt
-import data_utils
-from data_utils import DataConfig
-from plot_utils import show_normalized
-
-from midnite.uncertainty import *
-
-
-# in this notebook you will learn the intuition behind the features of the interpretability framework and how to us them.
 # 
+# This notebook complements the [docs](https://luminovo.gitlab.io/midnite/uncertainty.html) on how to use the uncertainty part of midnite.
+
+# In[1]:
+
+
+get_ipython().run_cell_magic('capture', '', '%matplotlib inline  \n%load_ext autoreload\n%autoreload 2  \n%cd ../src')
+
+
 # ## Classification Example with AlexNet
 # 
-# Demonstration of an uncertainty measurement of an image classification example.
+# In the following, we demonstrate uncertainty measurements of an image classification example.
 # 
-# ### Step 1: Load pretrained model
+# ### Step 1: Load Pretrained model
 # 
-# **Note: Monte Carlo Dropout ensembles only achieve proper results when used on a net which was trained with dropout. So check if the model you would like to use has dropout layers active in training.**
-# 
-# In our example we use a pretrained AlexNet for demonstration.
+# **Note: Model must have been trained with dropout.**
 
 # In[2]:
 
+
+import torchvision.models as models
+from torch.nn import Softmax
 
 alexnet = models.alexnet(pretrained=True)
 alexnet.classifier.add_module("softmax", Softmax(dim=1))
 
 
-# ### Step 2: Create MC Ensemble
+# ### Step 2: Create MC Dropout Ensemble
 # 
-# Wrap your net with an Ensemble layer. This layer collects an ensemble of predictions with Monte Carlo dropout. This ensemble will be used for measuring uncertainties. 
+#  - Ensemble wraps the whole thing
+#  - EnsembleBegin starts the stochastic part of the model
+#  - EnsembleLayer wraps the stochastic part
+#  - We can use StochasticDropouts to obtain StochasticModule from alexnet since it uses `torch.nn` Dropout layers
 
 # In[3]:
 
 
-ensemble = Ensemble(
-    EnsembleBegin(),
+from midnite.uncertainty import *
+
+alexnet_ensemble = Ensemble(
+    EnsembleBegin(num_passes=50),
     PredictionAndUncertainties(),
     EnsembleLayer(StochasticDropouts(alexnet)),
 )
 
-ensemble.stochastic_eval();
+alexnet_ensemble.stochastic_eval();
 
 
-# ### Step 4: Load data
-# 
-# #### in-distribution and out-of-distribution examples 
-# 
-# *In order to interpret the results, we want to compare the uncertainties of an in-distribution and an out-of-distribution example.* 
-# 
-# As AlexNet was trained with ImageNet data, we pick an ImageNet example as an in-distribution target, for which predictions should be very confident. An out-of-distribution target is an image, which depicts something, which is not a class label of ImageNet. We use Cholitas for this example.
+# ### Step 3: Load Data
+# Since we want to compare uncertainties, we load a few different images:
+#  - one image (cat) in a class for which the model was trained (in-distribution example)
+#  - one image outside ImageNet classes (out-of-distribution example)
+#  - random noise
 
 # In[4]:
 
 
-id_example = data_utils.get_example_from_path("../data/imagenet_example_283.jpg", DataConfig.ALEX_NET)
-ood_example = data_utils.get_example_from_path("../data/ood_example.jpg", DataConfig.ALEX_NET)
+import data_utils
+from plot_utils import show_normalized
+
+id_example = data_utils.get_example_from_path(
+    "../data/imagenet_example_283.jpg", data_utils.DataConfig.ALEX_NET)
+
+ood_example = data_utils.get_example_from_path(
+    "../data/ood_example.jpg", data_utils.DataConfig.ALEX_NET)
+
+random_example = data_utils.get_random_example(
+    data_utils.DataConfig.ALEX_NET)
 
 show_normalized(id_example)
 show_normalized(ood_example)
+show_normalized(random_example)
 
 
-# #### Random example
+# ### Step 4: Calculate Uncertainties
 # 
-# Retrieve a random example normalized with the distribution mean and standard deviation, which can also be seen as an out-of-distribution sample.
-# 
+# Correct label for in-distribution image: 283
 
 # In[5]:
 
 
-random_example = data_utils.get_random_example(DataConfig.ALEX_NET)
+import torch
+import midnite
+import tabletext
 
-show_normalized(random_example)
+# Run without gradients, on cpu (use cuda:0 instead if you have a gpu available)
+with torch.no_grad():
+    with midnite.device("cpu"):
+        id_pr = alexnet_ensemble(id_example)
+        ood_pr = alexnet_ensemble(ood_example)
+        rand_pr = alexnet_ensemble(random_example)
+        
+# Print pretty table
+table = [
+    ["", "in-dist.", "out-of-dist.", "random"],
+    ["max prediction", id_pr[0].argmax(),
+     ood_pr[0].argmax(), rand_pr[0].argmax()],
+    ["max probability", f"{id_pr[0].max():.3f}",
+     f"{ood_pr[0].max():.3f}", f"{rand_pr[0].max():.3f}"],
+    ["pred. entropy (~total uncert.)", f"{id_pr[1].sum():.3f}",
+     f"{ood_pr[1].sum():.3f}", f"{rand_pr[1].sum():.3f}"],
+    ["mutual info. (~model uncert.)", f"{id_pr[2].sum():.3f}",
+     f"{ood_pr[2].sum():.3f}", f"{rand_pr[2].sum():.3f}"]
+]
+print(tabletext.to_text(table, header=True))
 
 
-# ### Step 6: Calculate uncertainties
+# ### Results and Interpretation
 # 
-# #### In-distribuiton example (correct label: 283)
+# We can see that:
+# 
+# - the in-distribution example has low total uncertainty, but high model uncertainty
+#     - possible explanation: image is correctly classified, but not with very high confidence. Since the data uncertainty is not as high, most of the error is in our model.
+# - the out-of distribution example has much higher predictive entropy, but lower mutual information (-> model uncertainty)
+#     - possible explanation: since the image is not in the distribution, model uncertainty can be low (= the model parameters fit), but in total, uncertainty is high
+# - the random example has total uncertainty, but higher model uncertainty
+#     - possible explanation: the parameters can't really explain the data
+
+# ## Image Segmentation (Visual) Example
+# Image segmentation has the nice property that we can actually see _where_ uncertainty is high, so the following is an example using a FCN32.
+# ### Step 1: Prepare Ensemble
+# Similar to last example, we build an Ensemble for a pre-trained network, this time for one (in-dist) image:
 
 # In[6]:
 
 
-with torch.no_grad():
-    pred, pred_entropy, mutual_info = ensemble(id_example)
-
-print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
-print(f"total predictive entropy: {pred_entropy.sum()}")
-print(f"total mutual information: {mutual_info.sum()}")
+get_ipython().run_cell_magic('capture', '', 'from pytorch_fcn.fcn32s import FCN32s\n\nfcn = FCN32s()\nfcn.load_state_dict(torch.load(FCN32s.download()));\n\nfcn_ensemble = Ensemble(\n    EnsembleBegin(num_passes=10), # Set higher if you have the computing resources\n    PredictionAndUncertainties(),\n    EnsembleLayer(StochasticDropouts(fcn)),\n    EnsembleLayer(Softmax(dim=1)),\n)\n\nfcn_ensemble.stochastic_eval()')
 
 
-# #### Out of distribution example
+# ### Step 2: Load Data
 
 # In[7]:
 
 
-with torch.no_grad():
-    pred, pred_entropy, mutual_info = ensemble(ood_example)
+img = data_utils.get_example_from_path(
+    "../data/fcn_example.jpg", data_utils.DataConfig.FCN32)
 
-print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
-print(f"total predictive entropy: {pred_entropy.sum()}")
-print(f"total mutual information: {mutual_info.sum()}")
+show_normalized(img)
 
 
-# #### Random example
+# ### Step 3: Predict Uncertainties
 
 # In[8]:
 
 
+from plot_utils import show, show_heatmap
+
 with torch.no_grad():
-    pred, pred_entropy, mutual_info = ensemble(random_example)
+    with midnite.device("cpu"): # GPU device if available, e.g. "cuda:0"!
+        pred, pred_entropy, mutual_info = fcn_ensemble(img)
 
-print(f"mean prediction: {pred.argmax()}, class probability: {pred.max()}")
-print(f"total predictive entropy: {pred_entropy.sum()}")
-print(f"total mutual information: {mutual_info.sum()}")
+print("Max prediction:")
+show(pred.argmax(dim=1))
+
+print("Predictive entropy (total uncertainty):")
+show_heatmap(pred_entropy, 1.2)
+
+print("Mutual information (model uncertainty):")
+show_heatmap(mutual_info, 1.2)
 
 
-# ## Interpretation of results
+# ### Interpretation
 # 
-# We should see that in-distribution examples have a class probability close to 1 and a low uncertainties. Which means, we are predicting with high confidence.
-# 
-# In the OOD and random sample we see that the prediction can be different everytime the ensemble is executed. This is due to the stochasticity of the MC dropout. 
-# 
-# Still, we can observe that the uncertainty is constantly very high, so we predict with low confidence. Whereas, the total predictive entropy (total uncertainty) is high for both, OOD and random example, we see that the mutual information is significantly different. High mutual information idicates that the total uncertainty is mainly due to model uncertainty. Whereas when the mutual information is low, it is an indicator that the total uncertainty is due to data uncertainty.
-# 
-# 
+# If we overlay the original image and the mutual information, we can see on which objects the segmentation model was unsure:
+
+# In[9]:
+
+
+show_heatmap(mutual_info, 1.2, img)
+

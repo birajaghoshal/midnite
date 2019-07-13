@@ -34,7 +34,7 @@ class Identity(LayerSplit):
             raise ValueError("No index required for identity split")
         return torch.ones(tuple(size), device=midnite.get_device())
 
-    def get_mean(self, input_):
+    def get_mean(self, input_: Tensor) -> Tensor:
         return input_.mean()
 
 
@@ -141,20 +141,23 @@ class GroupSplit(LayerSplit):
         self.left = left
         self.right = right
 
-    def invert(self):
-        # TODO complex group split
-        raise NotImplementedError()
+    def invert(self) -> LayerSplit:
+        raise NotImplementedError("Inverting neuron groups is not yet implemented")
 
     def get_split(self, size: List[int]) -> List[Tensor]:
         indexes = range(self.num_groups)
         return list(map(lambda i: self.get_mask([i], size), indexes))
 
-    def get_mask(self, index: List[int], _: List[int]) -> Tensor:
-        # TODO interpolate result mask to size dimensions
+    def get_mask(self, index: List[int], size: List[int]) -> Tensor:
         if not len(index) == 1:
             raise ValueError("Need to provide exactly one index for a group")
         idx = index[0]
-        return self.left.select(-1, idx) * self.right.select(0, idx)
+        mask = self.left.select(-1, idx).unsqueeze(-1) @ self.right.select(
+            0, idx
+        ).unsqueeze(0)
+        if not size == list(mask.size()):
+            raise ValueError("Requested size does not fit neuron group")
+        return mask
 
     def fill_dimensions(self, input_: Tensor, num_dimensions: int = 3) -> Tensor:
         size = tuple(self.left.size()[:-1] + self.right.size()[1:])
@@ -178,7 +181,7 @@ class SimpleSelector(NeuronSelector):
         """
         self.mask = mask
 
-    def get_mask(self, size: List[int]):
+    def get_mask(self, size: List[int]) -> Tensor:
         mask_size = list(self.mask.size())
         if not mask_size == size:
             raise ValueError(f"Incorrect size. Expected: {mask_size}, got: {size}")

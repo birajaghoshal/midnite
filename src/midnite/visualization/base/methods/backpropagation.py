@@ -42,7 +42,7 @@ class Backpropagation(Attribution):
         out = self.black_box_net(input_)
 
         # retrieve mean score of top layer selector
-        score = common._calculate_single_mean(out, self.top_layer_selector)
+        score = common.calculate_single_mean(out, self.top_layer_selector)
 
         # backward pass
         score.backward()
@@ -72,7 +72,7 @@ class GuidedBackpropagation(Attribution):
         )
 
     @staticmethod
-    def _relu_grad(grad_iput: Optional[Tensor]):
+    def _relu_grad(grad_iput: Optional[Tensor]) -> Optional[Tensor]:
         return None if grad_iput is None else functional.relu(grad_iput)
 
     @staticmethod

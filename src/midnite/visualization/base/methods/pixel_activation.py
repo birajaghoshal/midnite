@@ -149,7 +149,7 @@ class PixelActivation(Activation):
             out = self.black_box_net(opt_img).squeeze(0)
 
             # Calculate loss (mean of output of the last layer w.r.t to our mask)
-            loss = -common._calculate_single_mean(
+            loss = -common.calculate_single_mean(
                 out, self.top_layer_selector
             ).unsqueeze(0)
 

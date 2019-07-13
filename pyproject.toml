@@ -6,7 +6,7 @@ authors = ["Christina Aigner <christina@luminovo.ai >, Fabian Huch <fabian@lumin
 
 [tool.poetry.dependencies]
 python = "^3.6"
-torch = "^1.0.1"
+torch = "=1.1.0"
 numpy = "^1.16"
 pillow = "^5.4"
 opencv-python = "^4.0"
@@ -19,7 +19,8 @@ jupyter = "^1.0"
 matplotlib = "^3.0"
 assertpy = "^0.14.0"
 pytest-mock = "^1.10"
-torchvision = "^0.2.2"
+torchvision = "^0.3.0"
+tabletext = "^0.1.0"
 
 [build-system]
 requires = ["poetry>=0.12"]
