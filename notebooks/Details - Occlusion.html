@@ -13152,10 +13152,11 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">midnite</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">torchvision</span> <span class="k">import</span> <span class="n">models</span>
 <span class="kn">import</span> <span class="nn">data_utils</span>
+<span class="kn">import</span> <span class="nn">midnite</span>
 <span class="kn">from</span> <span class="nn">plot_utils</span> <span class="k">import</span> <span class="n">show</span><span class="p">,</span> <span class="n">show_normalized</span><span class="p">,</span> <span class="n">show_heatmap</span>
-<span class="kn">from</span> <span class="nn">torchvision</span> <span class="k">import</span> <span class="n">models</span>
+
 
 <span class="n">alexnet</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">alexnet</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">alexnet</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">midnite</span><span class="o">.</span><span class="n">get_device</span><span class="p">());</span>

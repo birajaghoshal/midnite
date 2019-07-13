@@ -54,7 +54,7 @@ Now that we can calculate uncertainty, let's have a look at what it actually mea
 
 ### Taxonomy
 ```eval_rst
-When talking about uncertainty, we differentiate between *epistemic* and *aleatoric* uncertainty. [GAL2016]_
+When talking about uncertainty, we differentiate between *epistemic* and *aleatoric* uncertainty. :cite:`a-uncertainty_gal2016uncertainty`
 
 - *epistemic* uncertainty captures the model uncertainty, i.e. the uncertainty of the learned model parameters
 - *aleatoric* uncertainty is the uncertainty that is inherent to the data, e.g., noise or measurement imperfections
@@ -71,5 +71,8 @@ We implement the following approximations:
 
 For more information on this topic, see our [references](references.md).
 ```eval_rst
-.. [GAL2016] Gal, Yarin, Uncertainty in Deep Learning, University of Cambridge, 2016
+.. bibliography:: references.bib
+   :labelprefix: A
+   :keyprefix: a-
+   :style: plain
 ```

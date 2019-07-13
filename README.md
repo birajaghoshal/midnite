@@ -4,6 +4,7 @@
 
 </p>
 
+![](./docs/source/assets/images/logo.svg)
 
 This is a framework to gain insight into [pytorch](https://pytorch.org/) deep neural networks for visual recognition tasks.
 

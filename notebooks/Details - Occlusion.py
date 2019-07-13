@@ -20,10 +20,11 @@ get_ipython().run_cell_magic('capture', '', '%matplotlib inline  \n%load_ext aut
 # In[2]:
 
 
-import midnite
-import data_utils
-from plot_utils import show, show_normalized, show_heatmap
 from torchvision import models
+import data_utils
+import midnite
+from plot_utils import show, show_normalized, show_heatmap
+
 
 alexnet = models.alexnet(pretrained=True)
 alexnet.eval().to(midnite.get_device());

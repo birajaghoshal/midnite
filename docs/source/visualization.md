@@ -39,7 +39,7 @@ If you want to use them, there are a few important concepts to understand first.
 
 ### Concepts and Interfaces
 ```eval_rst
-All methods are implemented in a consistent building blocks framework, as proposed in [DISTILL2018]_.
+All methods are implemented in a consistent building blocks framework, as proposed in :cite:`b-blocks_blocks-interpretability`.
 This allows to re-use lots of code and easily add new complex visualization methods.
 
 
@@ -136,12 +136,17 @@ The `visualize` method is then as follows (omitting code about calculating on pr
         return self.bottom_layer_split.get_mean(input_.grad.detach().squeeze(dim=0))
 ```
 
+```eval_rst
+.. bibliography:: references.bib
+   :labelprefix: B
+   :keyprefix: b-
+   :style: plain
+```
+
+<!--
 ### Concatenating blocks
 An important property of building blocks is that rather complex analysis can be put together very easily. Thus, we re-create the example from distil - TODO
 ```python
 # TODO
 ```
-
-```eval_rst
-.. [DISTILL2018] Olah, et al., `"The Building Blocks of Interpretability" <https://distill.pub/2018/building-blocks>`_, Distill, 2018
-```
+-->
