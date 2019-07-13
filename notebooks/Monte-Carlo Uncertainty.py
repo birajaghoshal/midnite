@@ -157,10 +157,10 @@ print("Max prediction:")
 show(pred.argmax(dim=1))
 
 print("Predictive entropy (total uncertainty):")
-show_heatmap(pred_entropy.sum(dim=1), 1.2)
+show_heatmap(pred_entropy, 1.2)
 
 print("Mutual information (model uncertainty):")
-show_heatmap(mutual_info.sum(dim=1), 1.2)
+show_heatmap(mutual_info, 1.2)
 
 
 # ### Interpretation
@@ -170,5 +170,5 @@ show_heatmap(mutual_info.sum(dim=1), 1.2)
 # In[9]:
 
 
-show_heatmap(mutual_info.sum(dim=1), 1.2, img)
+show_heatmap(mutual_info, 1.2, img)
 

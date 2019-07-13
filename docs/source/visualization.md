@@ -142,11 +142,3 @@ The `visualize` method is then as follows (omitting code about calculating on pr
    :keyprefix: b-
    :style: plain
 ```
-
-<!--
-### Concatenating blocks
-An important property of building blocks is that rather complex analysis can be put together very easily. Thus, we re-create the example from distil - TODO
-```python
-# TODO
-```
--->

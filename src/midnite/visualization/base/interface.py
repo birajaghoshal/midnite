@@ -71,11 +71,11 @@ class LayerSplit(ABC):
         """Fills up the dimensions with unsqueeze() to the given number.
 
         Args:
-            input_: tensor which needs to be unsqueezed.
+            input_: tensor which needs to be unsqueezed
             num_dimensions: number of dimensions to fill up to
 
         Returns:
-            the input_ with num_dimensions
+            the input with num_dimensions
 
         """
         dims_to_fill = num_dimensions - len(input_.size())
