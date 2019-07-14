@@ -2,8 +2,7 @@
 name = "midnite"
 version = "0.1.0"
 description = "This is a framework for visualization and uncertainty in CNNs."
-authors = ["Christina Aigner <christina@luminovo.ai >, Fabian Huch <fabian@luminovo.ai >"]
-readme = "README.md"
+authors = ["Christina Aigner, Fabian Huch"]
 homepage = "https://luminovo.gitlab.io/midnite"
 
 [tool.poetry.dependencies]
