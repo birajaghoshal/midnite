@@ -19,8 +19,10 @@ get_ipython().run_cell_magic('capture', '', '%matplotlib inline  \n%load_ext aut
 
 
 import torchvision.models as models
+from torch.nn.modules import Softmax
 
 alexnet = models.alexnet(pretrained=True)
+alexnet.classifier.add_module("softmax", Softmax(dim=1))
 alexnet.eval();
 
 

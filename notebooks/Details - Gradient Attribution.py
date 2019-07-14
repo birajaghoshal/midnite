@@ -24,7 +24,7 @@ from torchvision import models
 import data_utils
 import midnite
 from midnite.common import Flatten
-from plot_utils import show_heatmap, show_normalized
+from plot_utils import show_img, show_heatmap, show_normalized
 
 alexnet = models.alexnet(pretrained=True)
 alexnet.eval()
@@ -83,12 +83,17 @@ show_heatmap(GuidedBackpropagation(
 # 
 # Most of the time - as in previous examples - we are interested in the attribution to some output class (or classes), which we specify with the `top_layer_selector`. We also specify some split of the input layer (`bottom_layer_split`), but here comes the tricky part:
 # 
-# For gradient attribution mappings, we first have some _base_ feature layers through which the input is passed - allowing us to analyze which _parts_ of the image were interesting to the network - and then the _inspection layers_ (consisting of feature and classification layers), where we calculate _how much_ those parts contributed to the output.
-# <img src="resources/class-activation-mapping.png">
-# 
-# If we only use the first few layers as base, we get a heatmap of the low-level features that are important for prediction (and vice versa):
+# For gradient attribution mappings, we first have some _base_ feature layers through which the input is passed - allowing us to analyze which _parts_ of the image were interesting to the network - and then the _inspection layers_ (consisting of feature and classification layers), where we calculate _how much_ those parts contributed to the output:
 
 # In[5]:
+
+
+show_img("../notebooks/resources/specific_gradcam.png")
+
+
+# If we only use the first few layers as base, we get a heatmap of the low-level features that are important for prediction (and vice versa):
+
+# In[6]:
 
 
 from torch.nn import Sequential
@@ -108,8 +113,13 @@ for network_split in [2, 14]:
 # ### General Case
 # 
 # In general, with the `inspection_layers` variable, we can also control how deep we want to descend into the network:
-# <img src="resources/saliencies_gradCAM.png">
-# 
+
+# In[7]:
+
+
+show_img("../notebooks/resources/general_gradam.png")
+
+
 # ## A Word to Guided GradCAM
 # Guided GradCAM is a quite popular technique. However, there is no building block for it, since it merely a combination of two instances of building blocks we already have: A guided backpropagation for a spatial split w.r.t. the top-3 output classes, weighted by a gradient attribution mapping, using feature layers as base and the classifier as inspeciton net (for the same output selection).
 # 

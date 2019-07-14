@@ -23,7 +23,7 @@ from plot_utils import show, show_normalized, show_heatmap
 from torch.nn.modules import Softmax
 
 net = models.alexnet(pretrained=True)
-net.classifier.add_module("sm", Softmax(dim=1))
+net.classifier.add_module("softmax", Softmax(dim=1))
 net.eval().to(midnite.get_device());
 
 example_img = data_utils.get_example_from_path(

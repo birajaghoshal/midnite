@@ -1,6 +1,8 @@
 """Utils for plotting in notebooks."""
+from pathlib import Path
 from typing import Optional
 
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from torch import Tensor
 
@@ -85,3 +87,18 @@ def show_heatmap(heatmap: Tensor, scale: float = 1.0, img: Optional[Tensor] = No
         im = ax.imshow(heatmap, cmap="jet")
     fig.colorbar(im, ax=ax)
     plt.show()
+
+
+def show_img(path: str):
+    """Shows an image from path, embedding it into the html output.
+
+    Args:
+        path: path of the image
+
+    """
+    path = Path(path).resolve()
+    img = mpimg.imread(str(path))
+    fix, ax = plt.subplots(figsize=(8 * 2, 6 * 2))
+    ax.set_axis_off()
+    ax.grid(False)
+    ax.imshow(img, interpolation="bilinear")

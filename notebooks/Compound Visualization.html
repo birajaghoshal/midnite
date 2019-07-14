@@ -13158,7 +13158,7 @@ div#notebook {
 <span class="kn">from</span> <span class="nn">torch.nn.modules</span> <span class="k">import</span> <span class="n">Softmax</span>
 
 <span class="n">net</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">alexnet</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">net</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">add_module</span><span class="p">(</span><span class="s2">&quot;sm&quot;</span><span class="p">,</span> <span class="n">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">net</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">add_module</span><span class="p">(</span><span class="s2">&quot;softmax&quot;</span><span class="p">,</span> <span class="n">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
 <span class="n">net</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">midnite</span><span class="o">.</span><span class="n">get_device</span><span class="p">());</span>
 
 <span class="n">example_img</span> <span class="o">=</span> <span class="n">data_utils</span><span class="o">.</span><span class="n">get_example_from_path</span><span class="p">(</span>

@@ -85,7 +85,7 @@ show_normalized(random_example)
 
 import torch
 import midnite
-import tabletext
+import tabulate
 
 # Run without gradients, on cpu (use cuda:0 instead if you have a gpu available)
 with torch.no_grad():
@@ -96,7 +96,6 @@ with torch.no_grad():
         
 # Print pretty table
 table = [
-    ["", "in-dist.", "out-of-dist.", "random"],
     ["max prediction", id_pr[0].argmax(),
      ood_pr[0].argmax(), rand_pr[0].argmax()],
     ["max probability", f"{id_pr[0].max():.3f}",
@@ -106,7 +105,11 @@ table = [
     ["mutual info. (~model uncert.)", f"{id_pr[2].sum():.3f}",
      f"{ood_pr[2].sum():.3f}", f"{rand_pr[2].sum():.3f}"]
 ]
-print(tabletext.to_text(table, header=True))
+print(tabulate.tabulate(
+    table,
+    headers=["","in-dist.", "out-of-dist.", "random"],
+    tablefmt="fancy_grid"
+))
 
 
 # ### Results and Interpretation
