@@ -40,7 +40,7 @@ integration-test:
     - poetry run pytest tests/torch_integration
 
 pages:
-  image: dacit/sphinx-doc-extended:1.2
+  image: dacit/sphinx-doc-extended:1.2.1
   stage: deploy
   script:
     - make -sC docs html
