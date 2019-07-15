@@ -3,7 +3,7 @@
 
 # # Details - Gradient Attribution
 # 
-# This notebook complements the [docs](https://luminovo.gitlab.io/midnite/visualization.html) on how to use the different gradient attribution methods.
+# This notebook complements the [docs](https://luminovo.gitlab.io/public/midnite/latest/visualization.html) on how to use the different gradient attribution methods.
 # 
 # In general, gradient attribution methods propagate the gradient from the highest layer back to a lower layer, creating a heatmap of which neurons where most influential.
 

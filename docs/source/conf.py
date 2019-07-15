@@ -44,7 +44,7 @@ def run_apidoc(app):
 
 project = "midnite"
 copyright = "2019"
-author = "Christina Aigner, Fabian Huch"
+author = "luminovo.ai, Christina Aigner, Fabian Huch"
 
 # -- General configuration ---------------------------------------------------
 
@@ -93,7 +93,7 @@ html_theme = "sphinx_materialdesign_theme"
 html_theme_options = {
     "header_links": [
         ("Home", "index", False, "home"),
-        ("GitLab", "https://gitlab.com/luminovo/midnite", True, "link"),
+        ("GitLab", "https://gitlab.com/luminovo/public/midnite", True, "link"),
     ]
 }
 

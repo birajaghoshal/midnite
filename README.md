@@ -10,7 +10,7 @@ This is a framework to gain insight into [pytorch](https://pytorch.org/) deep ne
 
 The `README.md` contains only a **very brief** description - for details, visit the
 
---> **[full documentation and apidoc](https://luminovo.gitlab.io/midnite/)** <--
+--> **[full documentation and apidoc](https://luminovo.gitlab.io/public/midnite/)** <--
 
 ## Overview
 The project is split into the following parts, with the linked jupyter notebooks explaining them:
@@ -36,7 +36,7 @@ Then start jupyter with `poetry run jupyter notebook`.
 ## Installation
 From package index: `pip install "midnite"` or from source:
 ```
-git clone https://gitlab.com/luminovo/midnite.git
+git clone https://gitlab.com/luminovo/public/midnite.git
 cd midnite
 poetry build
 pip install dist/midnite-*.whl
@@ -65,10 +65,14 @@ docs                 Build all docs
 ```
 <!-- END makefile-doc -->
 
-## Acknowledgement
-Scientific sources: see [reference doc page](https://luminovo.gitlab.io/midnite/references.html).
+## License
+This project is under the MIT [license](LICENSE).
 
-Contributors:
-- luminovo.ai
+## Acknowledgement
+Scientific sources: see [reference doc page](https://luminovo.gitlab.io/public/midnite/references.html).
+
+This project was developed as a student IDP at [luminovo.ai](https://luminovo.ai/)
+
+Code contributors:
 - Fabian Huch
 - Christina Aigner

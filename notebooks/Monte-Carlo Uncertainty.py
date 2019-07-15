@@ -3,7 +3,7 @@
 
 # # Monte-Carlo Uncertainty
 # 
-# This notebook complements the [docs](https://luminovo.gitlab.io/midnite/uncertainty.html) on how to use the uncertainty part of midnite.
+# This notebook complements the [docs](https://luminovo.gitlab.io/public/midnite/latest/uncertainty.html) on how to use the uncertainty part of midnite.
 
 # In[1]:
 

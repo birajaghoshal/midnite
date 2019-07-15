@@ -3,7 +3,9 @@
 
 This is a framework to gain insight into [pytorch](https://pytorch.org/) deep neural networks for visual recognition tasks.
 
-A brief introduction is in the project's [README](https://gitlab.com/luminovo/midnite/blob/master/README.md).
+A brief introduction is in the project's [README](https://gitlab.com/luminovo/public/midnite/blob/master/README.md).
+If you want to contribute, have a look there.
+The project is under the MIT license.
  
 Here, you will find the comprehensive documentation, including apidoc and jupyter notebooks.
 

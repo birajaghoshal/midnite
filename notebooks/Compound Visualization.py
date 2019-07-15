@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # # Compound Visualization
-# Here, we demonstrate midnite's compound visualization methods. Read about it in the [docs](https://luminovo.gitlab.io/midnite/visualization.html#specific-visualization-methods).
+# Here, we demonstrate midnite's compound visualization methods. Read about it in the [docs](https://luminovo.gitlab.io/public/midnite/latest/visualization.html#specific-visualization-methods).
 
 # In[1]:
 
@@ -85,7 +85,7 @@ show_heatmap(gc_heatmap, scale=1.2)
 
 
 # ### Occlusion
-# Shows which parts of the image are crucial for correct classification. Requires much more computation time since it's not gradient-based, but should be more robust to noise than other methods. Read more about it in the [Occlusion notebook](https://luminovo.gitlab.io/midnite/notebooks/details_occlusion.html).
+# Shows which parts of the image are crucial for correct classification. Requires much more computation time since it's not gradient-based, but should be more robust to noise than other methods. Read more about it in the [Occlusion notebook](https://luminovo.gitlab.io/public/midnite/latest/notebooks/details_occlusion.html).
 
 # In[7]:
 
@@ -100,7 +100,7 @@ show_heatmap(oc_heatmap, scale=1.2)
 # ### Class Visualization
 # Generates an image that maximally excites the network for a given class. This is an optimization of the network's gradient in image space and thus requires some computation power.
 # 
-# However, since there is no defined "goal" for visual clarity, it is usually necessary to manually tune the optimization parameters. This can be done by using the [Max Mean Activation](https://luminovo.gitlab.io/midnite/notebooks/details_max_mean_activation.html) building block.
+# However, since there is no defined "goal" for visual clarity, it is usually necessary to manually tune the optimization parameters. This can be done by using the [Max Mean Activation](https://luminovo.gitlab.io/public/midnite/latest/notebooks/details_max_mean_activation.html) building block.
 
 # In[8]:
 

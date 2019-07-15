@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # # Details - Max Mean Activation
-# This notebook complements the [docs](https://luminovo.gitlab.io/midnite) and explains the modular max mean activation optimization method in detail.
+# This notebook complements the [docs](https://luminovo.gitlab.io/public/midnite/latest/visualization.html) and explains the modular max mean activation optimization method in detail.
 # 
 # Max mean activation is an optimization in image space to maximize the mean of activations of some selected neurons.
 

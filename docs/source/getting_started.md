@@ -9,7 +9,7 @@ Install the package `midnite` from [pypi](https://pypi.org/) like this:
 pip install midnite==0.1.0
 ```
 
-for more detailed installation instructions, view the project's [README](https://gitlab.com/luminovo/midnite/blob/master/README.md).
+for more detailed installation instructions, view the project's [README](https://gitlab.com/luminovo/public/midnite/blob/master/README.md).
 
 ## Device context
 When using midnite, it's often helpful to run torch on a specific device.

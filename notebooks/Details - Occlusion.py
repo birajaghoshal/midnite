@@ -3,7 +3,7 @@
 
 # # Details - Occlusion
 # 
-# This notebook complements the [docs](https://luminovo.gitlab.io/midnite/visualization.html) and explains the occlusion method in detail.
+# This notebook complements the [docs](https://luminovo.gitlab.io/public/midnite/latest/visualization.html) and explains the occlusion method in detail.
 # 
 # The method occludes parts of the input image and measures the effect on the prediciton, creating an importance heatmap of the input image.
 
